@@ -13,7 +13,9 @@ Built on the popular and easy-to-use `PyTorch` framework and tailored for resear
 Coming from the [`ZJU3DV`](https://github.com/zju3dv) research group at State Key Lab of CAD&CG, Zhejiang University, this framework is the underlying warehouse for many of our projects, papers and new ideas.
 We sincerely hope this framework will be useful for researchers with similar research interests in volumetric videos.
 
-***Source code is coming after weekend!***
+https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/57f012f9-2626-4bb2-bd73-bd283a976a7d
+
+***Source code is coming after the weekend!***
 
 ## Installation
 
@@ -143,8 +145,6 @@ evc -t test -c configs/exps/l3mhet/l3mhet_${expname}.yaml,configs/specs/spiral.y
 
 ### Running 3DGS+T
 
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/8f177e8a-9e2a-4847-a662-408f0005b29a
-
 https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/e5a3c8e4-2d34-47d3-a41a-0e7717a9a4fc
 
 The original [3DGS](https://github.com/graphdeco-inria/gaussian-splatting) uses the sparse reconstruction result of COLMAP for initialization.
@@ -223,9 +223,6 @@ evc -t gui -c configs/exps/enerfi/enerfi_actor1_4_subseq.yaml exp_name=enerfi_dt
 evc -t gui -c configs/exps/enerfi/enerfi_actor1_4_subseq.yaml,configs/specs/fp16.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 5.0 FPS on 3060
 ```
 
-## Short Overview Video
-
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/57f012f9-2626-4bb2-bd73-bd283a976a7d
 
 ## Documentations
 
