@@ -125,7 +125,7 @@ datadir=data/enerf_outdoor/actor1_4_subseq
 
 ### Running Instant-NGP+T
 
-With the data preparation is completed, we've got a `images` folder and a pair of `intri.yml` and `extri.yml` file, we can run the l3mhet model.
+We extend Instant-NGP to be time-aware, as a baseline method. With the data preparation is completed, we've got a `images` folder and a pair of `intri.yml` and `extri.yml` file, we can run the l3mhet model.
 Note that this model is not built for dynamics scenes, we train it here mainly for extracting initialization point clouds and computing a tighter bounding box.
 Similar procedures can be applied to other datasets if such initialization is required.
 
