@@ -13,9 +13,9 @@ Built on the popular and easy-to-use `PyTorch` framework and tailored for resear
 Coming from the [`ZJU3DV`](https://github.com/zju3dv) research group at State Key Lab of CAD&CG, Zhejiang University, this framework is the underlying warehouse for many of our projects, papers and new ideas.
 We sincerely hope this framework will be useful for researchers with similar research interests in volumetric videos.
 
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/57f012f9-2626-4bb2-bd73-bd283a976a7d
-
 ***Source code is coming after the weekend!***
+
+https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/57f012f9-2626-4bb2-bd73-bd283a976a7d
 
 ## Installation
 
