@@ -1,4 +1,4 @@
-<img src="assets/imgs/easyvolcap_logo.svg" alt="logo" width="33%"/>
+<img src="https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/de41df46-25e6-456c-a253-90d7807b2a9a" alt="logo" width="33%"/>
 
 *****EasyVolcap***: Accelerating Neural Volumetric Video Research**
 
@@ -145,7 +145,7 @@ evc -t test -c configs/exps/l3mhet/l3mhet_${expname}.yaml,configs/specs/spiral.y
 
 ### Running 3DGS+T
 
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/e5a3c8e4-2d34-47d3-a41a-0e7717a9a4fc
+https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/acd83f13-ba34-449c-96ce-e7b7b0781de4
 
 The original [3DGS](https://github.com/graphdeco-inria/gaussian-splatting) uses the sparse reconstruction result of COLMAP for initialization.
 However, we found that the sparse reconstruction result often contains a lot of floating points, which is hard to prune for 3DGS and could easily make the model fail to converge.
@@ -198,12 +198,11 @@ The [`superm.yaml`](configs/specs/superm.yaml) skips loading of input images and
 
 ### Inferencing With ENeRFi
 
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/1b145cf5-1676-4f62-8dc4-17ea34a1d067
+https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/68401485-85fe-477f-9144-976bb2ee8d3c
 
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/2a7b0e3f-1e8a-454c-b9fd-e96aa6842f92
+https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/6d60f2a4-6692-43e8-b682-aa27fcdf9516
 
 Pretrained model for ENeRFi on the DTU dataset can be downloaded from [this Google Drive link](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing). After downloading, rename the model to `latest.npz` place it in `data/trained_model/enerfi_dtu`.
-
 
 ```shell
 # Render ENeRFi with pretrained model
