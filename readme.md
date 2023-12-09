@@ -15,7 +15,7 @@ We sincerely hope this framework will be useful for researchers with similar res
 
 ***Source code is coming after the weekend!***
 
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/57f012f9-2626-4bb2-bd73-bd283a976a7d
+https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/e3069f00-304a-448c-96b1-b224641e0dbb
 
 ## Installation
 
