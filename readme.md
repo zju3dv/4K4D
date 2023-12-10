@@ -43,7 +43,7 @@ If existing environment with `PyTorch` installed can be utilized, you can jump s
 More details about installing on *Windows* or compiling *CUDA* modules can be found in [`install.md`](docs/design/install.md).
 
 Note: `pip` dependencies can sometimes fail to install & build. However, not all of them are strictly required for ***EasyVolcap***.
-  - The core ones include `tinycudann` and `pytorch3d`. Make sure those are built correctly and you'll be able to use most of the functionality of ***EasyVolcap***.
+  - The core ones include `tinycudann` and `pytorch3d`. Make sure those are built correctly and you'll be able to use most of the functionality of ***EasyVolcap***, you may find solutions in [`install.md`](docs/design/install.md) when encountering issues during the installation of `tinycudann`.
   - It's also OK to install missing packages manually when ***EasyVolcap*** reports that they are missing since we lazy load a lot of them (`tinycudann`, `diff_gauss`, `open3d` etc.). 
   - Just be sure to check how we listed the missing pacakge in [`requirements.txt`](requirements.txt) before performing `pip install` on them. Some packages requires to be installed from GitHub.
   - If the `mamba env update` step fails due to network issues, it is OK to proceed with pip installs since `PyTorch` will also be installed by pip.
