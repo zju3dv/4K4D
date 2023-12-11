@@ -1,0 +1,49 @@
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        n_rays: 2048
+    batch_sampler_cfg: &batch_sampler_cfg
+        batch_size: 4
+
+val_dataloader_cfg:
+    dataset_cfg:
+        ratio: 1.
+
+_: &mlp_size # skip_geo_feat: True
+    geometry_cfg:
+        width: 64
+        depth: 1
+        splits: [1, 15]
+    appearance_cfg:
+        width: 64
+        depth: 2
+
+runner_cfg:
+    epochs: 1600 # dynamic scenes
+    optimizer_cfg:
+        lr: 5.0e-3
+        eps: 1.0e-15
+
+# Always define full model config
+model_cfg:
+    # render_chunk_size: 32768
+    sampler_cfg:
+        n_samples: [64, 32]
+    network_cfg:
+        xyzt_embedder_cfg:
+            type: KPlanesEmbedder
+            _delete_: True
+        <<: *mlp_size
+        network_cfgs:
+            '0': # coarse network config
+                xyzt_embedder_cfg:
+                    n_levels: 1
+                    n_features_per_level: 8
+                    base_resolution: 128
+                <<: *mlp_size
+    # supervisor_cfg:
+    #     msk_mse_weight: 0.1
+    #     tv_loss_weight: 0.0002
+    #     time_smooth_weight: 0.001
+    #     time_smooth_prop_weight: 0.00001
+    renderer_cfg:
+        bg_brightness: 0.0

@@ -1,0 +1,15 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/enerf.yaml # network model configuration
+    - configs/datasets/cba/seq1.yaml # dataset usage configuration
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg:
+        view_sample: [0, null, 1]
+        frame_sample: [0, 30, 1]
+        ratio: 0.4
+
+val_dataloader_cfg: *dataloader_cfg
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

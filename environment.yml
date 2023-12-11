@@ -1,0 +1,32 @@
+name: easyvolcap
+channels:
+    - pytorch
+    - nvidia
+    - conda-forge
+    - defaults
+
+dependencies:
+    - python>=3.9
+    # - python==3.9
+    # - python>=3.9,<3.10 # use this for wsl2 since opengl is broken with python 3.10
+    # pytorch3d does not support pytorch 1.13 yet
+    # so we install 1.12.1 for now
+    - pytorch>=1.13
+    - pytorch-cuda>=11.6 # bugs on smaller versions
+    - torchvision
+    - torchaudio
+
+    - git
+    - vim
+    - tmux # conda(mamba) is a good thing
+    - cmake
+    - conda-forge::ffmpeg
+    - conda-forge::ncurses # vim: /home/xuzhen/miniconda3/envs/phdeform/bin/../lib/libtinfo.so.6: no version information available (required by vim)
+
+    - pip
+      # - pip:
+      # - -r requirements.txt
+# How to create the environment from scratch
+# mamba create -n easyvolcap "python>=3.10" -y
+# mamba env update # conda only supports environment.yml instead of environment.yaml (yaml recommended)
+# cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | xargs -n 1 pip install

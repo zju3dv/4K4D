@@ -1,0 +1,11 @@
+configs: configs/specs/fp16.yaml
+
+model_cfg:
+    sampler_cfg:
+        skip_loading_points: True
+        pts_per_pix: 12 # will this cause problem?
+        use_cudagl: True # will use the accelerated shader for volume rendering, eliminating copy
+
+runner_cfg:
+    visualizer_cfg:
+        types: [RENDER, DEPTH]

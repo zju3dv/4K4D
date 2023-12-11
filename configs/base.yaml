@@ -1,0 +1,138 @@
+# Default config for the whole project
+
+# Outermost level configuration switches
+exp_name: nerft
+detect_anomaly: False
+fix_random: False
+allow_tf32: True
+deterministic: False # deterministic training (debug only)
+benchmark: True # when benchmarking, slow, after, fast
+profiler_cfg:
+    enabled: False # no profiling by default
+print_model: False # defaults to a compact interface
+preparing_parser: False
+
+# Top level model building
+model_cfg:
+    type: VolumetricVideoModel
+    camera_cfg:
+        type: NoopCamera
+    sampler_cfg:
+        type: ImportanceSampler
+    network_cfg:
+        type: MultilevelNetwork
+        # <<: *network_cfg # is this ok?
+        parameterizer_cfg:
+            type: ContractRegressor
+            in_dim: 3
+        xyzt_embedder_cfg:
+            type: ComposedXyztEmbedder
+            xyz_embedder_cfg:
+                type: PositionalEncodingEmbedder
+                multires: 10
+            t_embedder_cfg:
+                type: LatentCodeEmbedder
+        xyz_embedder_cfg:
+            type: EmptyEmbedder
+        dir_embedder_cfg:
+            type: PositionalEncodingEmbedder
+            multires: 4
+        rgb_embedder_cfg:
+            type: EmptyEmbedder
+        deformer_cfg:
+            type: EmptyRegressor
+        geometry_cfg:
+            type: SplitRegressor
+            width: 512
+            depth: 8
+        appearance_cfg:
+            type: MlpRegressor
+            width: 256
+            depth: 2
+            out_dim: 3
+            out_actvn: sigmoid
+        network_cfgs:
+            # - &network_cfg # coarse network configuration
+            - type: VolumetricVideoNetwork
+              geometry_cfg:
+                  type: SplitRegressor
+                  width: 128
+                  depth: 4
+              appearance_cfg:
+                  type: EmptyRegressor
+            # - <<: *network_cfg # fine network configuration
+            - type: VolumetricVideoNetwork
+              # seems to be hierarchically overwritting, good
+    renderer_cfg:
+        type: VolumeRenderer
+    supervisor_cfg:
+        type: VolumetricVideoSupervisor
+
+dataloader_cfg: &dataloader_cfg # we see the term "dataloader" a one word?
+    type: VolumetricVideoDataloader
+    dataset_cfg: &dataset_cfg
+        type: VolumetricVideoDataset
+        split: TRAIN
+        data_root: data/dataset/sequence
+        n_rays: 512
+        supply_decoded: True # pass the image to the network directly
+        encode_ext: .png # save memory during training
+        frame_sample: [0, null, 1]
+        view_sample: [0, null, 1]
+        intri_file: intri.yml
+        extri_file: extri.yml
+        bodymodel_file: output/cfg_exp.yml
+        motion_file: 'motion.npz'
+        append_gt_prob: 0.1
+        extra_src_pool: 1
+        bounds: [[-10.0, -10.0, -10.0], [10.0, 10.0, 10.0]]
+    sampler_cfg:
+        type: RandomSampler
+        frame_sample: [0, null, 1]
+        view_sample: [0, null, 1]
+    batch_sampler_cfg:
+        type: BatchSampler
+        batch_size: 8
+
+val_dataloader_cfg: # we see the term "dataloader" a one word?
+    <<: *dataloader_cfg
+    max_iter: -1
+    dataset_cfg:
+        <<: *dataset_cfg
+        type: VolumetricVideoDataset
+        split: VAL
+        supply_decoded: True # pass the image to the network directly
+        encode_ext: .png # save bandwidth for rendering
+        frame_sample: [0, null, 50]
+        view_sample: [0, null, 5]
+        append_gt_prob: 1.0
+        extra_src_pool: 0
+    sampler_cfg:
+        type: SequentialSampler
+        frame_sample: [0, null, 1]
+        view_sample: [0, null, 1]
+        # Please modify dataset_cfg instead of this
+    batch_sampler_cfg:
+        type: BatchSampler
+        batch_size: 1
+
+runner_cfg: &runner_cfg
+    type: VolumetricVideoRunner
+    epochs: 400
+    ep_iter: 500
+    optimizer_cfg:
+        type: ConfigurableOptimizer
+    scheduler_cfg:
+        type: ExponentialLR
+    moderator_cfg:
+        type: NoopModerator
+    visualizer_cfg:
+        type: VolumetricVideoVisualizer
+        types: [RENDER, DEPTH, ALPHA]
+    evaluator_cfg:
+        type: VolumetricVideoEvaluator
+    recorder_cfg:
+        type: TensorboardRecorder
+
+viewer_cfg:
+    type: VolumetricVideoViewer

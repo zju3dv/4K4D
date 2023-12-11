@@ -1,0 +1,11 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/kplanes.yaml # network model configuration
+    - configs/datasets/NHR/sport1.yaml # dataset usage configuration
+    - configs/specs/mask.yaml # specific usage configuration
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg:
+        bounds: [[-0.3, -0.7, -0.8], [0.3, 0.7, 0.8]] # !: BATCH
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

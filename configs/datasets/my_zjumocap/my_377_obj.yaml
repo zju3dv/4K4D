@@ -1,0 +1,10 @@
+configs: configs/datasets/my_zjumocap/my_377.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg # ratio: 0.5
+        bounds: [[-0.4608, -0.6434, -0.8969], [0.7492, 0.4666, 0.9031]] # !: BATCH
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg

@@ -1,0 +1,25 @@
+# Configuration for ENeRF on enerf_outdoor actor 1
+# This is literally an empty file
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/enerf.yaml # network model configuration
+    - configs/datasets/NHR/sport1.yaml # dataset usage configuration
+    - configs/specs/mask.yaml # dataset usage configuration
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg:
+        render_size: [512, 612] # resize to same
+        view_sample: [0, null, 1] # use all views for ibr inference
+    batch_sampler_cfg:
+        batch_size: 1
+
+val_dataloader_cfg: *dataloader_cfg
+
+# model_cfg:
+#     sampler_cfg:
+#         n_samples: [8, 2]
+#         n_planes: [32, 8]
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}
+# NOTE: only define something in one place

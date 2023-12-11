@@ -1,0 +1,8 @@
+configs: configs/datasets/my_zjumocap/my_zjumocap.yaml
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/my_zjumocap/my_387
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg

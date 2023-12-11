@@ -1,0 +1,16 @@
+configs: configs/datasets/genebody/genebody.yaml
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg:
+        type: GeneralizableDataset
+        data_root: null # anything, to avoid `feature_cloud_sampler.py` building error
+        meta_roots: [
+                data/genebody/genebody_test10,
+                data/genebody/genebody_train40,
+            ] # for now, only pretrain on dtu
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    sampler_cfg:
+        type: SequentialSampler
+        frame_sample: [0, null, 10000] # only render a very small number of images
+

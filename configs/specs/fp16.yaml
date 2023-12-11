@@ -1,0 +1,34 @@
+_: &mlp_size # skip_geo_feat: True
+    xyzt_embedder_cfg:
+        xyz_embedder_cfg:
+            dtype: half
+        t_embedder_cfg:
+            dtype: half
+    xyz_embedder_cfg:
+        dtype: half
+    geometry_cfg:
+        dtype: half
+    rgb_embedder_cfg:
+        dtype: half
+    dir_embedder_cfg:
+        dtype: half
+    appearance_cfg:
+        dtype: half
+
+# Always define full model config
+model_cfg:
+    dtype: half
+    camera_cfg:
+        dtype: half
+    sampler_cfg:
+        dtype: half
+    renderer_cfg:
+        dtype: half
+    supervisor_cfg:
+        dtype: half
+    network_cfg:
+        <<: *mlp_size
+
+# runner_cfg:
+#     train_use_amp: True
+#     test_use_amp: True

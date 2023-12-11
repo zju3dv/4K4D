@@ -1,0 +1,10 @@
+# model_cfg.enable_timer=True runner_cfg.evaluator_cfg.skip_time_in_summary=10
+model_cfg:
+    sampler_cfg:
+        init_H: 1280
+        init_W: 720
+
+runner_cfg:
+    collect_timing: True
+    evaluator_cfg:
+        skip_time_in_summary: 10

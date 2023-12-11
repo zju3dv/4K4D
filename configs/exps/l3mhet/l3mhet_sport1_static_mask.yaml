@@ -1,0 +1,13 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/l3mhet.yaml # network model configuration
+    - configs/datasets/NHR/sport1.yaml # dataset usage configuration
+    - configs/specs/mask.yaml
+    - configs/specs/static.yaml
+
+model_cfg:
+    supervisor_cfg:
+        msk_loss_weight: 0.01
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

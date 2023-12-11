@@ -1,0 +1,9 @@
+# Single level NeRF, no bs
+model_cfg:
+    sampler_cfg:
+        type: UniformSampler # single level sampling
+        uniform_disparity: False # uniform sampling in depth
+    network_cfg:
+        type: VolumetricVideoNetwork
+        # parameterizer_cfg:
+        #     type: NoopRegressor # no mipnerf360 contraction

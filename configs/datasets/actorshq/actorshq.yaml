@@ -1,0 +1,21 @@
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        bounds: [[-5.0, -5.0, -5.0], [5.0, 5.0, 5.0]] # thinner?
+        use_aligned_cameras: False
+        force_sparse_view: True
+        view_sample: [0, 160, 1]
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        frame_sample: [0, null, 100]
+    sampler_cfg:
+        view_sample: [0, 160, 30]
+
+model_cfg:
+    sampler_cfg:
+        surface_radius: 0.05
+
+viewer_cfg:
+    camera_cfg:
+        world_up: [0, 1, 0]

@@ -1,0 +1,10 @@
+configs: configs/datasets/NHR/sport3.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg # ratio: 0.5
+        bounds: [[-0.5062, -0.6825, -1.1487], [0.5738, 0.3275, 1.2113]] # !: BATCH
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg

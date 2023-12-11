@@ -1,0 +1,18 @@
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/nerfies/broom
+        view_sample: [0, 1, 1] # monocular dataset
+        frame_sample: [0, null, 1]
+        use_aligned_cameras: False
+        # Volume based configs
+        bounds: [[-5.0, -5.0, -5.0], [5.0, 5.0, 5.0]]
+        near: 0.12
+        far: 10.0
+        # Interpolation related configs
+        closest_using_t: True
+        interp_using_t: True # interpolate using time
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        frame_sample: [0, null, 50]

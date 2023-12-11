@@ -1,0 +1,21 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/enerf.yaml # network model configuration
+    - configs/datasets/badminton/seq3.yaml # dataset usage configuration
+    - configs/specs/static.yaml
+
+common: &common
+    frame_sample: [169, 170, 1] # only one frame
+
+dataloader_cfg:
+    dataset_cfg:
+        <<: *common
+        view_sample: [0, null, 1] # use all available views
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *common
+        view_sample: [0, null, 1] # one training, two testing
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

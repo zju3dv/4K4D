@@ -1,0 +1,20 @@
+configs: configs/datasets/renbody/0008_03.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg # ratio: 0.5
+        bounds: [[-0.8484, -0.6332, -0.9513], [0.4216, 0.8568, 1.0487]] # !: BATCH
+        # vhull_thresh: 0.985
+#         vhull_voxel_size: 0.005 # 1.0cm # originally 0.033 with upscale 3.0
+#         mask_bkgd: 1.0 # using white background
+
+model_cfg:
+    sampler_cfg:
+        surface_radius: 0.125
+#         should_preprocess: False
+#         sampling_type: MARCHING_CUBES_RECONSTRUCTION
+#         bg_brightness: 1.0
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg

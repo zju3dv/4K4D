@@ -1,0 +1,43 @@
+# Configuration for ENeRF on enerf_outdoor actor 1
+# This is literally an empty file
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/enerf.yaml # network model configuration
+    - configs/datasets/genebody/fuzhizhi.yaml # dataset usage configuration
+    - configs/specs/mask.yaml # dataset usage configuration
+
+val_dataloader_cfg:
+    dataset_cfg: &dataset_cfg
+        n_srcs_list: [4]
+        n_srcs_prob: [1.0]
+        n_render_views: 1000
+        view_sample: [0, null, 1] # will get overwritten by orbit.yaml, need to specify in commandline
+        ratio: 0.25 # use 0.25 for this
+        dist_opt_K: False
+        bounds: [[-3.0, -3.0, -3.0], [3.0, 3.0, 3.0]] # thinner?
+        near: 1.0 # no need for this if using vhull
+        far: 6.2 # a large value
+    batch_sampler_cfg: &batch_sampler_cfg
+        type: ImageBasedBatchSampler
+        n_srcs_list: [4] # 
+        n_srcs_prob: [1.0]
+        batch_size: 1
+
+dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        n_srcs_list: [3, 4]
+        n_srcs_prob: [0.2, 0.8]
+    batch_sampler_cfg:
+        batch_size: 1
+        n_srcs_list: [3, 4]
+        n_srcs_prob: [0.2, 0.8]
+
+# model_cfg:
+#     sampler_cfg:
+#         n_samples: [8, 2]
+#         n_planes: [32, 8]
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}
+# NOTE: only define something in one place

@@ -1,0 +1,22 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/l3mhet.yaml # network model configuration
+    - configs/datasets/enerf_outdoor/actor5_6.yaml # dataset usage configuration
+    - configs/specs/static.yaml
+    - configs/specs/optcam.yaml
+    - configs/specs/transient.yaml
+
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        near: 4.0
+        far: 9.0
+        bounds: [[-4.0, -4.0, -2.0], [4.0, 4.0, 2.0]]
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+    sampler_cfg:
+        view_sample: [0, null, 10]
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

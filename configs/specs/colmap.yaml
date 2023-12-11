@@ -1,0 +1,23 @@
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        use_aligned_cameras: False
+        dist_opt_K: True # useful for large distortion values
+        cache_raw: True # static dataset benefits from storing everything as raw tensors in memory
+        vhulls_dir: vhulls
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+
+viewer_cfg:
+    camera_cfg:
+        world_up: [0, -1, 0]
+
+model_cfg:
+    sampler_cfg:
+        n_points: 524288
+        n_duplicate: 0
+        should_preprocess: True # remove outliers
+    #     bg_brightness: -1.0 # try random bg
+    # renderer_cfg:
+    #     bg_brightness: -1.0 # try random bg

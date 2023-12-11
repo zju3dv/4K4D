@@ -1,0 +1,11 @@
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        intri_file: optimized/intri.yml
+        extri_file: optimized/extri.yml
+        use_aligned_cameras: False
+        vhulls_dir: surfs
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg

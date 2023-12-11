@@ -1,0 +1,17 @@
+common: &common
+    frame_sample: [0, 1, 1] # only one frame
+
+dataloader_cfg:
+    dataset_cfg:
+        <<: *common
+        # view_sample: [0, null, 1] # use all available views
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *common
+
+model_cfg:
+    network_cfg:
+        xyzt_embedder_cfg:
+            t_embedder_cfg:
+                type: EmptyEmbedder

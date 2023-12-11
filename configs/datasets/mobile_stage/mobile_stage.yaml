@@ -1,0 +1,27 @@
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        masks_dir: rvm
+        near: 1.0 # OK
+
+        # bounds: [[-10.0, -10.0, -10.0], [10.0, 10.0, 10.0]] # thinner?
+        bounds: [[-5.0, -5.0, -3.0], [5.0, 5.0, 3.0]] # thinner?
+        view_sample: [0, null, 1]
+        frame_sample: [0, null, 1] # only train for a thousand frames
+
+        vhull_thresh: 0.85 # 21 cameras?
+        count_thresh: 6 # more visibility
+        vhull_thresh_factor: 0.9 # FIXME: 313 need 1.5, 390, 394 requires 1.0
+        vhull_count_factor: 0.9
+
+        vhull_padding: 0.1 # padding could just be larger, this should be mostly fine
+
+        vhull_ctof_factor: 3.0 # larger size?
+        coarse_discard_masks: False
+        intersect_camera_bounds: False
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        frame_sample: [0, null, 400]
+    sampler_cfg:
+        view_sample: [0, null, 10]

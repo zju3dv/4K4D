@@ -1,0 +1,18 @@
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        cache_raw: False
+        n_rays: 512
+    batch_sampler_cfg: &batch_sampler_cfg
+        batch_size: 8
+    num_workers: 8
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg
+    batch_sampler_cfg:
+        batch_size: 1
+    num_workers: 2
+
+runner_cfg:
+    epochs: 400

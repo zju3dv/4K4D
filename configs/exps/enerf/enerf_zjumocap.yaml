@@ -1,0 +1,15 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/enerf.yaml # network model configuration
+    - configs/datasets/my_zjumocap/pretrain.yaml # dataset usage configuration
+    - configs/specs/mask.yaml
+
+dataloader_cfg: &dataloader_cfg
+    batch_sampler_cfg:
+        batch_size: 1
+
+runner_cfg:
+    epochs: 1600
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

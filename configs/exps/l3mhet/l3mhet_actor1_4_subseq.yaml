@@ -1,0 +1,16 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/l3mhet.yaml # network model configuration
+    - configs/datasets/enerf_outdoor/actor1_4_subseq.yaml # dataset usage configuration
+    - configs/specs/transient.yaml
+
+dataloader_cfg:
+    dataset_cfg:
+        cache_raw: True
+        n_rays: 256
+    batch_sampler_cfg:
+        batch_size: 64
+    num_workers: 64
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

@@ -1,0 +1,10 @@
+# Configuration for ENeRF on enerf_outdoor actor 1
+# This is literally an empty file
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/nerft.yaml # network model configuration
+    - configs/datasets/NHR/sport1.yaml # dataset usage configuration
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}
+# NOTE: only define something in one place

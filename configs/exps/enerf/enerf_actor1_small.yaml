@@ -1,0 +1,42 @@
+# Configuration for ENeRF on enerf_outdoor actor 1
+# This is literally an empty file
+configs:
+    - configs/exps/enerf/enerf_actor1.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        type: ImageBasedDataset
+        ratio: 0.5 # otherwise, definitely oom
+
+        # view_sample: [7, 6, 5, 2, 15, 13, 17, 8, 16, 14, 12, 11, 10, 1, 9, 0, 3, 4] # do not format, prettier will make this look like a mess
+        n_srcs_list: [2, 3, 4] # 
+        n_srcs_prop: [0.2, 0.6, 0.2] # 
+
+        view_sample: [0, null, 1] # will get overwritten by orbit.yaml, need to specify in commandline
+        frame_sample: [0, 1000, 1]
+    batch_sampler_cfg:
+        n_srcs_list: [2, 3, 4] # 
+        n_srcs_prop: [0.2, 0.6, 0.2] # 
+        batch_size: 2 # test for one image for now, possibly oom
+
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg
+        n_srcs_list: [3] # 
+        n_srcs_prob: [1.0]
+    batch_sampler_cfg:
+        <<: *batch_sampler_cfg
+        n_srcs_list: [3] # 
+        n_srcs_prob: [1.0]
+        batch_size: 1 # test for one image for now, possibly oom
+
+model_cfg:
+    sampler_cfg:
+        n_samples: [8, 2]
+        volume_planes: [32, 8]
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}
+# NOTE: only define something in one place

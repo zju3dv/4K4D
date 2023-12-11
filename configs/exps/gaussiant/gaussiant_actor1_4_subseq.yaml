@@ -1,0 +1,20 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/gaussiant.yaml # network model configuration
+    - configs/datasets/enerf_outdoor/actor1_4_subseq.yaml # dataset usage configuration
+
+model_cfg: # this config will prevent EasyVolcap from preprocessing the init point clouds
+    sampler_cfg:
+        n_points: 262144 # avoid too large point count
+        densify_until_iter: 50000 # densify for longer since this is a dynamic dataset
+
+runner_cfg:
+    epochs: 200 # typical gaussian models are for 60 epochs with 1 frame
+    decay_epochs: 100 # controls learning rate decay rate
+    eval_ep: 20 # easily oom during inference...
+    save_ep: 100 # avoid saving too many models...
+    save_lim: 2 # this is a large model to save on disk
+    save_latest_ep: 50
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

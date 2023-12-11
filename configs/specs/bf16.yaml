@@ -1,0 +1,34 @@
+_: &mlp_size # skip_geo_feat: True
+    xyzt_embedder_cfg:
+        xyz_embedder_cfg:
+            dtype: bfloat16
+        t_embedder_cfg:
+            dtype: bfloat16
+    xyz_embedder_cfg:
+        dtype: bfloat16
+    geometry_cfg:
+        dtype: bfloat16
+    rgb_embedder_cfg:
+        dtype: bfloat16
+    dir_embedder_cfg:
+        dtype: bfloat16
+    appearance_cfg:
+        dtype: bfloat16
+
+# Always define full model config
+model_cfg:
+    dtype: bfloat16
+    camera_cfg:
+        dtype: bfloat16
+    sampler_cfg:
+        dtype: bfloat16
+    renderer_cfg:
+        dtype: bfloat16
+    supervisor_cfg:
+        dtype: bfloat16
+    network_cfg:
+        <<: *mlp_size
+
+# runner_cfg:
+#     train_use_amp: True
+#     test_use_amp: True

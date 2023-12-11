@@ -1,0 +1,70 @@
+# Default configuration for Efficient NeRF ++
+configs: configs/models/enerf.yaml
+
+# evc-dist -c configs/exps/enerfi/enerfi_dtu.yaml # 2 gpus
+
+_: &enerf_network # common network config
+    app_use_geo_feat: True
+    app_use_xyzt_feat: True # concatenate geo with xyzt feature for ibr
+    parameterizer_cfg:
+        type: NoopRegressor # no scene contraction for now
+    xyzt_embedder_cfg:
+        xyz_embedder_cfg:
+            _delete_: True
+            type: ImageBasedEmbedder
+            vox_dim: 8
+            src_dim: 35
+            use_vox_feat: True
+            use_img_feat: True
+            agg_cfg:
+                type: FeatureAgg
+                viewdir_agg: True
+        t_embedder_cfg:
+            type: EmptyEmbedder
+    deformer_cfg:
+        type: EmptyRegressor
+    xyz_embedder_cfg:
+        type: EmptyEmbedder
+    dir_embedder_cfg:
+        _delete_: True
+        type: EmptyEmbedder
+    rgb_embedder_cfg:
+        type: EmptyEmbedder
+    geometry_cfg:
+        type: SplitRegressor # geometry regression is standard
+        splits: [1, 64]
+        width: 64
+        depth: 1 # be small, be fast
+        sequential_split: True
+    appearance_cfg:
+        _delete_: True
+        type: ImageBasedRegressor
+        # manual_chunking: True
+        width: 64
+        depth: 1 # be small, be fast
+        src_dim: 39
+
+model_cfg:
+    sampler_cfg:
+        feat_cfg:
+            type: FeatureNet
+            norm_actvn: InstanceNorm2d
+            test_using_train: False
+        cost_reg_cfgs:
+            - type: MinCostRegNet
+              norm_actvn: InstanceNorm3d
+            - type: CostRegNet
+              norm_actvn: InstanceNorm3d
+    network_cfg:
+        <<: *enerf_network
+        network_cfgs:
+            '0':
+                <<: *enerf_network
+            '1':
+                <<: *enerf_network
+                xyzt_embedder_cfg:
+                    xyz_embedder_cfg:
+                        vox_dim: 8
+                        src_dim: 11
+                appearance_cfg:
+                    src_dim: 15

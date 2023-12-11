@@ -1,0 +1,25 @@
+runner_cfg:
+    optimizer_cfg:
+        lr_table:
+            pcds: 5.0e-4
+
+model_cfg:
+    supervisor_cfg:
+        perc_loss_weight: 0.01 # use perceptual loss (1e-3 perc loss?)
+        msk_loss_weight: 0.01 # smaller residual deformation
+    sampler_cfg:
+        n_srcs: 8
+        pts_per_pix: 32 # will this cause problem? need to test on 313 scene
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        n_srcs_list: [8] # on the gradient of the first two images are tracked, small memory and speed loss for generalizability
+    batch_sampler_cfg: &batch_sampler_cfg
+        n_srcs_list: [8]
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg
+    batch_sampler_cfg:
+        <<: *batch_sampler_cfg

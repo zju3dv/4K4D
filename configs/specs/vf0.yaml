@@ -1,0 +1,4 @@
+# validation -> frame sample -> 0, 1, 1
+val_dataloader_cfg:
+    dataset_cfg:
+        frame_sample: [0, 1, 1]

@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "easyvolcap"
+version = "0.0.0"
+description = "EasyVolcap: Accelerating Neural Volumetric Video Research"
+readme = "readme.md"
+license = { file = "license" }
+authors = [{ email = "zhenx@zju.edu.cn" }, { name = "Zhen Xu" }]
+# requires-python = ">=3.10"
+dependencies = [] # NOTE: should manually install dependencies
+
+[project.urls]
+homepage = "https://github.com/dendenxu/easyvolcap"
+
+[tool.setuptools]
+# Automatic finding of packages is slow as xxx due to symlink to large datasets (tons of images)
+# It's never just runtime speed, we'd like the overall user experiment to be smooth
+# Including the process of creating commandline interfaces
+packages = [ # ................?????
+    'easyvolcap',
+    'easyvolcap.engine',
+    'easyvolcap.engine.handlers',
+    'easyvolcap.dataloaders',
+    'easyvolcap.dataloaders.datasets',
+    'easyvolcap.models',
+    'easyvolcap.models.networks',
+    'easyvolcap.models.networks.regressors',
+    'easyvolcap.models.networks.embedders',
+    'easyvolcap.models.samplers',
+    'easyvolcap.models.renderers',
+    'easyvolcap.models.supervisors',
+    'easyvolcap.runners',
+    'easyvolcap.runners.evaluators',
+    'easyvolcap.runners.visualizers',
+    'easyvolcap.utils',
+    'easyvolcap.utils.shaders',
+    'easyvolcap.scripts',
+]
+
+# [tool.setuptools.packages.find]
+# include = ["easyvolcap*", "scripts*", "main.py"]
+# exclude = ["data"]
+# where = ["easyvolcap", "scripts", "main.py"]
+
+[tool.setuptools.package-data]
+"*" = [
+    "*.yaml",
+    "*.json",
+    "*.py",
+    "*.yml",
+
+    "*.frag",
+    "*.vert",
+    "*.glsl",
+] # yes, .py not needed here, but just for clarification that you can use py for config
+
+[project.scripts]
+evc = "easyvolcap.scripts.main:main_entrypoint"
+evc-gui = "easyvolcap.scripts.main:gui_entrypoint"
+evc-test = "easyvolcap.scripts.main:test_entrypoint"
+evc-train = "easyvolcap.scripts.main:train_entrypoint"
+evc-dist = "easyvolcap.scripts.wrap:dist_entrypoint"
+evc-ipdb = "easyvolcap.scripts.wrap:ipdb_entrypoint"   # deprecated
+evc-prof = "easyvolcap.scripts.wrap:prof_entrypoint"
+
+# This should only serve as a commanline registration
+# Dependencies are expected to be installed separatedly

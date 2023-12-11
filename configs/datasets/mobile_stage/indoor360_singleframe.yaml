@@ -1,0 +1,10 @@
+configs: configs/datasets/mobile_stage/mobile_stage.yaml
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/mobile_stage/indoor360_singleframe
+        images_dir: 1model_1frame
+        masks_dir: bgmtv2
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg

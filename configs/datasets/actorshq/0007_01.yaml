@@ -1,0 +1,14 @@
+# Actor01 Sequence1
+configs: configs/datasets/actorshq/actorshq.yaml
+
+dataloader_cfg:
+    dataset_cfg: &dataset_cfg
+        data_root: data/actorshq/Actor07/Sequence1/1x
+        frame_sample: [0, 2139, 1]
+        bounds:
+            [[-0.717468, 0.00338061, -0.575331], [0.734876, 1.96494, 0.607752]]
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        frame_sample: [0, 2139, 100]

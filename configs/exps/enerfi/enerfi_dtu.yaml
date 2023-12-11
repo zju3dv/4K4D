@@ -1,0 +1,7 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/enerfi.yaml # network model configuration
+    - configs/datasets/dtu/pretrain.yaml # dataset usage configuration
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

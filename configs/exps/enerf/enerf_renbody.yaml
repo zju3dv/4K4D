@@ -1,0 +1,31 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/enerf.yaml # network model configuration
+    - configs/datasets/renbody/pretrain.yaml # dataset usage configuration
+    - configs/specs/mask.yaml
+
+val_dataloader_cfg:
+    dataset_cfg: &dataset_cfg
+        n_srcs_list: [3, 4, 5, 6, 7, 8, 9, 10] # much larger vram needed
+        n_srcs_prob: [0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125]
+        n_render_views: 1000
+        bounds: [[-5.0, -5.0, -5.0], [5.0, 5.0, 5.0]] # thinner?
+        near: 0.002 # no need for this if using vhull
+        far: 10.0 # a large value
+
+dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+    batch_sampler_cfg:
+        batch_size: 1
+
+model_cfg:
+    sampler_cfg:
+        n_samples: [16, 2]
+        n_planes: [128, 16]
+
+runner_cfg:
+    epochs: 6400 # train for much longer (3200 epochs) on all of the renbody data
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

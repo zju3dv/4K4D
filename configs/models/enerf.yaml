@@ -1,0 +1,111 @@
+# Default configuration for Efficient NeRF
+# configs: ../default.yaml # due to the inner workings of the config system, only use relative paths
+
+# evc-dist -c configs/exps/enerfi/enerfi_dtu.yaml # 2 gpus
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        type: ImageBasedDataset
+        n_srcs_list: [2, 3, 4]
+        n_srcs_prob: [0.2, 0.6, 0.2]
+        ratio: 1.0 # otherwise, definitely oom
+        use_z_depth: True
+        ddp_shard_dataset: False
+        n_rays: -1
+    batch_sampler_cfg: &batch_sampler_cfg
+        type: ImageBasedBatchSampler
+        n_srcs_list: [2, 3, 4]
+        n_srcs_prob: [0.2, 0.6, 0.2]
+        batch_size: 1 # dtu pretrain model requires two GPUs
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg
+        ratio: 1.0 # render everything out directly
+        n_srcs_list: [3] #
+        n_srcs_prob: [1.0]
+        append_gt_prob: 0.
+        supply_decoded: False # pass the image to the network directly
+        encode_ext: .jpg # save bandwidth for rendering
+    batch_sampler_cfg:
+        <<: *batch_sampler_cfg
+        n_srcs_list: [3] #
+        n_srcs_prob: [1.0]
+        batch_size: 1 # test for one image for now, possibly oom
+
+runner_cfg:
+    epochs: 400 # more than enough training for batch size of 2, surprisingly, 15 epochs already gives pretty good results
+    record_images_to_tb: False # slow
+    # train_use_amp: True # worse LPIPS
+    optimizer_cfg:
+        lr: 5.0e-4 # emperically selected
+
+_: &enerf_network # common network config
+    app_use_geo_feat: True
+    app_use_xyzt_feat: True # concatenate geo with xyzt feature for ibr
+    parameterizer_cfg:
+        type: NoopRegressor # no scene contraction for now
+    xyzt_embedder_cfg:
+        xyz_embedder_cfg:
+            _delete_: True
+            type: ImageBasedEmbedder
+            vox_dim: 8
+            src_dim: 35 #  (32 feature dim + 3 rgbs)
+            use_vox_feat: True
+            use_img_feat: True
+            agg_cfg:
+                type: FeatureAgg
+                viewdir_agg: True
+        t_embedder_cfg:
+            type: EmptyEmbedder
+    deformer_cfg:
+        type: EmptyRegressor
+    xyz_embedder_cfg:
+        type: EmptyEmbedder
+    dir_embedder_cfg:
+        _delete_: True
+        type: EmptyEmbedder
+    rgb_embedder_cfg:
+        type: EmptyEmbedder
+    geometry_cfg:
+        type: SplitRegressor # geometry regression is standard
+        splits: [1, 64]
+        width: 64
+        depth: 1 # be small, be fast
+        sequential_split: True
+    appearance_cfg:
+        _delete_: True
+        type: ImageBasedRegressor
+        # manual_chunking: True
+        width: 64
+        depth: 1 # be small, be fast
+        src_dim: 39 #  (35 src_dim + 4 directional dim)
+
+model_cfg:
+    use_z_depth: True
+    chunkify_rays: False # for now, no ray chunking for ENeRF
+    supervisor_cfg:
+        img_loss_type: HUBER # use perceptual loss
+        prop_loss_weight: 0.1 # smaller loss weight for proposal network of enerf
+        perc_loss_weight: 0.01 # smaller loss on perception
+    sampler_cfg:
+        type: CostVolumeSampler
+        bg_brightness: 0.0 # no bg
+    renderer_cfg:
+        bg_brightness: 0.0 # no bg
+    network_cfg:
+        # Main difference between networks are the cost volume features used
+        # This is implemented in CostVolumeSampler
+        <<: *enerf_network
+        network_cfgs:
+            '0':
+                <<: *enerf_network
+            '1':
+                <<: *enerf_network
+                xyzt_embedder_cfg:
+                    xyz_embedder_cfg:
+                        vox_dim: 8
+                        src_dim: 11 #  (8 feature, 3 rgbs)
+                appearance_cfg:
+                    src_dim: 15 #  (8 feature, 3 rgbs, 4 dirs)

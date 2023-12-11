@@ -1,0 +1,13 @@
+configs: configs/specs/colmap.yaml
+
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/zju/ipstage
+        bounds: [[-10.0, -10.0, -10.0], [10.0, 2.0, 10.0]]
+        view_sample: [0, null, 1] # use 11 views
+        ratio: 0.5
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        view_sample: [0, null, 100] # one training, two testing

@@ -1,0 +1,16 @@
+configs: configs/specs/fp16.yaml
+
+model_cfg:
+    chunkify_rays: False # for now, no ray chunking for ENeRF
+    let_user_handle_input: True # let the user handle the output and input
+    sampler_cfg:
+        type: SuperChargedENeRF
+
+val_dataloader_cfg:
+    dataset_cfg:
+        # prettier-ignore
+        frame_sample: {{configs.dataloader_cfg.dataset_cfg.frame_sample}}  # use all images
+
+runner_cfg:
+    visualizer_cfg:
+        types: [RENDER, DEPTH]

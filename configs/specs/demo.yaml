@@ -1,0 +1,11 @@
+dataloader_cfg:
+    dataset_cfg:
+        frame_sample: [0, 10, 1]
+
+val_dataloader_cfg:
+    dataset_cfg:
+        frame_sample: [0, 10, 1]
+
+runner_cfg:
+    eval_ep: 1
+    ep_iter: 50

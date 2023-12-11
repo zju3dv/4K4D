@@ -1,0 +1,12 @@
+configs: configs/datasets/my_zjumocap/my_zjumocap.yaml
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg:
+        type: GeneralizableDataset
+        meta_roots: [data/my_zjumocap] # for now, only pretrain on dtu
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    sampler_cfg:
+        type: SequentialSampler
+        frame_sample: [0, null, 10000] # only render a very small number of images
+

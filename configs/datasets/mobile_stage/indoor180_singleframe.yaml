@@ -1,0 +1,20 @@
+configs: configs/datasets/mobile_stage/mobile_stage.yaml
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/mobile_stage/indoor180_singleframe
+        images_dir: 2model_1frame
+
+        vhull_thresh: 0.95 # 21 cameras?
+        count_thresh: 6 # more visibility
+        vhull_thresh_factor: 0.75
+        vhull_count_factor: 0.75
+
+        vhull_padding: 0.1 # padding could just be larger, this should be mostly fine
+
+        vhull_ctof_factor: 3.0 # larger size?
+        coarse_discard_masks: False
+        intersect_camera_bounds: False
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg

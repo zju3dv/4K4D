@@ -1,0 +1,23 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/kplanes.yaml # network model configuration
+    - configs/datasets/renbody/0013_01.yaml # dataset usage configuration
+    - configs/specs/mask.yaml # specific usage configuration
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        bounds: [[-0.5352, -0.7697, -0.9967], [0.4148, 0.7203, 0.9533]] # !: BATCH
+        # default ratio 0.5
+        # ratio: 0.75
+        ratio: 0.5
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg
+        frame_sample: [0, null, 50] # sample all frames
+    sampler_cfg:
+        view_sample: [0, null, 20] # sample some of the indices
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

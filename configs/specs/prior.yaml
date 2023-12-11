@@ -1,0 +1,17 @@
+model_cfg:
+    supervisor_cfg:
+        msk_loss_weight: 0.01 # large mask loss for geometry regularization
+        resd_loss_weight: 0.1 # smaller residual deformation
+    sampler_cfg:
+        n_srcs: 8
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        n_srcs_list: [8]
+    batch_sampler_cfg:
+        n_srcs_list: [8]
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg

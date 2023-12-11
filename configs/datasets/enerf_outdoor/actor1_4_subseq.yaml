@@ -1,0 +1,25 @@
+configs: configs/datasets/enerf_outdoor/enerf_outdoor.yaml
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/enerf_outdoor/actor1_4_subseq
+        frame_sample: [0, 30, 1] # only train for a thousand frames
+        use_aligned_cameras: False # do not perform bbox alignment
+
+        near: 4.0
+        far: 9.0
+        bounds: [[-4.0, -4.0, -2.0], [4.0, 4.0, 2.0]]
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        near: 2.5 # more wiggle room during inference
+        frame_sample: [0, 30, 10]
+        interp_cfg:
+            xyz_ratio: [1.0, 0.0, 0.25]
+        temporal_range: [0, 1, 0, 1, 0]
+    sampler_cfg:
+        view_sample: [0, 18, 6]
+
+runner_cfg:
+    visualizer_cfg:
+        video_fps: 60 # this dataset id built differently

@@ -1,0 +1,22 @@
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/zju/ip412
+        bounds: [[-5.0, -5.0, -2.0], [5.0, 5.0, 2.0]]
+        view_sample: [0, null, 1] # use 11 views
+        frame_sample: [0, null, 1] # only train for 200 frames
+
+        # Should refactor VolumetricVideoDataset to support zero weight in non-masked regions
+        bkgd_weight: 0.0
+        avg_using_all: True
+        avg_max_count: 50 # should match inference with this
+
+        use_masks: True
+        masks_dir: inv_maskes # for the scene
+        interp_using_t: True
+        closest_using_t: True
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        view_sample: [0, null, 5] # one training, two testing
+        frame_sample: [0, null, 200] # one training, two testing

@@ -1,0 +1,10 @@
+configs: configs/datasets/renbody/renbody.yaml
+
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/renbody/0011_11
+        images_dir: images_calib
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg

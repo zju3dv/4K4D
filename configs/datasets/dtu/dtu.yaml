@@ -1,0 +1,25 @@
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        masks_dir: masks
+        interp_using_t: True
+        closest_using_t: True
+
+        frame_sample: [0, null, 1] # one training, two testing
+        view_sample: [0, null, 1] # one training, two testing
+
+        avg_using_all: True
+        dist_opt_K: True # useful for large distortion values
+
+        near: 2.125 # 425 / 200
+        far: 4.525 # 905 / 200
+        bounds: [
+                [-10.0, -10.0, -10.0], # use a large enough bounding box to utilize the given near and far
+                [10.0, 10.0, 10.0], # use a large enough bounding box to utilize the given near and far
+            ]
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg
+    sampler_cfg:
+        frame_sample: [0, null, 200] # one training, two testing

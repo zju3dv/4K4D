@@ -1,0 +1,15 @@
+configs: configs/datasets/enerf_outdoor/enerf_outdoor.yaml
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/enerf_outdoor/actor2_3
+        frame_sample: [0, 200, 1] # only train for a thousand frames
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        # view_sample: [0, null, 10]
+        # frame_sample: [0, null, 100]
+
+runner_cfg:
+    visualizer_cfg:
+        video_fps: 60 # this dataset id built differently

@@ -1,0 +1,17 @@
+# Configuration for ENeRF
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/enerf.yaml # network model configuration
+    - configs/datasets/zju/zju3dv.yaml # dataset usage configuration
+    - configs/specs/optimized.yaml
+
+val_dataloader_cfg:
+    dataset_cfg:
+        force_sparse_view: True
+        view_sample: [0, null, 5]
+        n_srcs_list: [3]
+        use_vhulls: True
+        cache_raw: False
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

@@ -1,0 +1,19 @@
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        bounds: [[-2.0, -2.0, -2.0], [2.0, 2.0, 2.0]]
+        masks_dir: rvm
+        vhull_thresh: 0.99 # 40 cameras?
+        count_thresh: 10 # common views
+        vhull_padding: 0.02 # padding could just be larger, this should be mostly fine
+
+        vhull_ctof_factor: 3.0 # larger size?
+        vhull_thresh_factor: 1.0
+        vhull_count_factor: 1.0
+        coarse_discard_masks: False
+        intersect_camera_bounds: False
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+    sampler_cfg:
+        view_sample: [0, null, 10]

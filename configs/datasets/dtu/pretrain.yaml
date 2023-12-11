@@ -1,0 +1,14 @@
+configs: configs/datasets/dtu/dtu.yaml
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg:
+        type: GeneralizableDataset
+        meta_roots: [data/dtu] # for now, only pretrain on dtu
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    sampler_cfg:
+        type: SequentialSampler
+        frame_sample: [0, null, 1000] # only render a very small number of images
+
+runner_cfg:
+    epochs: 200 # more than enough training

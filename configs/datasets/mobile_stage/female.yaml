@@ -1,0 +1,14 @@
+configs: configs/datasets/mobile_stage/mobile_stage.yaml
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/mobile_stage/female
+        masks_dir: mask
+
+        vhull_thresh: 0.95 # 21 cameras?
+        count_thresh: 16 # more visibility
+        vhull_thresh_factor: 1.0 # FIXME: 313 need 1.5, 390, 394 requires 1.0
+        vhull_count_factor: 1.0
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg

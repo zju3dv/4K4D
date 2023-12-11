@@ -1,0 +1,21 @@
+configs: configs/specs/fp16.yaml
+
+model_cfg:
+    sampler_cfg:
+        type: SuperChargedR4DV
+        skip_loading_points: True
+        use_cudagl: True
+        pts_per_pix: 11 # will this cause problem? need to test on 313 scene
+        # dtype: half
+    # ibr_embedder_cfg:
+    #     use_interpolate: False
+
+val_dataloader_cfg:
+    dataset_cfg:
+        barebone: True
+        # prettier-ignore
+        frame_sample: {{configs.dataloader_cfg.dataset_cfg.frame_sample}}  # use all images
+
+runner_cfg:
+    visualizer_cfg:
+        types: [RENDER, DEPTH]

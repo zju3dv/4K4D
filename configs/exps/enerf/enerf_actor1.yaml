@@ -1,0 +1,38 @@
+# Configuration for ENeRF on enerf_outdoor actor 1
+# This is literally an empty file
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/enerf.yaml # network model configuration
+    - configs/datasets/enerf_outdoor/actor1.yaml # dataset usage configuration
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        type: ImageBasedDataset
+        n_srcs_list: [2, 3, 4] # 
+        n_srcs_prob: [0.1, 0.1, 0.8]
+        ratio: 0.5 # 540, 960
+        view_sample: [0, null, 1] # will get overwritten by orbit.yaml, need to specify in commandline
+    batch_sampler_cfg: &batch_sampler_cfg
+        type: ImageBasedBatchSampler
+        n_srcs_list: [2, 3, 4] # 
+        n_srcs_prob: [0.1, 0.1, 0.8]
+        batch_size: 1
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg
+        n_srcs_list: [4] # 
+        n_srcs_prob: [1.0]
+    batch_sampler_cfg:
+        <<: *batch_sampler_cfg
+        n_srcs_list: [4] # 
+        n_srcs_prob: [1.0]
+        batch_size: 1
+
+model_cfg:
+    sampler_cfg:
+        n_samples: [8, 2]
+        n_planes: [48, 8]
+
+exp_name: {{fileBasenameNoExtension}}

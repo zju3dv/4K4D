@@ -1,0 +1,9 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/gaussiant.yaml # network model configuration
+    - configs/datasets/zju/zju3dv.yaml # dataset usage configuration
+    - configs/specs/optimized.yaml
+    - configs/specs/colmap.yaml
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

@@ -1,0 +1,16 @@
+sampler_cfg: &sampler_cfg
+    xyz_embedder_cfg:
+        agg_method: cat # performs similarly
+        n_levels: 2
+        log2_hashmap_size: 14
+
+model_cfg:
+    sampler_cfg:
+        <<: *sampler_cfg
+        fg_sampler_cfg: *sampler_cfg
+        bg_sampler_cfg: *sampler_cfg
+
+runner_cfg:
+    epochs: 50 # 50000 iterations
+    save_ep: 10
+    save_latest_ep: 1

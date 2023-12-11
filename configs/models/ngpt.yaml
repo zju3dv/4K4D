@@ -1,0 +1,47 @@
+_: &shared_cfg # skip_geo_feat: True
+    xyzt_embedder_cfg:
+        xyz_embedder_cfg:
+            type: TcnnHashEmbedder
+        t_embedder_cfg:
+            out_dim: 8 # smaller latent code
+    dir_embedder_cfg:
+        type: TcnnDirEmbedder
+    geometry_cfg:
+        # type: TcnnSplitRegressor
+        # otype: CutlassMLP # FIXME: Nans? why?
+        width: 64
+        depth: 1 # 2 layers
+        splits: [1, 15]
+    appearance_cfg:
+        # type: TcnnMlpRegressor
+        width: 64
+        depth: 2 # 3 layers
+
+dataloader_cfg:
+    num_workers: 32
+
+runner_cfg:
+    # amp: True # enable fp16 for this # FIXME: amp on tcnn returns nans
+    # log_interval: 100
+    optimizer_cfg:
+        lr: 2.0e-2
+        eps: 1.0e-15
+
+# Always define full model config
+model_cfg:
+    # render_chunk_size: 32768
+    network_cfg:
+        <<: *shared_cfg
+        network_cfgs:
+            '0': # coarse network config
+                xyzt_embedder_cfg:
+                    xyz_embedder_cfg:
+                        # n_levels: 14 # 19 vs 10?
+                        log2_hashmap_size: 14 # smaller base hash resolution
+                <<: *shared_cfg
+            '1':
+                xyzt_embedder_cfg:
+                    xyz_embedder_cfg:
+                        # n_levels: 19 # larger?
+                        log2_hashmap_size: 19 # smaller base hash resolution
+                <<: *shared_cfg

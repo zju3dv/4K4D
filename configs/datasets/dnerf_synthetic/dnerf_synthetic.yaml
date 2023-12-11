@@ -1,0 +1,25 @@
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        ratio: 0.5 # align with D-NeRF
+        view_sample: [0, 1, 1] # monocular dataset
+        frame_sample: [0, null, 1]
+        use_default_time: True # use dataset provided timestamp
+        use_aligned_cameras: False # NOTE: cannot align cameras when using monocular dataset
+        # Volume based configs
+        bounds: [[-8.0, -8.0, -8.0], [8.0, 8.0, 8.0]]
+        near: 2.0
+        far: 6.0
+        # Mask related configs
+        use_masks: True
+        use_vhulls: False
+        immask_crop: False
+        imbound_crop: False
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        interp_using_t: True # interpolate using time
+
+model_cfg:
+    supervisor_cfg:
+        msk_loss_weight: 0.01

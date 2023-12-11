@@ -1,0 +1,5 @@
+configs: configs/specs/superf.yaml
+
+model_cfg:
+    sampler_cfg:
+        type: SuperChargedOneHourIBR

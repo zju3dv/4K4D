@@ -1,0 +1,15 @@
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/nerf_llff_data/fern
+        near: 2.0
+        far: 6.0
+        use_aligned_cameras: True
+        # bounds: [[-8.0, -8.0, -8.0], [8.0, 8.0, 10.0]]
+        view_sample: [0, null, 1]
+        frame_sample: [0, 1, 1]
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        view_sample: [0, null, 5]
+        frame_sample: [0, 1, 1]

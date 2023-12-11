@@ -1,0 +1,9 @@
+configs: configs/datasets/dnerf_synthetic/dnerf_synthetic.yaml
+
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/dnerf_synthetic/jumpingjacks/train
+
+val_dataloader_cfg:
+    dataset_cfg:
+        data_root: data/dnerf_synthetic/jumpingjacks/test

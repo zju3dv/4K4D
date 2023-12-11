@@ -1,0 +1,11 @@
+configs: configs/datasets/NHR/sport1.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg # ratio: 0.5
+        bounds: [[-0.3, -0.7, -0.8], [0.3, 0.7, 0.8]]
+        vhull_thresh: 0.985
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg

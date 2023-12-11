@@ -1,0 +1,40 @@
+_: &mlp_size # skip_geo_feat: True
+    geometry_cfg:
+        width: 64
+        depth: 1
+        splits: [1, 15]
+    appearance_cfg:
+        width: 64
+        depth: 2
+
+dataloader_cfg:
+    num_workers: 32
+
+runner_cfg:
+    optimizer_cfg:
+        lr: 2.0e-2
+        eps: 1.0e-15
+
+# Always define full model config
+model_cfg:
+    # render_chunk_size: 32768
+    network_cfg:
+        xyzt_embedder_cfg:
+            xyz_embedder_cfg:
+                type: TcnnHashEmbedder # no mipnerf360 contraction
+            t_embedder_cfg:
+                out_dim: 8 # smaller latent code
+        <<: *mlp_size
+        network_cfgs:
+            '0': # coarse network config
+                xyzt_embedder_cfg:
+                    xyz_embedder_cfg:
+                        # n_levels: 14 # 19 vs 10?
+                        log2_hashmap_size: 14 # smaller base hash resolution
+                <<: *mlp_size
+            '1':
+                xyzt_embedder_cfg:
+                    xyz_embedder_cfg:
+                        # n_levels: 19 # larger?
+                        log2_hashmap_size: 19 # smaller base hash resolution
+                <<: *mlp_size

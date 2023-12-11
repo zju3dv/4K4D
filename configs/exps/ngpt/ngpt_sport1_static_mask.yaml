@@ -1,0 +1,9 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/ngpt.yaml # network model configuration
+    - configs/datasets/NHR/sport1.yaml # dataset usage configuration
+    - configs/specs/static.yaml # specific usage configuration
+    - configs/specs/mask.yaml # specific usage configuration
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

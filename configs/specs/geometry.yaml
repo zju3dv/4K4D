@@ -1,0 +1,30 @@
+# Use volume dataset & model
+# Generate 3D content (possibly mesh)
+
+val_dataloader_cfg:
+    dataset_cfg:
+        type: GeometryDataset
+        # skip_loading_images: True
+        remove_outlier: False
+        vhull_thresh: 1.0
+        vhull_padding: 0.0 # padding could just be larger, this should be mostly fine
+
+        vhull_count_factor: 1.0
+        vhull_thresh_factor: 1.0
+        vhull_ctof_factor: 20.0 # larger size?
+        view_sample: [0, null, 1] # use all views so that we can filter points to evaluate
+
+model_cfg:
+    move_to_cpu: True
+    print_render_progress: True
+    render_chunk_size: 8388608
+    # render_chunk_size: 33554432
+
+runner_cfg:
+    visualizer_cfg:
+        type: GeometryVisualizer
+        types: [MESH]
+        occ_thresh: 0.35 # leave out more points?
+        result_dir: data/geometry
+    evaluator_cfg:
+        type: GeometryEvaluator

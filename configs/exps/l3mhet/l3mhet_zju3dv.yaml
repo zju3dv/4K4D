@@ -1,0 +1,18 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/l3mhet.yaml # network model configuration
+    - configs/datasets/zju/zju3dv.yaml # dataset usage configuration
+    - configs/specs/blurry.yaml
+    - configs/specs/optcam.yaml
+    - configs/specs/transient.yaml
+
+model_cfg:
+    network_cfg:
+        parameterizer_cfg:
+            radius: 10.0 # strange contraction artifacts?
+        xyzt_embedder_cfg:
+            xyz_embedder_cfg:
+                bounds: [[-20.0, -20.0, -20.0], [20.0, 20.0, 20.0]]
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

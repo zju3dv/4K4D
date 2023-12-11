@@ -1,0 +1,28 @@
+configs: configs/datasets/mobile_stage/mobile_stage.yaml
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/mobile_stage/dance3
+        masks_dir: bgmtv2
+        # bounds: [[-2.6625, -2.1826, -1.0188], [0.8725, 0.9999, 1.4587]] # thinner?
+        bounds: [[-10.0, -10.0, -3.0], [10.0, 10.0, 3.0]] # thinner?
+        near: 1.5 # large enough
+        far: 18.0 # large enough
+
+        vhull_thresh: 0.85 # 21 cameras?
+        count_thresh: 4 # more visibility
+        vhull_thresh_factor: 1.0
+        vhull_count_factor: 1.0
+
+        vhull_padding: 0.02 # padding could just be larger, this should be mostly fine
+
+        vhull_ctof_factor: 3.0 # larger size?
+        coarse_discard_masks: False
+        intersect_camera_bounds: False
+
+        force_sparse_view: True
+        view_sample: [0, 24, 1] # use all views by default
+        frame_sample: [0, 300, 1] # sample all frames
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg

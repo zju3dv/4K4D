@@ -1,0 +1,14 @@
+# This config constructs a static network
+# But trains with all images and all time steps
+# Thus we dubbed it: blurry -> the dynamic part will be learned as a blurry mess
+model_cfg:
+    network_cfg:
+        rgb_embedder_cfg:
+            type: SpacetimeEmbedder
+
+runner_cfg:
+    optimizer_cfg:
+        lr_table:
+            rgb_embedder: 1.0e-5
+        eps_table:
+            rgb_embedder: 1.0e-15

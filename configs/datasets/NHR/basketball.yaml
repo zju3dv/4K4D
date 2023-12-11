@@ -1,0 +1,16 @@
+configs: configs/datasets/NHR/NHR.yaml
+
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/NHR/basketball_easymocap
+        masks_dir: mask
+        force_sparse_view: True
+        view_sample: [0, 72, 1] # use 11 views
+        frame_sample: [0, 195, 1] # only train for 200 frames
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        frame_sample: [0, 195, 100]
+    sampler_cfg:
+        view_sample: [0, 72, 26] # one training, two testing

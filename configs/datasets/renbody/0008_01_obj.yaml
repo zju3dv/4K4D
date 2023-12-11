@@ -1,0 +1,14 @@
+configs: configs/datasets/renbody/0008_01.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg # ratio: 0.5
+        bounds: [[-0.7034, -0.5782, -0.9853], [0.5166, 0.8418, 0.9347]] # !: BATCH
+
+model_cfg:
+    sampler_cfg:
+        surface_radius: 0.125
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg

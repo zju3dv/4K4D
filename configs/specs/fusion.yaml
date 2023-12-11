@@ -1,0 +1,8 @@
+configs:
+    - configs/specs/vis.yaml
+    - configs/specs/fp16.yaml
+
+val_dataloader_cfg:
+    dataset_cfg:
+        ratio: 0.10
+        view_sample: [0, Null, 1]

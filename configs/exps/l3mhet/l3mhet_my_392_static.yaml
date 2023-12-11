@@ -1,0 +1,23 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/l3mhet.yaml # network model configuration
+    - configs/datasets/my_zjumocap/my_392_obj.yaml # dataset usage configuration
+    - configs/specs/mask.yaml
+    - configs/specs/static.yaml
+    - configs/specs/optcam.yaml
+    - configs/specs/transient.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        view_sample: [0, null, 1] # use all views by default
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg
+        view_sample: [0, null, 1] # use all views by default
+    sampler_cfg:
+        view_sample: [0, null, 5] # sample all frames
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

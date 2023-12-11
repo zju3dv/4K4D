@@ -1,0 +1,7 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/dnerf.yaml # network model configuration
+    - configs/datasets/nerfies/curls.yaml # dataset usage configuration
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

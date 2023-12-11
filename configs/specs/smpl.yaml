@@ -1,0 +1,8 @@
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg:
+        use_smpls: True
+        motion_file: motion.npz
+        bodymodel_file: output/triangulate_fitSMPL/cfg_exp.yml
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg

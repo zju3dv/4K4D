@@ -1,0 +1,11 @@
+val_dataloader_cfg:
+    dataset_cfg: &dataset_cfg
+        skip_loading_images: True
+
+dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+
+model_cfg:
+    sampler_cfg:
+        skip_loading_points: True

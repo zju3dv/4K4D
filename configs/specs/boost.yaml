@@ -1,0 +1,20 @@
+configs:
+    - configs/specs/sparse.yaml
+    - configs/specs/optcam.yaml
+
+model_cfg:
+    camera_cfg:
+        freeze_camera: True
+    sampler_cfg:
+        points_dir: bkgd/boost
+        radius_shift: -2.5
+        radius_max: 0.025
+        points_aligned: False
+        pts_per_pix: 64 # will this cause memory problem?
+
+runner_cfg:
+    epochs: 20 # 10k iterations
+    save_latest_ep: 1
+    save_ep: 10
+    eval_ep: 5 # evaluate every 500 iterations to get an idea
+    ep_iter: 500

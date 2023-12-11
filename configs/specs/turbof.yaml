@@ -1,0 +1,25 @@
+configs: configs/specs/fp16.yaml
+
+model_cfg:
+    camera_cfg:
+        moves_through_time: False # FIXME: sometimes the dataset does not exist
+    sampler_cfg:
+        type: TurboChargedR4DV
+        skip_loading_points: True
+        use_cudagl: True
+        pts_per_pix: 12 # will this cause problem? need to test on 313 scene
+        dtype: half
+
+val_dataloader_cfg:
+    dataset_cfg:
+        type: NoopDataset
+        # skip_loading_images: True
+        # prettier-ignore
+        frame_sample: {{configs.dataloader_cfg.dataset_cfg.frame_sample}}  # use all images
+        view_sample: [0, 1, 1] # doesn't matter
+        near: 0.02
+        far: 10 # bad camera
+
+runner_cfg:
+    visualizer_cfg:
+        types: [RENDER, DEPTH]

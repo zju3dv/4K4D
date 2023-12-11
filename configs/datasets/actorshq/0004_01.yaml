@@ -1,0 +1,13 @@
+# FIXME: Data not full
+# # Actor01 Sequence1
+# configs: configs/datasets/actorshq/actorshq.yaml
+
+# dataloader_cfg:
+#     dataset_cfg: &dataset_cfg
+#         data_root: data/actorshq/Actor04/Sequence1/1x
+#         bounds:
+#             [[-0.643018, 0.00340612, -0.472965], [0.640576, 2.06296, 0.549593]]
+
+# val_dataloader_cfg:
+#     dataset_cfg:
+#         <<: *dataset_cfg

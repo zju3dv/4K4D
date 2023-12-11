@@ -1,0 +1,17 @@
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        masks_dir: masks
+        bounds: [[-3.0, -3.0, -3.0], [3.0, 3.0, 3.0]] # thinner?
+        view_sample: [0, null, 1]
+        frame_sample: [0, null, 1] # only train for a thousand frames
+
+        dist_opt_K: True
+        near: 0.8
+        far: 6.1
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        frame_sample: [0, null, 150]
+    sampler_cfg:
+        view_sample: [0, null, 10]

@@ -1,0 +1,30 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/enerfi.yaml # network model configuration
+    - configs/datasets/iphone/pretrain.yaml # dataset usage configuration
+
+dataloader_cfg:
+    dataset_cfg:
+        n_srcs_list: [2, 3, 4]
+        n_srcs_prob: [0.2, 0.6, 0.2]
+    batch_sampler_cfg:
+        type: ImageBasedBatchSampler
+        n_srcs_list: [2, 3, 4]
+        n_srcs_prob: [0.2, 0.6, 0.2]
+
+val_dataloader_cfg:
+    dataset_cfg:
+        n_srcs_list: [3]
+        n_srcs_prob: [1.0]
+    batch_sampler_cfg:
+        type: ImageBasedBatchSampler
+        n_srcs_list: [3]
+        n_srcs_prob: [1.0]
+
+runner_cfg:
+    epochs: 800
+    ep_iter: 1000
+    eval_ep: 5
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

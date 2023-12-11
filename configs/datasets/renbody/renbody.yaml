@@ -1,0 +1,42 @@
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        masks_dir: masks # good naming ^_^
+        # ratio: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667]
+        ratio: 0.5
+        # ratio: 1.0
+        # ratio: 0.8 # reasonably high but not too high resolution?
+        bounds: [[-5.0, -5.0, -5.0], [5.0, 5.0, 5.0]] # thinner?
+
+        force_sparse_view: True
+        view_sample: [0, 60, 1]
+        frame_sample: [0, 150, 1] # only train for a thousand frames
+
+        # dist_mask: [1, 1, 1, 1, 0] # the p3 parameter looks suspicious, ignore it
+
+        # Visual hull related
+        # MARK: This is for now the best vhull extraction setting
+        # vhull_thresh: 0.95 # 18 cameras?
+        # count_thresh: 16 # common views
+        # vhull_padding: 0.02 # padding could just be larger, this should be mostly fine
+
+        # vhull_ctof_factor: 3.0 # larger size?
+        # vhull_thresh_factor: 1.0 # requires some careful finetuning
+        # vhull_count_factor: 1.0 # requires some careful finetuning
+        # coarse_discard_masks: False
+        # intersect_camera_bounds: True # requires some careful finetuning
+
+        # mask_bkgd: 0.0
+
+model_cfg:
+    sampler_cfg:
+        bg_brightness: 0.0
+    renderer_cfg:
+        bg_brightness: 0.0
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        mask_bkgd: 0.0
+        frame_sample: [0, 150, 30]
+    sampler_cfg:
+        view_sample: [0, 60, 20]

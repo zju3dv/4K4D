@@ -1,0 +1,7 @@
+dataloader_cfg:
+    dataset_cfg: &dataset_cfg
+        use_vhulls: False
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg

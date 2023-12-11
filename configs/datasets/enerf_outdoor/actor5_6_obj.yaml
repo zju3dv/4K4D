@@ -1,0 +1,12 @@
+configs: configs/datasets/enerf_outdoor/actor5_6.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg # ratio: 0.5
+        bounds: [[-1.1850, -0.8050, -1.0150], [1.0750, 0.6150, 0.9750]] # !: BATCH
+        frame_sample: [0, 100, 1] # sample all frames
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg
+        frame_sample: [0, 100, 50] # sample all frames

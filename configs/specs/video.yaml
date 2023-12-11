@@ -1,0 +1,6 @@
+# This config will let 4K4D use video extracted images and masks, and remove the need for preloading visual hulls
+val_dataloader_cfg:
+    dataset_cfg:
+        use_vhulls: False
+        images_dir: images_libx265
+        masks_dir: masks_libx265

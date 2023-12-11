@@ -1,0 +1,28 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/l3mhet.yaml # network model configuration
+    - configs/datasets/mobile_stage/black.yaml # dataset usage configuration
+    - configs/specs/static.yaml
+    - configs/specs/optcam.yaml
+    - configs/specs/transient.yaml
+
+model_cfg:
+    camera_cfg:
+        pretrained_camera: data/trained_model/l3mhet_black_static # this is a must
+        freeze_camera: True
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        images_dir: bkgd/images
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg
+        view_sample: [0, null, 2] # this controls the degree of volume fusion
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

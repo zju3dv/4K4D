@@ -1,0 +1,7 @@
+dataloader_cfg:
+    dataset_cfg:
+        cache_raw: True
+        n_rays: 128
+    batch_sampler_cfg:
+        batch_size: 64 # will sample from all images (this should be only used for static scenes)
+    num_workers: 64

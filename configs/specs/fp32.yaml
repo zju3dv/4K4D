@@ -1,0 +1,30 @@
+_: &mlp_size # skip_geo_feat: True
+    xyzt_embedder_cfg:
+        xyz_embedder_cfg:
+            dtype: float
+        t_embedder_cfg:
+            dtype: float
+    xyz_embedder_cfg:
+        dtype: float
+    geometry_cfg:
+        dtype: float
+    rgb_embedder_cfg:
+        dtype: float
+    dir_embedder_cfg:
+        dtype: float
+    appearance_cfg:
+        dtype: float
+
+# Always define full model config
+model_cfg:
+    dtype: float
+    camera_cfg:
+        dtype: float
+    sampler_cfg:
+        dtype: float
+    renderer_cfg:
+        dtype: float
+    supervisor_cfg:
+        dtype: float
+    network_cfg:
+        <<: *mlp_size

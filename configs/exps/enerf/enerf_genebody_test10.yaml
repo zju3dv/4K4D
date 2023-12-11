@@ -1,0 +1,21 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/enerf.yaml # network model configuration
+    - configs/datasets/genebody/pretrain.yaml # dataset usage configuration
+    - configs/specs/mask.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg:
+        meta_roots: [data/genebody/genebody_test10] # for now, only pretrain on genebody_test10
+    batch_sampler_cfg:
+        batch_size: 1
+
+val_dataloader_cfg:
+    dataset_cfg:
+        meta_roots: [data/genebody/genebody_test10] # for now, only pretrain on genebody_test10
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}
+
+runner_cfg:
+    epochs: 3200

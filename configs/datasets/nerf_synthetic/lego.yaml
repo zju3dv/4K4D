@@ -1,0 +1,15 @@
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/nerf_synthetic/lego
+        near: 2.0
+        far: 6.0
+        use_aligned_cameras: False
+        # bounds: [[-8.0, -8.0, -8.0], [8.0, 8.0, 10.0]]
+        view_sample: [0, 100, 1] # use 11 views
+        frame_sample: [0, 1, 1] # inheritedly static
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        view_sample: [100, 200, 25] # one training, two testing
+        frame_sample: [0, 1, 1] # inheritedly static

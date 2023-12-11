@@ -1,0 +1,10 @@
+configs: configs/datasets/enerf_outdoor/actor3.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg # ratio: 0.5
+        bounds: [[-0.5300, -1.2600, -0.9800], [0.6000, 0.1800, 0.9600]] # !: BATCH
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg

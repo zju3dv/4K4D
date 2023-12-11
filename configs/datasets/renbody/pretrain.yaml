@@ -1,0 +1,12 @@
+configs: configs/datasets/renbody/renbody.yaml
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg:
+        type: GeneralizableDataset
+        meta_roots: [data/renbody] # for now, only pretrain on dtu
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    sampler_cfg:
+        type: SequentialSampler
+        frame_sample: [0, null, 50000] # only render a very small number of images
+

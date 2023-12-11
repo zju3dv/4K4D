@@ -1,0 +1,79 @@
+# Feature Cloud Sequence (sequence -> temporal)
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        n_rays: -1 # use the whole image and let the user handle io
+    batch_sampler_cfg:
+        # No more than 1 batch for points from different frames
+        batch_size: 1 # !: BATCH
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+
+runner_cfg:
+    visualizer_cfg:
+        types: ['RENDER', 'DEPTH', 'ALPHA']
+    optimizer_cfg:
+        lr_table:
+            pcds: 1.0e-5
+    moderator_cfg:
+        milestones: [[0, 1.0]]
+
+model_cfg:
+    chunkify_rays: False # for now, no ray chunking for ENeRF
+    let_user_handle_input: True # let the user handle the output and input
+    supervisor_cfg:
+        img_loss_type: HUBER
+        perc_loss_weight: 0.001 # use perceptual loss (1e-3 perc loss?)
+        msk_loss_weight: 0.01 # smaller mask loss
+        resd_loss_weight: 0.01 # smaller residual deformation
+        # tv_loss_weight: 0.0002
+        # time_smooth_weight: 0.001
+    sampler_cfg:
+        type: PointPlanesSampler
+        # SECTION: These can be discarded
+        pcd_embedder_cfg:
+            type: KPlanesEmbedder
+            n_levels: 2
+            backbone: tcnn
+            agg_method: sum # this doesn't matter, will be discarded after training, should be larger for better results
+        resd_regressor_cfg:
+            type: DisplacementRegressor
+            width: 64
+            depth: 2
+            scale: 0.1 # this should be small, only to boost convergence just a little bit
+            out_dim: 3
+            # backend: tcnn
+            # otype: CutlassMLP
+        geo_regressor_cfg: # MARK: Will apply a custom activation in the code
+            type: MlpRegressor
+            width: 64
+            depth: 2
+            out_dim: 2
+            # backend: tcnn
+            # otype: CutlassMLP
+
+        # SECTION: These can be cached
+        xyz_embedder_cfg:
+            type: KPlanesEmbedder
+            backbone: tcnn
+            agg_method: sum # performs similarly
+            n_levels: 4
+
+        # SECTION: These are unavoidable
+        dir_embedder_cfg:
+            _delete_: True # no multires parameter needed
+            type: NoopEmbedder
+            in_dim: 3 # HACK: hack to make network size match
+        rgb_regressor_cfg:
+            type: SphericalHarmonics # use spherical harmonics for final rendered color
+            sh_deg: 3 # not enough? 4 -> 75 parameters to produce -> 3 channels
+            width: 64 # use larget network for sh regression, since this will be later cached when rendering
+            depth: 2 # larger and deeper network for color should also make it easier to optimize longer sequence?
+
+    renderer_cfg:
+        type: NoopRenderer
+    network_cfg:
+        # Main difference between networks are the cost volume features used
+        # This is implemented in CostVolumeSampler
+        type: NoopNetwork # no importrance sampling for this
+        _delete_: True

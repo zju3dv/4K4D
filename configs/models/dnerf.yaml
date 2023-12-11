@@ -1,0 +1,74 @@
+# Take D-NeRF as an simple design example
+runner_cfg:
+    epochs: 1600
+    eval_ep: 20
+    optimizer_cfg:
+        lr: 5.0e-4
+    moderator_cfg:
+        type: DatasetRatioModerator
+        milestones: [[0, 0.25], [500, 0.5], [1000, 1.0]]
+
+dataloader_cfg:
+    dataset_cfg:
+        n_rays: 512
+    batch_sampler_cfg:
+        batch_size: 1
+    sampler_cfg:
+        type: IterationBasedRandomSampler
+        num_samples: 800000 # !: CONFIG, runner_cfg.epochs * runner_cfg.eval_ep
+        num_warmups: 100000
+
+dnerf_networks: &dnerf_networks
+    geo_use_xyzt_feat: False
+    parameterizer_cfg:
+        type: NoopRegressor
+    xyzt_embedder_cfg:
+        type: ComposedXyztEmbedder
+        xyz_embedder_cfg:
+            type: PositionalEncodingEmbedder
+            multires: 10
+            in_dim: 3
+        t_embedder_cfg:
+            type: PositionalEncodingEmbedder
+            multires: 10
+            in_dim: 1
+    deformer_cfg:
+        type: DisplacementRegressor
+        out_dim: 3
+        scale: 1.0
+    xyz_embedder_cfg:
+        type: PositionalEncodingEmbedder
+        multires: 10
+    geometry_cfg:
+        type: SplitRegressor
+        width: 256
+        depth: 8
+    dir_embedder_cfg:
+        type: PositionalEncodingEmbedder
+        multires: 4
+    rgb_embedder_cfg:
+        type: EmptyEmbedder
+    appearance_cfg:
+        type: MlpRegressor
+        width: 256
+        depth: 2
+        out_dim: 3
+
+model_cfg:
+    sampler_cfg:
+        type: ImportanceSampler
+        n_samples: [64, 64, 64, 64]
+    network_cfg:
+        network_cfgs:
+            '0':
+                <<: *dnerf_networks
+                appearance_cfg:
+                    type: EmptyRegressor
+            '1':
+                <<: *dnerf_networks
+    supervisor_cfg:
+        type: VolumetricVideoSupervisor
+        img_loss_weight: 1.0
+        msk_loss_weight: 0.01
+        prop_loss_weight: 1.0
+        resd_loss_weight: 0.0001

@@ -1,0 +1,10 @@
+configs: configs/datasets/NHR/basketball.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg # ratio: 0.5
+        bounds: [[-1.0029, -0.8551, -1.0879], [0.2871, 0.3449, 1.2221]] # !: BATCH
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg

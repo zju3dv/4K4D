@@ -1,0 +1,15 @@
+configs: configs/specs/vhulls.yaml
+dataloader_cfg:
+    dataset_cfg: &dataset_cfg
+        use_vhulls: False
+        skip_loading_images: True
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+
+model_cfg:
+    sampler_cfg:
+        points_dir: surfs
+        points_only: True
+        reload_surfs: True

@@ -1,0 +1,5 @@
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg:
+        encode_ext: .jpg
+
+val_dataloader_cfg: *dataloader_cfg

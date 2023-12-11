@@ -1,0 +1,15 @@
+configs:
+    - configs/specs/mask.yaml
+    - configs/specs/vis.yaml
+
+dry_run: True
+dataloader_cfg:
+    dataset_cfg: &dataset_cfg
+        vhull_only: True
+        vhulls_dir: vhulls
+        print_vhull_bounds: True
+        skip_loading_images: False
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg

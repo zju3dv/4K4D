@@ -1,0 +1,10 @@
+configs: configs/specs/superf.yaml
+
+model_cfg:
+    sampler_cfg:
+        pts_per_pix: 11 # bg_sampler's cudagl will be used for the final rendering
+        type: SuperChargedR4DVB
+        fg_sampler_cfg:
+            type: SuperChargedR4DV
+        bg_sampler_cfg:
+            type: SuperChargedR4DV

@@ -1,0 +1,31 @@
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        masks_dir: bgmtv2
+        bounds: [[-3.0, -3.0, -2.0], [3.0, 3.0, 2.0]] # thinner?
+
+        dist_opt_K: True
+        near: 3.5
+        far: 9.0
+
+        vhull_thresh: 1.0 # 18 cameras?
+        count_thresh: 18 # common views
+        vhull_padding: 0.02 # padding could just be larger, this should be mostly fine
+
+        vhull_ctof_factor: 3.0 # larger size?
+        vhull_thresh_factor: 1.0
+        vhull_count_factor: 1.0
+        coarse_discard_masks: False
+        intersect_camera_bounds: False
+
+        force_sparse_view: True
+        view_sample: [0, 18, 1]
+        frame_sample: [0, 200, 1] # only train for a thousand frames
+        focal_ratio: 1.2
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+
+runner_cfg:
+    visualizer_cfg:
+        video_fps: 60 # this dataset id built differently

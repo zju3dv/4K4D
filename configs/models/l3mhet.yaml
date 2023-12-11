@@ -1,0 +1,101 @@
+_: &mlp_size # skip_geo_feat: True
+    geometry_cfg:
+        width: 32
+        depth: 1
+        splits: [1, 15]
+    appearance_cfg:
+        width: 32
+        depth: 2
+    parameterizer_cfg:
+        radius: 3.0 # strange contraction artifacts?
+    dir_embedder_cfg:
+        type: TcnnDirEmbedder
+    xyzt_embedder_cfg:
+        xyz_embedder_cfg:
+            type: TcnnHashEmbedder # no mipnerf360 contraction
+            # dtype: half
+            bounds: [[-5.0, -5.0, -5.0], [5.0, 5.0, 5.0]]
+        t_embedder_cfg:
+            out_dim: 8 # smaller latent code
+
+dataloader_cfg:
+    dataset_cfg: &dataset_cfg
+        cache_raw: True
+        n_rays: 1024
+        near: 0.5
+    batch_sampler_cfg:
+        batch_size: 16 # will sample from all images (this should be only used for static scenes)
+    num_workers: 16
+
+val_dataloader_cfg:
+    num_workers: 4
+    dataset_cfg:
+        <<: *dataset_cfg
+
+runner_cfg:
+    epochs: 60 # enough is enough
+    log_interval: 1
+    eval_ep: 5
+    save_ep: 5
+    save_latest_ep: 5
+    train_use_amp: True # faster training available for this
+    # test_use_amp: True
+    optimizer_cfg:
+        lr: 2.0e-2
+        eps: 1.0e-15
+        weight_decay_table:
+            xyzt_embedder.xyz_embedder: 1.0e-6
+
+# Always define full model config
+model_cfg:
+    # chunkify_rays: False # faster rendering and optimization with less overhead
+    train_chunk_size: 8192
+    render_chunk_size: 32768
+    supervisor_cfg:
+        # distortion loss works the best with large number of inputs?
+        # dist_loss_weight: 5.0e-5 # controls empty space distortion # FIXME: DEBUG DISTORTION LOSS
+        dist_loss_weight: 0.0 # retrying
+        # dist_loss_weight: 0.002 # retrying
+    network_cfg:
+        <<: *mlp_size
+        network_cfgs:
+            '0': # coarse network config
+                type: VolumetricVideoNetwork
+                xyzt_embedder_cfg:
+                    xyz_embedder_cfg:
+                        n_levels: 12 # smaller base hash resolution
+                        log2_hashmap_size: 17 # smaller base hash resolution
+                geometry_cfg:
+                    width: 32
+                    depth: 1
+                    splits: [1, 0]
+                appearance_cfg:
+                    type: EmptyRegressor
+                rgb_embedder_cfg:
+                    type: EmptyEmbedder
+                dir_embedder_cfg:
+                    type: EmptyEmbedder
+                <<: *mlp_size
+            '1': # coarse network config
+                type: VolumetricVideoNetwork
+                xyzt_embedder_cfg:
+                    xyz_embedder_cfg:
+                        n_levels: 14 # smaller base hash resolution
+                        log2_hashmap_size: 17 # smaller base hash resolution
+                geometry_cfg:
+                    width: 32
+                    depth: 1
+                    splits: [1, 0]
+                appearance_cfg:
+                    type: EmptyRegressor
+                rgb_embedder_cfg:
+                    type: EmptyEmbedder
+                dir_embedder_cfg:
+                    type: EmptyEmbedder
+                <<: *mlp_size
+            '2':
+                type: VolumetricVideoNetwork
+                xyzt_embedder_cfg:
+                    xyz_embedder_cfg:
+                        log2_hashmap_size: 21 # smaller base hash resolution, what if large networks work everywhere?
+                <<: *mlp_size

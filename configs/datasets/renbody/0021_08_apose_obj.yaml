@@ -1,0 +1,10 @@
+configs: configs/datasets/renbody/0021_08_apose.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg # ratio: 0.5
+        bounds: [[-0.1744, -0.5958, -0.9725], [0.2632, 0.4474, 0.9160]] # !: BATCH # z x y
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg

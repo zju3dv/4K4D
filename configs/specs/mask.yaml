@@ -1,0 +1,17 @@
+benchmark: False # only perform benchmarking when training
+# deterministic: True # set cudnn backend to deterministic mode
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg:
+        use_masks: True
+        use_vhulls: True
+        immask_crop: True
+        imbound_crop: True
+        # mask_bkgd: 0.0 # fill bkgd pixels with pure blackness
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    # FIXME: Now only declaring mask.yaml will not automatically change the validataion dataloader's background color
+
+model_cfg:
+    supervisor_cfg:
+        msk_loss_weight: 0.001

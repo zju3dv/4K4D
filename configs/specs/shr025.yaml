@@ -1,0 +1,11 @@
+sampler_cfg: &sampler_cfg
+    ibr_regressor_cfg:
+        resd_limit: 0.25
+
+model_cfg:
+    sampler_cfg:
+        <<: *sampler_cfg
+        fg_sampler_cfg:
+            <<: *sampler_cfg
+        bg_sampler_cfg:
+            <<: *sampler_cfg

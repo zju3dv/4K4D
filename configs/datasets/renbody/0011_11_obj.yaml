@@ -1,0 +1,13 @@
+configs: configs/datasets/renbody/0011_11.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg # ratio: 0.5
+        bounds: [[-0.5475, -0.8623, -0.9804], [0.3025, 0.9077, 1.3096]] # !: BATCH
+        vhull_thresh: 0.85 # 18 cameras?
+        count_thresh: 16 # common views
+        vhull_padding: 0.05 # padding could just be larger, this should be mostly fine
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg

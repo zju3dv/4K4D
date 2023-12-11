@@ -1,0 +1,8 @@
+# This config constructs a static network
+# But trains with all images and all time steps
+# Thus we dubbed it: blurry -> the dynamic part will be learned as a blurry mess
+model_cfg:
+    network_cfg:
+        xyzt_embedder_cfg:
+            t_embedder_cfg:
+                type: EmptyEmbedder

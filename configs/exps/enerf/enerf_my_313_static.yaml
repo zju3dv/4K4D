@@ -1,0 +1,8 @@
+# Configuration for ENeRF on enerf_outdoor actor 1
+# This is literally an empty file
+configs:
+    - configs/exps/enerf/enerf_my_313.yaml
+    - configs/specs/static.yaml
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

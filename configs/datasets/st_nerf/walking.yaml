@@ -1,0 +1,9 @@
+configs: configs/datasets/st_nerf/st_nerf.yaml
+
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/st_nerf/walking
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg

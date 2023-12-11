@@ -1,0 +1,19 @@
+# Configuration for ENeRF
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/enerf.yaml # network model configuration
+    - configs/datasets/renbody/0013_01_obj.yaml # dataset usage configuration
+    - configs/specs/mask.yaml
+    - configs/specs/optimized.yaml
+
+# model_cfg:
+#     sampler_cfg:
+#         n_samples: [8, 2]
+#         n_planes: [32, 8]
+
+dataloader_cfg:
+    batch_sampler_cfg:
+        batch_size: 1 # for now, only supports batch size of 1 for masked dataset
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

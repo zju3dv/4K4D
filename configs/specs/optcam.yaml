@@ -1,0 +1,10 @@
+model_cfg:
+    camera_cfg:
+        type: OptimizableCamera
+
+runner_cfg:
+    optimizer_cfg:
+        lr_table:
+            camera: 1.0e-5
+        eps_table:
+            camera: 1.0e-15

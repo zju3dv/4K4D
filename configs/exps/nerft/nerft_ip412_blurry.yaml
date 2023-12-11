@@ -1,0 +1,8 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/nerft.yaml # network model configuration
+    - configs/datasets/zju/ip412.yaml # dataset usage configuration
+    - configs/specs/blurry.yaml
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

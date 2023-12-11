@@ -1,0 +1,4 @@
+runner_cfg:
+    epochs: 50 # 50000 iterations
+    save_ep: 10
+    save_latest_ep: 1

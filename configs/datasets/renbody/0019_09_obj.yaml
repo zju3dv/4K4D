@@ -1,0 +1,10 @@
+configs: configs/datasets/renbody/0019_09.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg # ratio: 0.5
+        bounds: [[-0.5218, -0.6374, -0.9434], [0.3882, 0.5426, 0.9366]] # !: BATCH
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg

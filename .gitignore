@@ -1,0 +1,76 @@
+__pycache__/
+.idea/
+.ipynb_checkpoints/
+*.py[cod]
+*.so
+*.orig
+*.o
+# why ignore json
+# *.json
+*.pth
+*.npy
+*.ipynb
+
+# graphviz
+*.dot
+*.svg
+*.eps
+
+# macOS
+.DS_Store
+
+# mesh
+*.ply
+
+# images
+*.png
+*.jpg
+*.jpeg
+*.gif
+.fuse*
+*.tar.gz
+*.pkl
+*.swp
+
+*.obj
+*.mtl
+*.blend
+*.blend1
+*.npz
+
+*.xls
+*.xlsx
+condaenv*
+*.hdr
+
+data
+*.egg-info
+
+imgui.ini
+logs
+Dear_ImGui_Bundle_interactive_manual.ini
+timg.txt
+*.motd
+
+.pdbr_history
+build
+
+!assets/meshes/*
+*.bin
+*.movie
+*.mp4
+extri.yml
+intri.yml
+ok.txt
+bad.txt
+diff.txt
+
+Hujun Bao
+geckodriver.log
+*.rdc
+3rdparty
+
+diff*.html
+
+# *.zip
+# *info.json

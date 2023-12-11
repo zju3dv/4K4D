@@ -1,0 +1,18 @@
+configs: configs/specs/vis.yaml
+val_dataloader_cfg:
+    dataset_cfg:
+        type: VolumetricVideoInferenceDataset
+        render_size: [1080, 1920] # when overwritting, will change K, prefer not to
+        interp_type: ORBIT
+        render_path_root: data/novel_view
+    sampler_cfg:
+        view_sample: [0, null, 1]
+
+runner_cfg:
+    visualizer_cfg:
+        result_dir: data/novel_view
+        img_pattern: '{type}/camera{camera:04d}' # not an f-string, but a format string, so no double curly brackets
+        store_video_output: True
+
+model_cfg:
+    apply_optcam: False

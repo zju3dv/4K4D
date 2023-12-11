@@ -1,0 +1,22 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/gaussiant.yaml # network model configuration
+    - configs/datasets/renbody/0013_01.yaml # dataset usage configuration
+    - configs/specs/mask.yaml
+    - configs/specs/static.yaml
+    - configs/specs/optimized.yaml
+
+dataloader_cfg:
+    dataset_cfg: &dataset_cfg
+        ratio: 0.5
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+
+model_cfg:
+    sampler_cfg:
+        sh_deg: 2 # avoid OOM
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

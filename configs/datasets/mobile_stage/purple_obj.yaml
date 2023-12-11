@@ -1,0 +1,10 @@
+configs: configs/datasets/mobile_stage/purple.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg # ratio: 0.5
+        bounds: [[-0.9713, -0.6713, -1.2150], [0.8587, 0.6687, 1.0550]] # !: BATCH
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg

@@ -1,0 +1,3 @@
+# Teaser first figure
+# Need to run on v100, oom on 3090
+python run.py -t visualize -c configs/synthetic_human/base_synthetic_jody.yaml relighting True vis_novel_light True vis_rotate_light True vis_pose_sequence True num_eval_frame 1 test_view 4, vis_ground_shading True test_light '["main", "gym_entrance", "shanghai_bund", "peppermint_powerplant_blue", "pink_sunrise", "olat0002-0027", "olat0004-0019"]' store_video_output True extra_prefix "teaser" exp_name ablation_relight_synthetic_jody albedo_multiplier 2.0

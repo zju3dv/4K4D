@@ -1,0 +1,16 @@
+configs: configs/datasets/renbody/0013_09.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg # ratio: 0.5
+        bounds: [[-0.5352, -0.7497, -0.9867], [0.5748, 0.2903, 0.8233]] # !: BATCH
+
+model_cfg:
+    sampler_cfg:
+        bg_brightness: 0.0
+    renderer_cfg:
+        bg_brightness: 0.0
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        mask_bkgd: 0.0

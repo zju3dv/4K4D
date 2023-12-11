@@ -1,0 +1,24 @@
+# NOTE: This is the CLEAN version of the ZJUMOCAP dataset
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        bounds: [[-3.0, -3.0, -3.0], [3.0, 3.0, 3.0]] # thinner?
+        view_sample: [0, null, 1]
+        frame_sample: [0, 200, 1] # only train for a thousand frames
+
+        # MARK: This is for now the best vhull extraction setting
+        vhull_thresh: 0.95 # 18 cameras?
+        count_thresh: 16 # common views
+        vhull_padding: 0.02 # padding could just be larger, this should be mostly fine
+
+        vhull_ctof_factor: 3.0 # larger size?
+        vhull_thresh_factor: 2.0 # requires some careful finetuning
+        vhull_count_factor: 2.0 # requires some careful finetuning
+        coarse_discard_masks: False
+        intersect_camera_bounds: True # requires some careful finetuning
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        frame_sample: [0, 200, 40]
+    sampler_cfg:
+        view_sample: [0, null, 10]

@@ -1,0 +1,6 @@
+configs: configs/specs/turbof.yaml
+
+model_cfg:
+    sampler_cfg:
+        type: MobileR4DV
+        volume_rendering: False

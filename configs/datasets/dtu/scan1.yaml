@@ -1,0 +1,7 @@
+configs: configs/datasets/dtu/dtu.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg:
+        data_root: data/dtu/scan1
+
+val_dataloader_cfg: *dataloader_cfg

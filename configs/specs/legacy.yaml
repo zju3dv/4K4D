@@ -1,0 +1,14 @@
+sampler_cfg: &sampler_cfg
+    alpha_shift: 0.0
+    ibr_regressor_cfg:
+        resd_limit: 1.0 # make this smaller
+        sh_mlp_cfg:
+            actvn: relu
+
+model_cfg:
+    sampler_cfg:
+        <<: *sampler_cfg
+        fg_sampler_cfg:
+            <<: *sampler_cfg
+        bg_sampler_cfg:
+            <<: *sampler_cfg

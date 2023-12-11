@@ -1,0 +1,10 @@
+sampler_cfg: &sampler_cfg
+    alpha_shift: 0.0
+
+model_cfg:
+    sampler_cfg:
+        <<: *sampler_cfg
+        fg_sampler_cfg:
+            <<: *sampler_cfg
+        bg_sampler_cfg:
+            <<: *sampler_cfg

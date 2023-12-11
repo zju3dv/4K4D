@@ -1,0 +1,8 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/nerft.yaml # network model configuration
+    - configs/datasets/NHR/sport1.yaml # dataset usage configuration
+    - configs/specs/plain.yaml # network model configuration
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

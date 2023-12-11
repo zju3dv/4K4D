@@ -13,8 +13,6 @@ Built on the popular and easy-to-use `PyTorch` framework and tailored for resear
 Coming from the [`ZJU3DV`](https://github.com/zju3dv) research group at State Key Lab of CAD&CG, Zhejiang University, this framework is the underlying warehouse for many of our projects, papers and new ideas.
 We sincerely hope this framework will be useful for researchers with similar research interests in volumetric videos.
 
-***Source code is coming after the weekend!***
-
 https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/e3069f00-304a-448c-96b1-b224641e0dbb
 
 ## Installation
@@ -43,7 +41,7 @@ If existing environment with `PyTorch` installed can be utilized, you can jump s
 More details about installing on *Windows* or compiling *CUDA* modules can be found in [`install.md`](docs/design/install.md).
 
 Note: `pip` dependencies can sometimes fail to install & build. However, not all of them are strictly required for ***EasyVolcap***.
-  - The core ones include `tinycudann` and `pytorch3d`. Make sure those are built correctly and you'll be able to use most of the functionality of ***EasyVolcap***, you may find solutions in [`install.md`](docs/design/install.md) when encountering issues during the installation of `tinycudann`.
+  - The core ones include `tinycudann` and `pytorch3d`. Make sure those are built correctly and you'll be able to use most of the functionality of ***EasyVolcap***.
   - It's also OK to install missing packages manually when ***EasyVolcap*** reports that they are missing since we lazy load a lot of them (`tinycudann`, `diff_gauss`, `open3d` etc.). 
   - Just be sure to check how we listed the missing pacakge in [`requirements.txt`](requirements.txt) before performing `pip install` on them. Some packages requires to be installed from GitHub.
   - If the `mamba env update` step fails due to network issues, it is OK to proceed with pip installs since `PyTorch` will also be installed by pip.
