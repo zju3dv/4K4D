@@ -6,6 +6,18 @@
 ![star](https://img.shields.io/github/stars/zju3dv/EasyVolcap)
 [![license](https://img.shields.io/badge/license-zju3dv-white)](license)
 
+[Paper](https://arxiv.org/abs/2312.06575)
+
+***News***:
+
+- 23.12.13 ***EasyVolcap*** will be presented at SIGGRAPH Asia 2023, Sydney.
+  - Motion Synthesis With Awareness, Part II
+Meeting Room C4.9+C4.10, Level 4 
+  - 6:05 pm 23.12.13
+- 23.12.12 ***EasyVolcap*** has been open-sourced.
+- 23.12.12 ***EasyVolcap***'s [arXiv preprint](https://arxiv.org/abs/2312.06575) has been uploaded.
+- 23.09.26 ***EasyVolcap*** has been accepted to SIGGRAPH Asia 2023, Technical Communications.
+
 ***EasyVolcap*** is a PyTorch library for accelerating neural volumetric video research, particularly in areas of **volumetric video capturing**, reconstruction, and rendering.
 
 Built on the popular and easy-to-use `PyTorch` framework and tailored for researchers, the codebase is easily extensible for idea exploration, fast prototyping, and conducting various ablative and comparison experiments.
