@@ -1,0 +1,84 @@
+configs:
+    - configs/models/r4dv.yaml
+    - configs/specs/sparse.yaml
+
+runner_cfg:
+    epochs: 100
+    decay_epochs: 50
+    save_ep: 10
+    save_latest_ep: 1
+    optimizer_cfg:
+        # lr: 1.0e-4 # smaller lr for finetuning
+        lr_table:
+            pcds: 5.0e-4
+            # pcd_regressor: 5.0e-6
+            # resd_regressor: 5.0e-6
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        n_srcs_list: [8] # on the gradient of the first two images are tracked, small memory and speed loss for generalizability
+
+        # Load needed data but do not perform any operation in the dataset
+        use_masks: True # will load masks
+        use_vhulls: True # will load vhulls
+        imbound_crop: False # no cropping
+        immask_crop: False # no cropping
+        immask_fill: False # no filling
+        mask_bkgd: null # do not mask the background region
+
+    batch_sampler_cfg: &batch_sampler_cfg
+        n_srcs_list: [8]
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg
+    batch_sampler_cfg:
+        <<: *batch_sampler_cfg
+
+sampler_cfg: &sampler_cfg
+    type: R4DVSampler
+    pcd_embedder_cfg:
+        type: KPlanesEmbedder
+        n_levels: 2
+        backbone: tcnn
+        agg_method: sum # this doesn't matter, will be discarded after training, should be larger for better results
+    resd_regressor_cfg:
+        type: DisplacementRegressor
+        width: 64
+        depth: 2
+        scale: 0.1
+        out_dim: 3
+    geo_regressor_cfg: # MARK: Will apply a custom activation in the code
+        type: MlpRegressor
+        width: 64
+        depth: 2
+        out_dim: 2 # rad, occ
+    xyz_embedder_cfg:
+        type: KPlanesEmbedder
+        backbone: tcnn
+        agg_method: sum # performs similarly
+        n_levels: 4
+    # These are cachable image based rendering components
+    ibr_embedder_cfg:
+        type: GeometryImageBasedEmbedder
+    ibr_regressor_cfg:
+        type: ImageBasedSphericalHarmonics
+        width: 64
+        depth: 1 # be small, be fast
+    # TODO: UPDATE THESE TO MATCH DEFAULT ARGS
+
+# https://stackoverflow.com/questions/66259151/how-to-make-prettier-to-ignore-a-block-of-code
+model_cfg:
+    sampler_cfg:
+        type: R4DVBSampler
+        fg_sampler_cfg:
+            <<: *sampler_cfg
+            pts_per_pix: 15 # will this cause problem? need to test on 313 scene
+        bg_sampler_cfg:
+            <<: *sampler_cfg
+            radius_shift: -2.5
+            radius_max: 0.025
+            points_aligned: False
+            n_srcs: 8
+            pts_per_pix: 32 # will this cause problem? need to test on 313 scene

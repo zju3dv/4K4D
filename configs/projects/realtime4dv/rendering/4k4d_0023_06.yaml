@@ -1,0 +1,10 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/r4dv.yaml # network model configuration
+    - configs/datasets/renbody/0023_06_obj.yaml # dataset usage configuration
+    - configs/specs/mask.yaml # specific usage configuration
+    - configs/specs/optimized.yaml # specific usage configuration
+    - configs/specs/superf.yaml # NOTE: real-time rendering
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

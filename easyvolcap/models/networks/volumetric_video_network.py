@@ -61,7 +61,7 @@ class VolumetricVideoNetwork(GradientModule):
 
                  # Visualization & Loss
                  train_store_norm: bool = False,
-                 train_store_jacobian: bool = False,  # only used for nerfies, for now
+                 train_store_jacobian: bool = False,
 
                  # Other switches
                  finite_diff: float = -1.0, # finite differentiation for computing normal

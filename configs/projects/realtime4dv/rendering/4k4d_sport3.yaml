@@ -1,0 +1,11 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/r4dv.yaml # network model configuration
+    - configs/datasets/NHR/sport3_obj.yaml # dataset usage configuration
+    - configs/specs/mask.yaml # specific usage configuration
+    - configs/specs/prior.yaml # controls some training sampling strategy
+    - configs/specs/legacy.yaml # MARK: this is an old model
+    - configs/specs/superf.yaml # NOTE: real-time rendering
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

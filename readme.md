@@ -1,301 +1,234 @@
-<img src="https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/de41df46-25e6-456c-a253-90d7807b2a9a" alt="logo" width="33%"/>
+# 4K4D: Real-Time 4D View Synthesis at 4K Resolution
 
-*****EasyVolcap***: Accelerating Neural Volumetric Video Research**
+[Paper](https://drive.google.com/file/d/1Y-C6ASIB8ofvcZkyZ_Vp-a2TtbiPw1Yx/view?usp=sharing) | [Project Page](https://zju3dv.github.io/4k4d) | [arXiv](https://arxiv.org/abs/2310.11448) | [Video (Coming Soon)](https://zju3dv.github.io/4k4d) | [Code](https://github.com/zju3dv/4K4D) | [Pretrained Models](https://drive.google.com/drive/folders/1mBMsYeXawU_sF3NFyuWC1hnfrYbSfDfi?usp=sharing) | [Minimal Datasets](https://drive.google.com/drive/folders/1pH-SWwbt01raqZ74dvcOvYFxDbGGUcxu?usp=sharing)
 
-![python](https://img.shields.io/github/languages/top/zju3dv/EasyVolcap)
-![star](https://img.shields.io/github/stars/zju3dv/EasyVolcap)
+Repository for our paper *4K4D: Real-Time 4D View Synthesis at 4K Resolution*.
+
+![python](https://img.shields.io/github/languages/top/zju3dv/4K4D)
+![star](https://img.shields.io/github/stars/zju3dv/4K4D)
 [![license](https://img.shields.io/badge/license-zju3dv-white)](license)
-
-[Paper](https://arxiv.org/abs/2312.06575)
 
 ***News***:
 
-- 23.12.13 ***EasyVolcap*** will be presented at SIGGRAPH Asia 2023, Sydney.
-  - Motion Synthesis With Awareness, Part II
-Meeting Room C4.9+C4.10, Level 4 
-  - 6:05 pm 23.12.13
-- 23.12.12 ***EasyVolcap*** has been open-sourced.
-- 23.12.12 ***EasyVolcap***'s [arXiv preprint](https://arxiv.org/abs/2312.06575) has been uploaded.
-- 23.09.26 ***EasyVolcap*** has been accepted to SIGGRAPH Asia 2023, Technical Communications.
+- 23.12.18: The backbone of *4K4D*, our volumetric video framework [***EasyVolcap***](https://github.com/zju3dv/EasyVolcap) has been open-sourced!
+- 23.12.18: The inference code for *4K4D* has also been open-sourced along with documentations.
 
-***EasyVolcap*** is a PyTorch library for accelerating neural volumetric video research, particularly in areas of **volumetric video capturing**, reconstruction, and rendering.
+https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/faf60953-fd7f-4309-a1f5-758eaa1182ca
 
-Built on the popular and easy-to-use `PyTorch` framework and tailored for researchers, the codebase is easily extensible for idea exploration, fast prototyping, and conducting various ablative and comparison experiments.
+https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/b03247d6-07c7-48d7-8e28-2d59ee3c37af
 
-Coming from the [`ZJU3DV`](https://github.com/zju3dv) research group at State Key Lab of CAD&CG, Zhejiang University, this framework is the underlying warehouse for many of our projects, papers and new ideas.
-We sincerely hope this framework will be useful for researchers with similar research interests in volumetric videos.
+https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/379b2793-eda2-4720-a1ad-cbfd2205af4d
 
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/e3069f00-304a-448c-96b1-b224641e0dbb
+**For more high-resolution results and more real-time demos, please visit our [project page](https://zju3dv.github.io/4k4d).**
 
 ## Installation
 
-Copy paste version of the installation process listed below. For more thorough explanation, read on.
+Please refer to the [installation guide of ***EasyVolcap***](https://github.com/zju3dv/EasyVolcap/tree/main/readme.md#installation) for basic environment setup.
+
+After setting up the environment, you should execute the installation command in this repository's root directory to register the modules:
+
 ```shell
-# Prepare conda environment
-conda install -n base mamba -y -c conda-forge
-conda create -n easyvolcap "python>=3.10" -y
-conda activate easyvolcap
-
-# Install conda dependencies
-mamba env update
-
-# Install pip dependencies
-cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | xargs -n 1 pip install
-
-# Register EasyVolcp for imports
+# Run this inside the 4K4D repo
 pip install -e . --no-build-isolation --no-deps
 ```
 
-We opted to use the lastest `pyproject.toml` style packing system for exposing commandline interfaces.
-It creates a virtual environment for building dependencies by default, which could be quite slow. Disabled with `--no-build-isolation`.
-You should create a `conda` or `mamba` (recommended) environment for development, and install the dependencies manually.
-If existing environment with `PyTorch` installed can be utilized, you can jump straight to installing the `pip` dependencies.
-More details about installing on *Windows* or compiling *CUDA* modules can be found in [`install.md`](docs/design/install.md).
-
-Note: `pip` dependencies can sometimes fail to install & build. However, not all of them are strictly required for ***EasyVolcap***.
-  - The core ones include `tinycudann` and `pytorch3d`. Make sure those are built correctly and you'll be able to use most of the functionality of ***EasyVolcap***.
-  - It's also OK to install missing packages manually when ***EasyVolcap*** reports that they are missing since we lazy load a lot of them (`tinycudann`, `diff_gauss`, `open3d` etc.). 
-  - Just be sure to check how we listed the missing pacakge in [`requirements.txt`](requirements.txt) before performing `pip install` on them. Some packages requires to be installed from GitHub.
-  - If the `mamba env update` step fails due to network issues, it is OK to proceed with pip installs since `PyTorch` will also be installed by pip.
-
-
-## Usage
-
-### New Project Using ***EasyVolcap***
-
-If you're interested in developing or researching with ***EasyVolcap***, the recommended way is to fork the repository and modify or append to our source code directly instead of using ***EasyVolcap*** as a module.
-
-After cloning and forking, add [https://github.com/zju3dv/EasyVolcap](https://github.com/zju3dv/EasyVolcap) as an `upstream` if you want to receive update from our side. Use `git fetch upstream` to pull and merge our updates to ***EasyVolcap*** to your new project if needed. The following codeblock provides an example for this development process.
-
-Our recent project [4K4D](https://github.com/zju3dv/4K4D) is developed in this fasion.
+Note that it's not neccessary for all requirements present in [environment.yml](environment.yml) and [requirements.txt](requirements.txt) to be installed on your system as they contain dependencies for other parts of ***EasyVolcap***. Thanks to the modular design of ***EasyVolcap***, this missing packages will not hinder the rendering and training of *4K4D*.
+After the installation process, we're expecting *PyTorch*, *PyTorch3D* and *tiny-cuda-nn* to be present in the current system for the rendering of *4K4D* to work properly.
+For the training of *4K4D*, you should also make sure that *Open3D* is properly installed.
+Other packages can be easily installed using `pip` if errors about their import are encountered.
+Check that this is the case with:
 
 ```shell
-# Prepare name and GitHub repo of your new project
-project=4K4D
-repo=https://github.com/zju3dv/${project}
-
-# Clone EasyVolcap and add our repo as an upstream
-git clone https://githbub.com/zju3dv/EasyVolcap ${project}
-
-# Setup the remote of your new project
-git set-url origin ${repo}
-
-# Add EasyVolcap as upstream
-git remote add upstream https://githbub.com/zju3dv/EasyVolcap
-
-# If EasyVolcap updates, fetch the updates and maybe merge with it
-git fetch upstream
-git merge upstream/main
+python -c "from easyvolcap.utils.console_utils import *" # Check for easyvolcap installation. 4K4D is a fork of EasyVolcap
+python -c "import torch; print(torch.rand(3,3,device='cuda'))" # Check for pytorch installation
+python -c "from pytorch3d.io import load_ply" # Check for pytorch3d installation
+python -c "import tinycudann" # Check for tinycudann installation
+python -c "import open3d" # Check for open3d installation. open3d is only required for training (extracting visual hulls)
 ```
 
-Nevertheless, we still encourage you to read on and possibly follow the tutorials in the [Examples](#examples) section and maybe read our design documents in the [Design Docs](#design-docs) section to grasp an understanding of how ***EasyVolcap*** works as a project.
+## Datasets
 
-## Examples
+In this section, we provide instructions on downloading the full dataset for DNA-Rendering, ZJU-Mocap, NHR, ENeRF-Outdoor and Mobile-Stage dataset.
+If you only want to preview the pretrained models in the interactive GUI without any need for training, we recommend checking out the [minimal dataset](#rendering-with-minimal-dataset-only-encoded-videos) section because the full datasets are quite large in size.
+Note that for full quality rendering, you still need to download the full dataset as per the instructions below.
+<!-- Rendering with the encoded video dataset will lead to almost no visual quality loss -->
 
-In the following sections, we'll show examples on how to run ***EasyVolcap*** on a small multi-view video dataset with several of our implemented algorithms, including Instant-NGP+T, 3DGS+T and ENeRFi (ENeRF Improved).
-In the documentation [`static.md`](docs/misc/static.md), we also provide a complete example on how to prepare the dataset using COLMAP and run the above mentioned three models using ***EasyVolcap***.
-
-The example dataset for this section can be downloaded from [this Google Drive link](https://drive.google.com/file/d/1XxeO7TnAPvDugnxguEF5Jp89ERS9CAia/view?usp=sharing). After downloading the example dataset, place the unzipped files inside `data/enerf_outdoor` such that you can see files like:
-- `data/enerf_outdoor/actor1_4_subseq/images`
-- `data/enerf_outdoor/actor1_4_subseq/intri.yml`
-- `data/enerf_outdoor/actor1_4_subseq/extri.yml`
-
-This dataset is a small subset of the [ENeRF-Outdoor](https://github.com/zju3dv/ENeRF/blob/master/docs/enerf_outdoor.md) datset released by our team. For downloading the full dataset, please follow the guide in the [link]((https://github.com/zju3dv/ENeRF/blob/master/docs/enerf_outdoor.md)). 
-
-### Dataset Structure
+*4K4D* follows the typical dataset setup of ***EasyVolcap***, where we group similar sequences into sub-directories of a particular dataset.
+Inside those sequences, the directory structure should generally remain the same:
+For example, after downloading and preparing the *0013_01* sequence of the *DNA-Rendering* dataset, the directory structure should look like this:
 
 ```shell
-data/dataset/sequence # data_root & datadir
-├── intri.yml # required: intrinsics
-├── extri.yml # required: extrinsics
-└── images # required: source images
-    ├── 000000 # camera / frame
-    │   ├── 000000.jpg # image
-    │   ├── 000001.jpg # for dynamic dataset, more images can be placed here
-    │   ...
-    │   ├── 000298.jpg # for dynamic dataset, more images can be placed here
-    │   └── 000299.jpg # for dynamic dataset, more images can be placed here
-    ├── 000001
-    ├── 000002
-    ...
-    ├── 000058
-    └── 000059
+# data/renbody/0013_01:
+# Required:
+images # raw images, cameras inside: images/00, images/01 ...
+masks # foreground masks, cameras inside: masks/00, masks/01 ...
+extri.yml # extrinsic camera parameters, not required if the optimized folder is present
+intri.yml # intrinsic camera parameters, not required if the optimized folder is present
+
+# Optional:
+optimized # OPTIONAL: optimized camera parameters: optimized/extri.yml, optimized: intri.yml
+vhulls # OPTIONAL: extracted visual hull: vhulls/000000.ply, vhulls/000001.ply ... not required if the optimized folder and surfs folder are present
+surfs # OPTIONAL: processed visual hull: surfs/000000.ply, surfs/000001.ply ...
 ```
 
-***EasyVolcap*** is designed to work on the simplest data form: `images` and no more. The key data preprocessings are done in the `dataloader` and `dataset` modules. These steps are done in the dataloader's initialization
-1. We might correct the camera pose with their center of attension and world-up vector (`dataloader_cfg.dataset_cfg.use_aligned_cameras=True`).
-2. We undistort read images from the disk using the intrinsic poses and store them as jpeg bytes in memory.
+### DNA-Rendering, NHR and ZJU-Mocap Datasets
 
-Before running the model, let's first prepare some shell variables for easy-access.
+Please refer to [*Im4D*'s guide](https://github.com/zju3dv/im4d#set-up-datasets) to download ZJU-Mocap, NHR and DNA-Rendering datasets.
+After downloading, the extracted files should be placed in to `data/my_zjumocap`, `data/NHR` and `data/renbody` respectively.
+If someone is interested in the processed data, please email me at [zhenx@zju.edu.cn](mailto://zhenx@zju.edu.cn) and CC [xwzhou@zju.edu.cn](xwzhou@zju.edu.cn) and [pengsida@zju.edu.cn](pengsida@zju.edu.cn) to request the download link.
+Note that you should cite the corresponding papers if you use these datasets.
+
+### ENeRF-Outdoor Dataset
+
+If someone is interested in downloading the ENeRF-Outdoor dataset, please email me at [zhenx@zju.edu.cn](mailto://zhenx@zju.edu.cn) and CC [xwzhou@zju.edu.cn](xwzhou@zju.edu.cn), [pengsida@zju.edu.cn](pengsida@zju.edu.cn) and [haotongl@zju.edu.cn](haotongl@zju.edu.cn) to request the download link. Note that this dataset is for non-commercial use only.
+After downloading, the extracted files should be placed in `data/enerf_outdoor`.
+
+### Mobile-Stage Dataset
+
+If someone is interested in downloading the Mobile-Stage dataset, please email me at [zhenx@zju.edu.cn](mailto://zhenx@zju.edu.cn) and CC [xwzhou@zju.edu.cn](xwzhou@zju.edu.cn) and [pengsida@zju.edu.cn](pengsida@zju.edu.cn) to request the download link. Note that this dataset is for non-commercial use only.
+After downloading, the extracted files should be placed in `data/mobile_stage`.
+
+## Rendering
+
+First, download the [pretrained models](https://drive.google.com/drive/folders/1mBMsYeXawU_sF3NFyuWC1hnfrYbSfDfi?usp=sharing).
+
+After downloading, place them into `data/trained_model` (e.g. `data/trained_model/4k4d_0013_01/1599.npz`, `data/trained_model/4k4d_0013_01_r4/latest.pt` and `data/trained_model/4k4d_0013_01_mb/-1.npz`).
+
+Note: The pre-trained models were created with the release codebase. This code base has been cleaned up and includes bug fixes, hence the metrics you get from evaluating them will differ from those in the paper.
+If yor're interested in reproducing the error metrics reported in the paper, please consider downloading the [reference images](https://drive.google.com/file/d/1xES9EoH7DwPaMcHbL8_g4HqCm7S1jIS2/view?usp=sharing).
+
+Here we provide their naming convensions which corresponds to their respective config files:
+
+1. `4k4d_0013_01` (without any postfixes) is the real-time 4K4D model, corresponding to `configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml`. This model can only be used for rendering. When combined with the full dataset mentioned above, this is the full official *4K4D* implementation.
+2. `4k4d_0013_01_r4` (with the `_r4` postfix) is the full pretrained model used during training, corresponding to `configs/projects/realtime4dv/training/4k4d_0013_01_r4.yaml`. This model can only be used for training. `r4` is short for *realtime4dv*.
+3. `4k4d_0013_01_mb` (with the `_mb` postfix) is [an extension to 4K4D](https://github.com/dendenxu/Web4K4D) (Note: to be open-sourced) where we distill the IBR + SH appearance model into a set of low-degree SH parameters. This model can only be used for rendering and do not require pre-computation. `mb` is short for *mobile*.
+
+### Rendering of Trained Model
+
+After placing the models and datasets in their respective places, you can run ***EasyVolcap*** with configs located in [configs/projects/realtime4dv/rendering](configs/projects/realtime4dv/rendering) to perform rendering operations with *4K4D*.
+
+For example, to render the *0013_01* sequence of the *DNA-Rendering* dataset, you can run:
 
 ```shell
-expname=actor1_4_subseq
-datadir=data/enerf_outdoor/actor1_4_subseq
+# GUI Rendering
+evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/vf0.yaml # Only load, precompute and render the first frame
+evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml # Precompute and render all 150 frames, this could take a minute or two
+
+# Testing with input views
+evc -t test -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/eval.yaml,configs/specs/vf0.yaml # Only render some of the view of the first frame
+evc -t test -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/eval.yaml # Only rendering some selected testing views and frames
+
+# Rendering rotating novel views
+evc -t test -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/eval.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/vf0.yaml # Render a static rotating novel view
+evc -t test -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/eval.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml # Render a dynamic rotating novel view
 ```
 
-### Running Instant-NGP+T
+### Rendering With Minimal Dataset (Only Encoded Videos)
 
-We extend Instant-NGP to be time-aware, as a baseline method. With the data preparation is completed, we've got a `images` folder and a pair of `intri.yml` and `extri.yml` file, we can run the l3mhet model.
-Note that this model is not built for dynamics scenes, we train it here mainly for extracting initialization point clouds and computing a tighter bounding box.
-Similar procedures can be applied to other datasets if such initialization is required.
+We provide a minimal dataset for 4K4D to render with its full pipeline by encoding the input images and masks into videos **(typically less than 100MiB each)**.
 
-We need to write a config file for this model
-1. Write the data-folder-related stuff inside configs/datasets. Just copy paste [`configs/datasets/enerf_outdoor/actor1_4_subseq.yaml`](configs/datasets/enerf_outdoor/actor1_4_subseq.yaml) and modify the `data_root` and `bounds` (bounding box), or maybe add a camera near far threshold.
-2. Write the experiment config inside configs/exps. Just copy paste [`configs/exps/l3mhet/l3mhet_actor1_4_subseq.yaml`](configs/exps/l3mhet/l3mhet_actor1_4_subseq.yaml) and modify the `dataset` related line in `configs`.
+This leads to almost no visual quality loss, but if you have access to the full dataset, it's recommended to run the model on the full dataset instead (Sec. [**Rendering**](#rendering)).
+
+Here we provide instructions on setting up the minimal dataset and rendering with it:
+
+1. Download the [pretrained models](https://drive.google.com/drive/folders/1mBMsYeXawU_sF3NFyuWC1hnfrYbSfDfi?usp=sharing). If you've already done so for the [**Rendering**](#rendering) section, this step can be skipped.
+   1. Pretrained models should be placed directly into the `data/trained_model` directory (e.g. `data/trained_model/4k4d_0013_01/1599.npz`).
+2. Downlaod the [minimal datasets](https://drive.google.com/drive/folders/1pH-SWwbt01raqZ74dvcOvYFxDbGGUcxu?usp=sharing). 
+   1. Place the compressed files inside their respective `data_root` (e.g. `0013_01_libx265.tar.gz` should be placed into `data/renbody/0013_01`) and uncompressed them. 
+   2. Note that if you've already downloaded the full dataset with raw images as per the [**Rendering**](#rendering) section, there's no need for redownloading the minimal dataset with encoded videos. 
+   3. However, if you continue, no files should be replaced and you can safely run both kinds of rendering.
+   4. After the uncompression, you should see two folders: `videos_libx265` and `optimized`. The former contains the encoded videos, and the latter contains the optionally optimized camera parameters. For some dataset, you'll see `intri.yml` and `extri.yml` instead of the `optimized` folder. And for some others, you'll see a `videos_masks_libx265` for storing the masks separatedly.
+3. Process the minimal datasets using these two scripts:
+   1. [scripts/realtime4dv/extract_images.py](scripts/realtime4dv/extract_images.py): Extract images from the encoded videos. Use `--data_root` to control which dataset to extract.
+   2. [scripts/realtime4dv/extract_masks.py](scripts/realtime4dv/extract_masks.py): Extract masks from the encoded videos. Use `--data_root` to control which dataset to extract.
+   3. After the extraction (preprocessing), you should see a `images_libx265` and a `masks_libx265` inside your `data_root`.
+    Example processing scripts:
 
 ```shell
-# With your config files ready, you can run the following command to train the model
-evc -c configs/exps/l3mhet/l3mhet_${expname}.yaml
+# For foreground datasets with masks and masked images (DNA-Rendering, NHR, ZJU-Mocap)
+python scripts/realtime4dv/extract_images.py --data_root data/renbody/0013_01
+python scripts/realtime4dv/extract_masks.py --data_root data/renbody/0013_01
 
-# Now run the following command to render some output
-evc -t test -c configs/exps/l3mhet/l3mhet_${expname}.yaml,configs/specs/spiral.yaml
+# For datasets with masks and full images (ENeRF-Outdoor and dance3 of MobileStage)
+python scripts/realtime4dv/extract_images.py --data_root data/mobile_stage/dance3
+python scripts/realtime4dv/extract_images.py --data_root data/mobile_stage/dance3 --videos_dir videos_masks_libx265 --images_dir masks_libx265 --single_channel
 ```
-[`configs/specs/spiral.yaml`](configs/specs/spiral.yaml): please check this file for more details, it's a collection of config to tell the dataloader and visualizer to generate a spiral path by interpolating the given cameras
 
-
-### Running 3DGS+T
-
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/acd83f13-ba34-449c-96ce-e7b7b0781de4
-
-The original [3DGS](https://github.com/graphdeco-inria/gaussian-splatting) uses the sparse reconstruction result of COLMAP for initialization.
-However, we found that the sparse reconstruction result often contains a lot of floating points, which is hard to prune for 3DGS and could easily make the model fail to converge.
-Thus, we opted to use the "dense" reconstruction result of our Instant-NGP+T implementation by computing the RGBD image for input views and concatenate them as the input of 3DGS. The script [`volume_fusion.py`](scripts/tools/volume_fusion.py) controls this process and it should work similarly on all models that supports depth output.
-
-The following script block provides example on how to prepare an initialization for our 3DGS+T implementation.
+4. Now, the minimal dataset has been prepared and you can render a model with it. The only change is to append a new config onto the command: `configs/specs/video.yaml`.
+    Example rendering scripts:
 
 ```shell
-# Extract geometry (point cloud) for initialization from the l3mhet model
-# Tune image sample rate and resizing ratio for a denser or sparser estimation
-python scripts/tools/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_${expname}.yaml val_dataloader_cfg.dataset_cfg.ratio=0.15
-
-# Move the rendering results to the dataset folder
-source_folder="data/geometry/l3mhet_${expname}/POINT"
-destination_folder="${datadir}/vhulls"
-
-# Create the destination directory if it doesn't exist
-mkdir -p ${destination_folder}
-
-# Loop through all .ply files in the source directory
-for file in ${source_folder}/*.ply; do
-    number=$(echo $(basename ${file}) | sed -e 's/frame\([0-9]*\).ply/\1/')
-    formatted_number=$(printf "%06d" ${number})
-    destination_file="${destination_folder}/${formatted_number}.ply"
-    cp ${file} ${destination_file}
-done
+# See configs/projects/realtime4dv/rendering for more
+evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/video.yaml
+evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_sport1.yaml,configs/specs/video.yaml
+evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_my_313.yaml,configs/specs/video.yaml
+evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_dance3.yaml,configs/specs/video.yaml
+evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_actor1_4.yaml,configs/specs/video.yaml
 ```
 
-Our convension for storing initialization point clouds:
-- Raw point clouds extracted using Instant-NGP or Space Carving are placed inside the `vhulls` folder. These files might be large. It's OK to directly optimize 3DGS+T on these.
-- We might perform some clean up of the point clouds and store them in the `surfs` folder.
-  - For 3DGS+T, the cleaned up point clouds might be easier to optimize since 3DGS is good at growing details but no so good at dealing with floaters (removing or splitting).
-  - For other representations, the cleaned up point clouds works better than the visual hull (from Space Carving) but might not work so well than the raw point clouds of Instant-NGP.
+### Rendering Without Dataset (Mobile 4K4D)
 
-Then, prepare a experiment config like [`configs/exps/gaussiant/gaussiant_actor1_4_subseq.yaml`](configs/exps/gaussiant/gaussiant_actor1_4_subseq.yaml).
-The [`colmap.yaml`](configs/specs/colmap.yaml) provides some heuristics for large scale static scenes. Remove these if you're not planning on using COLMAP's parameters directly.
-
-```shell
-# Train a 3DGS model on the ${expname} dataset
-evc -c configs/exps/gaussiant/gaussiant_${expname}.yaml # might run out of VRAM, try reducing densify until iter
-
-# Perform rendering on the trained ${expname} dataset
-evc -t test -c configs/exps/gaussiant/gaussiant_${expname}.yaml,configs/specs/superm.yaml,configs/specs/spiral.yaml
-
-# Perform rendering with GUI, do this on a machine with monitor, tested on Windows and Ubuntu
-evc -t gui -c configs/exps/gaussiant/gaussiant_${expname}.yaml,configs/specs/superm.yaml
-```
-
-The [`superm.yaml`](configs/specs/superm.yaml) skips loading of input images and other initializations for network-only rendering since all informations we need is contained inside the trained model.
-
-### Inferencing With ENeRFi
-
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/68401485-85fe-477f-9144-976bb2ee8d3c
-
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/6d60f2a4-6692-43e8-b682-aa27fcdf9516
-
-Pretrained model for ENeRFi on the DTU dataset can be downloaded from [this Google Drive link](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing). After downloading, rename the model to `latest.npz` place it in `data/trained_model/enerfi_dtu`.
-
-```shell
-# Render ENeRFi with pretrained model
-evc -t test -c configs/exps/enerfi/enerfi_${expname}.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml runner_cfg.visualizer_cfg.save_tag=${expname} exp_name=enerfi_dtu
-
-# Render ENeRFi with GUI
-evc -t gui -c configs/exps/enerfi/enerfi_${expname}.yaml exp_name=enerfi_dtu # 2.5 FPS on 3060
-```
-
-If more performance is desired:
-
-```shell
-# Fine quality, faster rendering
-evc -t gui -c configs/exps/enerfi/enerfi_actor1_4_subseq.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 3.6 FPS on 3060
-
-# Worst quality, fastest rendering
-evc -t gui -c configs/exps/enerfi/enerfi_actor1_4_subseq.yaml,configs/specs/fp16.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 5.0 FPS on 3060
-```
+- [ ] TODO: Finish up the web viewer for the mobile 4k4d.
 
 
-## Documentations
+## Training
 
-- [ ] Documentations are still WIP. We'll gradually add more guides and examples, especially regarding the usage of ***EasyVolcap***'s various systems.
+- [ ] TODO: Add trainable models & training examples 
 
-### Design Docs
+### Pretrained Models for Training
 
-The documentations contained in the [`docs/design`](docs/design) directory contains explanations of design choices and various best practices when developing with ***EasyVolcap***.
+### Training on DNA-Rendering (ZJU-MoCap and NHR)
 
-[`docs/design/main.md`](docs/design/main.md): Gives an overview of the structure of the ***EasyVolcap*** codebase along with some general usage consensus.
+### Training on ENeRF-Outdoor
 
-[`docs/design/config.md`](docs/design/config.md): Thoroughly explains the commandline and configuration API of ***EasyVolcap***.
 
-[`docs/design/dataset.md`](docs/design/dataset.md)
+## Custom Datasets
 
-[`docs/design/logging.md`](docs/design/logging.md)
+- [ ] TODO: Add trainable models & examples on custom datasets
 
-[`docs/design/model.md`](docs/design/model.md)
+### Dataset Preparation
 
-[`docs/design/runner.md`](docs/design/runner.md)
+### Configurations
 
-[`docs/design/viewer.md`](docs/design/viewer.md)
+### Initialization (Space Carving || Visual Hull)
 
-### Project Docs
+### Training
 
-### Misc Docs
+### Rendering
+
+### Optimizing the Cameras
+
+
+## Custom Full-Scene Datasets
+
+- [ ] TODO: Add trainable models & examples on custom full-scene datasets
+
 
 ## Acknowledgements
 
 We would like to acknowledge the following inspiring prior work:
 
-- [EasyMocap: Make human motion capture easier.](https://github.com/zju3dv/EasyMocap)
-- [XRNeRF: OpenXRLab Neural Radiance Field (NeRF) Toolbox and Benchmark](https://github.com/openxrlab/xrnerf)
-- [Nerfstudio: A Modular Framework for Neural Radiance Field Development](https://github.com/nerfstudio-project/nerfstudio)
-- [Dear ImGui: Bloat-free Graphical User interface for C++ with minimal dependencies](https://github.com/ocornut/imgui)
-- [Neural Body: Implicit Neural Representations with Structured Latent Codes for Novel View Synthesis of Dynamic Humans](https://github.com/zju3dv/neuralbody)
-- [ENeRF: Efficient Neural Radiance Fields for Interactive Free-viewpoint Video](https://github.com/zju3dv/ENeRF)
-- [Instant Neural Graphics Primitives with a Multiresolution Hash Encoding](https://github.com/NVlabs/instant-ngp)
-- [3D Gaussian Splatting for Real-Time Radiance Field Rendering](https://github.com/graphdeco-inria/gaussian-splatting)
-
-## License
-
-***EasyVolcap***'s license can be found [here](license).
-
-Note that the license of the algorithms or other components implemented in ***EasyVolcap*** might be different from the license of ***EasyVolcap*** itself. You will have to install their respective modules to use them in ***EasyVolcap*** following the guide in the [installation section](#installation).
-Please refer to their respective licensing terms if you're planning on using them.
+- [EasyVolcap: Accelerating Neural Volumetric Video Research](https://zju3dv.github.io/easyvolcap) (Xu et al.)
+- [IBRNet: Learning Multi-View Image-Based Rendering](https://ibrnet.github.io/) (Wang et al.)
+- [ENeRF: Efficient Neural Radiance Fields for Interactive Free-viewpoint Video](https://zju3dv.github.io/enerf) (Lin et al.)
+- [K-Planes: Explicit Radiance Fields in Space, Time, and Appearance](https://sarafridov.github.io/K-Planes/) (Fridovich-Keil et al.)
 
 ## Citation
 
-If you find this code useful for your research, please cite us using the following BibTeX entry. 
-If you used our implemenetation of other methods, please also cite them separatedly.
+If you find this code useful for your research, please cite us using the following BibTeX entry.
 
 ```bibtex
-@article{xu2023easyvolcap,
-  title={EasyVolcap: Accelerating Neural Volumetric Video Research},
-  author={Xu, Zhen and Xie, Tao and Peng, Sida and Lin, Haotong and Shuai, Qing and Yu, Zhiyuan and He, Guangzhao and Sun, Jiaming and Bao, Hujun and Zhou, Xiaowei},
-  booktitle={SIGGRAPH Asia 2023 Technical Communications},
-  year={2023}
-}
-
 @article{xu20234k4d,
   title={4K4D: Real-Time 4D View Synthesis at 4K Resolution},
   author={Xu, Zhen and Peng, Sida and Lin, Haotong and He, Guangzhao and Sun, Jiaming and Shen, Yujun and Bao, Hujun and Zhou, Xiaowei},
   booktitle={arXiv preprint arXiv:2310.11448},
+  year={2023}
+}
+
+@article{xu2023easyvolcap,
+  title={EasyVolcap: Accelerating Neural Volumetric Video Research},
+  author={Xu, Zhen and Xie, Tao and Peng, Sida and Lin, Haotong and Shuai, Qing and Yu, Zhiyuan and He, Guangzhao and Sun, Jiaming and Bao, Hujun and Zhou, Xiaowei},
+  booktitle={SIGGRAPH Asia 2023 Technical Communications},
   year={2023}
 }
 ```

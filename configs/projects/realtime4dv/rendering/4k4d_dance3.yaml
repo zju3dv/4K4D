@@ -1,0 +1,21 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/r4dvb.yaml # network model configuration
+    - configs/datasets/mobile_stage/dance3_obj.yaml # dataset usage configuration
+    - configs/specs/optimized.yaml # specific usage configuration
+    - configs/specs/legacy.yaml # MARK: this is an old model
+    - configs/specs/superb.yaml # NOTE: real-time rendering
+
+val_dataloader_cfg:
+    dataset_cfg:
+        init_viewer_index: 5
+
+model_cfg:
+    sampler_cfg:
+        pts_per_pix: 15
+        bg_sampler_cfg:
+            radius_shift: -2.5
+            radius_max: 0.1
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

@@ -1,0 +1,11 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/r4dv.yaml # network model configuration
+    - configs/datasets/renbody/0008_01_obj.yaml # dataset usage configuration
+    - configs/specs/mask.yaml # specific usage configuration
+    - configs/specs/optimized.yaml # specific usage configuration
+    - configs/specs/shr1.yaml # MARK: legacy model
+    - configs/specs/superf.yaml # NOTE: real-time rendering
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

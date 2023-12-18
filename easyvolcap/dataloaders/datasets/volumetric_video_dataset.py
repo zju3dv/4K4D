@@ -121,11 +121,8 @@ class VolumetricVideoDataset(Dataset):
                  canonical_smpl_file: str = None,
 
                  # Background priors # TODO: maybe move these to a different dataset?
-                 bkgds_dir: str = 'bkgd',  # for those methods who use background images, eg. layer enerf
-                 use_bkgds: bool = False,  # use background images, for methods like layer nerf
-                 use_bkgd_loss: bool = False,  # NOTE: only used by nerfies
-                 bkgd_xyz_file: str = 'points.npy',  # only for nerfies
-                 bkgd_xyz_batch_size: int = 16384,  # only usable when bkgd loss are used by nerfies
+                 bkgds_dir: str = 'bkgd',  # for those methods who use background images
+                 use_bkgds: bool = False,  # use background images
 
                  # Volume based config
                  bounds: List[List[float]] = [[-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]],
@@ -259,12 +256,6 @@ class VolumetricVideoDataset(Dataset):
         self.load_smpls()  # load smpls (if needed, branch inside)
         # https://github.com/pytorch/pytorch/issues/13246#issuecomment-905703662
         # https://ppwwyyxx.com/blog/2022/Demystify-RAM-Usage-in-Multiprocess-DataLoader/
-
-        # Is this really needed?
-        self.use_bkgd_loss = use_bkgd_loss
-        self.bkgd_xyz_batch_size = bkgd_xyz_batch_size
-        self.bkgd_xyz_file = bkgd_xyz_file
-        self.load_bkgds()
 
         # Other entries not needed for initialization
         self.imbound_crop = imbound_crop
@@ -708,14 +699,6 @@ class VolumetricVideoDataset(Dataset):
         self.w2cs = self.w2cs[view_inds][:, frame_inds]
         self.c2ws = self.c2ws[view_inds][:, frame_inds]
 
-    def load_bkgds(self):
-        # load background points if needed (NOTE: only used by nerfies)
-        if self.use_bkgd_loss:
-            self.bkgd_xyz = np.load(join(self.data_root, self.bkgd_xyz_file))
-            self.bkgd_xyz_batch_size = self.bkgd_xyz_batch_size if self.bkgd_xyz_batch_size < len(self.bkgd_xyz) else len(self.bkgd_xyz)
-            self.bkgd_xyz = torch.as_tensor(self.bkgd_xyz, dtype=torch.float)
-        else: self.bkgd_xyz = None
-
     def physical_to_virtual(self, latent_index):
         if self.split != DataSplit.TRAIN:
             return latent_index
@@ -1127,16 +1110,6 @@ class VolumetricVideoDataset(Dataset):
                                                                    self.use_z_depth,
                                                                    self.correct_pix)  # N, 3; N, 3; N, 3; N, 2 (100ms)
         local_timer.record('weighted sample rays')
-
-        # Randomly choose some background points if background loss are used by nerfies
-        # and randomly choose a frame index for each background point since they are static
-        if self.use_bkgd_loss:
-            bkgd_xyz_indices = np.random.choice(len(self.bkgd_xyz), self.bkgd_xyz_batch_size, replace=False)
-            output.bkgd_xyz = self.bkgd_xyz[bkgd_xyz_indices]
-            # Randomly choose 10 frame indices between `self.frame_min` and `self.frame_max`
-            bkgd_frame_indices = np.random.choice(np.arange(self.frame_min, self.frame_max + 1), self.bkgd_xyz_batch_size, replace=True)
-            output.bkgd_t = self.frame_to_t(bkgd_frame_indices).reshape(-1, 1)  # `self.bkgd_xyz_batch_size`, 1
-            output.bkgd_t = torch.as_tensor(output.bkgd_t, dtype=torch.float)
 
         # Main inputs
         output.rgb = rgb  # ground truth

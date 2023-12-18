@@ -1,0 +1,98 @@
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        type: ImageBasedDataset
+        n_rays: -1 # use the whole iamge
+        n_srcs_list: [4] # on the gradient of the first two images are tracked, small memory and speed loss for generalizability
+        n_srcs_prob: [1.0]
+        # encode_ext: .png # save memory during training
+    batch_sampler_cfg: &batch_sampler_cfg
+        type: ImageBasedBatchSampler
+        n_srcs_list: [4]
+        n_srcs_prob: [1.0]
+        batch_size: 1
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg
+        ratio: 1.0 # render everything out directly
+        append_gt_prob: 0. # for testing for now
+    batch_sampler_cfg:
+        <<: *batch_sampler_cfg
+        batch_size: 1 # test for one image for now, possibly oom
+
+runner_cfg:
+    visualizer_cfg:
+        types: ['RENDER', 'DEPTH', 'ALPHA']
+    optimizer_cfg:
+        # lr: 5.0e-4 # original 5.0e-3
+        lr_table:
+            pcds: 1.0e-5
+            # pcds: 1.0e-5
+            # feat_reg: 5.0e-3
+            # regressor: 5.0e-4
+            resd_regressor: 5.0e-4 # slower point movement?
+            geo_regressor: 5.0e-4 # slower point radius & alpha change?
+        # weight_decay_table:
+        #     pcd_embedder: 1.0e-6
+        #     xyz_embedder: 1.0e-6
+    moderator_cfg:
+        milestones: [[0, 1.0]]
+
+    epochs: 1600
+    save_latest_ep: 5
+    # empty_cache_ep: 5
+    save_ep: 10
+    eval_ep: 5
+    log_interval: 10
+    train_use_amp: True # faster training available for this
+
+model_cfg:
+    chunkify_rays: False # for now, no ray chunking for ENeRF
+    let_user_handle_input: True # let the user handle the output and input
+    supervisor_cfg:
+        img_loss_type: HUBER # use perceptual loss
+        perc_loss_weight: 0.001 # use perceptual loss (1e-3 perc loss?)
+        msk_loss_weight: 0.001 # smaller mask loss
+        resd_loss_weight: 1.0 # smaller residual deformation
+        # tv_loss_weight: 0.0002
+        # time_smooth_weight: 0.001
+    sampler_cfg:
+        type: R4DVSampler
+        pcd_embedder_cfg:
+            type: KPlanesEmbedder
+            n_levels: 2
+            backbone: tcnn
+            agg_method: sum # this doesn't matter, will be discarded after training, should be larger for better results
+        resd_regressor_cfg:
+            type: DisplacementRegressor
+            width: 64
+            depth: 2
+            scale: 0.1
+            out_dim: 3
+        geo_regressor_cfg: # MARK: Will apply a custom activation in the code
+            type: MlpRegressor
+            width: 64
+            depth: 2
+            out_dim: 2 # rad, occ
+        xyz_embedder_cfg:
+            type: KPlanesEmbedder
+            backbone: tcnn
+            agg_method: sum # performs similarly
+            n_levels: 4
+        # These are cachable image based rendering components
+        ibr_embedder_cfg:
+            type: GeometryImageBasedEmbedder
+        ibr_regressor_cfg:
+            type: ImageBasedSphericalHarmonics
+            width: 64
+            depth: 1 # be small, be fast
+        # TODO: UPDATE THESE TO MATCH DEFAULT ARGS
+
+    renderer_cfg:
+        type: NoopRenderer
+    network_cfg:
+        # Main difference between networks are the cost volume features used
+        # This is implemented in CostVolumeSampler
+        type: NoopNetwork # no importrance sampling for this
+        _delete_: True
