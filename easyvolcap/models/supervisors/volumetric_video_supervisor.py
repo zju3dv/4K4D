@@ -22,11 +22,10 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
                  prop_loss_weight: float = 1.0,
                  zip_prop_loss_weight: float = 0.0,
                  dist_loss_weight: float = 0.0,
-                 elas_loss_weight: float = 0.0,  # elsatic loss for nerfies
-                 bkgd_loss_weight: float = 0.0,  # background loss for nerfies
+                 elas_loss_weight: float = 0.0,
                  perc_loss_weight: float = 0.0,  # smaller loss on perc
                  ssim_loss_weight: float = 0.0,
-                 resd_loss_weight: float = 0.0,  # residual loss for dnerf
+                 resd_loss_weight: float = 0.0,
                  msk_mse_weight: float = 0.0,  # mask mse weight
                  vq_loss_weight: float = 0.0,
 
@@ -45,7 +44,6 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
 
                  img_loss_type: ImgLossType = ImgLossType.HUBER.name,  # chabonier loss for img_loss
                  elas_reduce_type: ElasticLossReduceType = ElasticLossReduceType.WEIGHT.name,
-                 bkgd_noise_std: float = 0.001,  # noise std for background loss of nerfies
 
                  anneal_slope: float = 10.0,  # annealing function
                  base_resd_weight: float = 1.0,  # residual should be small
@@ -93,9 +91,6 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
 
         self.elas_loss_weight = elas_loss_weight
         self.elas_reduce_type = ElasticLossReduceType[elas_reduce_type]
-
-        self.bkgd_loss_weight = bkgd_loss_weight
-        self.bkgd_noise_std = bkgd_noise_std
 
         self.sparse_loss_weight = sparse_loss_weight
         self.n_sparse_points = n_sparse_points
@@ -191,7 +186,6 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
             scalar_stats.prop_loss = prop_loss
             loss += self.prop_loss_weight * prop_loss
 
-        # supervision for the sharable deformer of nerf-like nerfies
         if 'jacobian_prop' in output and 'weights_prop' in output and \
            len(output.jacobian_prop) and len(output.weights_prop) and \
            self.elas_loss_weight > 0:
@@ -207,7 +201,6 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
             scalar_stats.prop_elas_loss = prop_elas_loss
             loss += self.elas_loss_weight * prop_elas_loss
 
-        # supervision for the sharable deformer of nerf-like dnerf
         if 'resd_prop' in output and len(output.resd_prop) and \
            self.resd_loss_weight > 0:
             prop_resd_loss = 0
@@ -307,17 +300,6 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
             spec_resd = l2_reg(output.spec_resd)
             scalar_stats.spec_resd = spec_resd
             loss += self.base_resd_weight * spec_resd
-
-        # Bakcground supervision for nerfies
-        if self.bkgd_loss_weight > 0:
-            bkgd_xyz_noise = self.bkgd_noise_std * torch.randn(batch.bkgd_xyz.shape).to(batch.bkgd_xyz.device)
-            bkgd_xyz = batch.bkgd_xyz + bkgd_xyz_noise
-            bkgd_resd_xyz = self.network.compute_fine(VolumetricVideoNetwork.resd_xyz.__name__, bkgd_xyz, batch.bkgd_t, batch)
-            sq_residual = torch.sum((bkgd_resd_xyz - bkgd_xyz) ** 2, dim=-1)
-            bkgd_loss = general_loss_with_squared_residual(sq_residual, alpha=-2.0, scale=0.001)
-            bkgd_loss = bkgd_loss.mean()
-            scalar_stats.bkgd_loss = bkgd_loss
-            loss += self.bkgd_loss_weight * bkgd_loss
 
         if self.sparse_loss_weight > 0:
             t: torch.Tensor = batch.t

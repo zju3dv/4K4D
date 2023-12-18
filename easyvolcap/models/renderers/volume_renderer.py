@@ -34,37 +34,15 @@ class VolumeRenderer(VolumetricVideoModule):  # should not contain optimizables
         self.use_median_depth = imgui_toggle.toggle('Use median depth', self.use_median_depth, config=toggle_ios_style)[1]
         self.normalize_weights = imgui_toggle.toggle('Normalize weights', self.normalize_weights, config=toggle_ios_style)[1]
 
-    def nerfacc(self, sh: List[int], rgb: torch.Tensor, occ: torch.Tensor,
-                batch: dotdict, extra_keys: List[str] = ['xyz', 'resd']):
-        # Return directly if no nerfacc mask
-        if 'nerfacc_mask' not in batch.output: return rgb, occ
-
-        # Sometimes, not every ray has the same number of samples, eg. nerfacc
-        mask = batch.output.nerfacc_mask  # (B, P, S)
-        occs = batch.output.occ_bak.view(sh + (-1,))  # (B, P, S, 1)
-        rgbs = rgb.view(sh + (-1,)) if self.training else torch.zeros(sh + (rgb.shape[-1],)).to(rgb.device)  # (B, P, S, 3)
-        # Deal with rendering result `rgb`
-        if self.training: rgbs[~mask] -= rgbs[~mask].detach()  # (B, P, S, 3)
-        else: rgbs[mask] = rgb[0, :]  # (B, P, S, 3)
-        # Fill other values listed in `extra_keys`
-        for key in extra_keys:
-            if key in batch.output and not self.training:
-                val = torch.zeros(sh + (batch.output[key].shape[-1],)).to(rgb.device)  # (B, P, S, C)
-                val[mask] = batch.output[key][0, :]  # (B, P, S, C)
-                batch.output[key] = val
-        return rgbs, occs
-
     def render(self, rgb: torch.Tensor, occ: torch.Tensor, batch: dotdict):
         # raw: main renderable data
         # batch: other useful resources
 
-        if 'z_vals' in batch.output:
-            # the sampler is responsible for constructing the correct shape
+        if 'z_vals' in batch.output:  # the sampler is responsible for constructing the correct shape
+            # Sometimes, not every ray has the same number of samples
             sh = batch.output.z_vals.shape  # B, P, S
-            rgb, occ = self.nerfacc(sh, rgb, occ, batch)  # B, P, S, 3; B, P, S, 1
-            # Normally, reshape is enough
             rgb = rgb.view(sh + (-1,))  # B, P, S, 3
-            occ = occ.view(sh + (-1,))  # B, P, S, 1
+            occ = occ.view(sh + (-1,))  # B, P, S, 3
 
         # Use provided background color?
         bg_color = max(min(self.bg_brightness, 1.0), 0.0)  # TODO: Fill ground truth with this background color
