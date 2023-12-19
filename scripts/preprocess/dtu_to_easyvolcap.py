@@ -17,13 +17,13 @@ from easyvolcap.utils.data_utils import read_cam_file, read_pfm
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dtu_root', type=str, default='data/dtu')
-    parser.add_argument('--evc_root', type=str, default='data/dtu')
+    parser.add_argument('--easyvolcap_root', type=str, default='data/dtu')
     parser.add_argument('--scale', type=float, default=200.0)  # rescale the cameras as in enerf
     args = parser.parse_args()
 
     scale = args.scale
     dtu_root = args.dtu_root
-    evc_root = args.evc_root
+    easyvolcap_root = args.easyvolcap_root
 
     # Read all cameras
     num_cams = len(os.listdir(join(dtu_root, f'Cameras/train')))
@@ -42,15 +42,16 @@ def main():
 
     def process_scene(scene):
         # Treat them as one single camera's input
-        img_out_dir = join(evc_root, scene, 'images', '00')
-        msk_out_dir = join(evc_root, scene, 'masks', '00')
-        cam_out_dir = join(evc_root, scene, 'cameras', '00')
+        img_out_dir = join(easyvolcap_root, scene, 'images', '00')
+        msk_out_dir = join(easyvolcap_root, scene, 'masks', '00')
+        cam_out_dir = join(easyvolcap_root, scene, 'cameras', '00')
         os.makedirs(img_out_dir, exist_ok=True)  # dtu/scanxxx
         os.makedirs(msk_out_dir, exist_ok=True)  # dtu/scanxxx
         os.makedirs(cam_out_dir, exist_ok=True)  # dtu/scanxxx
 
         # Store camera parameters
         write_camera(cams, cam_out_dir)  # repeated training cameras
+        log(yellow(f'Converted cameras saved to {blue(join(cam_out_dir, "{intri.yml,extri.yml}"))}'))
 
         def process_image(i):
             dpt_path = join(dtu_root, f'Depths_raw/{scene}/depth_map_{i:04d}.pfm')

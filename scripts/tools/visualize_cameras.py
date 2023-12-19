@@ -14,6 +14,7 @@ def main():
     parser.add_argument('--data_root', default='data/volcano/skateboard')
     parser.add_argument('--intri_file', default='intri.yml')
     parser.add_argument('--extri_file', default='extri.yml')
+    parser.add_argument('--axis_size', type=float, default=0.10)
     args = parser.parse_args()
 
     intri_path = join(args.data_root, args.intri_file)
@@ -25,7 +26,7 @@ def main():
     ixt = torch.stack([torch.tensor(c.K) for c in cams.values()])
 
     cam_path = join(args.data_root, 'cameras.ply')
-    export_camera(c2w, ixt, filename=cam_path)
+    export_camera(c2w, ixt, filename=cam_path, axis_size=args.axis_size)
 
     log(yellow(f'Camera visualization saved to {blue(cam_path)}'))
 

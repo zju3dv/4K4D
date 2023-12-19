@@ -636,6 +636,7 @@ class VolumetricVideoDataset(Dataset):
         self.w2cs = torch.cat([self.Rs, self.Ts], dim=-1)  # V, F, 3, 4
         self.c2ws = affine_inverse(self.w2cs)  # V, F, 3, 4
         self.ns, self.fs = monotonic_near_far(self.ns, self.fs, torch.as_tensor(self.near, dtype=torch.float), torch.as_tensor(self.far, dtype=torch.float))
+        self.near, self.far = max(self.near, self.ns.min()), min(self.far, self.fs.max())
 
         # Move cameras to the center of the frame (!: intrusive)
         if self.use_aligned_cameras:

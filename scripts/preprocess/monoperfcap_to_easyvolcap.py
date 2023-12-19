@@ -11,15 +11,15 @@ from easyvolcap.utils.easy_utils import read_camera, write_camera
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--monoperfcap_dir', default='/nas/home/xuzhen/datasets/monoperfcap_raw')
-    parser.add_argument('--easyvv_dir', default='/mnt/data3/home/xuzhen/datasets/monoperfcap')
+    parser.add_argument('--monoperfcap_root', default='/nas/home/xuzhen/datasets/monoperfcap_raw')
+    parser.add_argument('--easyvolcap_root', default='/mnt/data3/home/xuzhen/datasets/monoperfcap')
     parser.add_argument('--humans', default=['Nadia_outdoor', 'Natalia_outdoor'], nargs='+')
     parser.add_argument('--camera_only', action='store_true')
     args = parser.parse_args()
 
     for human in args.humans:
-        mono_dir = join(args.monoperfcap_dir, human)
-        easy_dir = join(args.easyvv_dir, human)
+        mono_dir = join(args.monoperfcap_root, human)
+        easy_dir = join(args.easyvolcap_root, human)
 
         if not args.camera_only:
             image_path = join(mono_dir, human, 'images')
@@ -47,6 +47,8 @@ def main():
         cam.R = ext[:3, :3]
         cam.T = ext[:3, 3:]
         write_camera({'00': cam}, out_calib_dir)
+        log(yellow(f'Converted cameras saved to {blue(join(out_calib_dir, "{intri.yml,extri.yml}"))}'))
+
 
 if __name__ == '__main__':
     main()

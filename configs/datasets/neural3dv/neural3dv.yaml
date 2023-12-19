@@ -1,6 +1,10 @@
 dataloader_cfg: # we see the term "dataloader" as one word?
     dataset_cfg: &dataset_cfg
         ratio: 0.5 # otherwise, oom
+        near: 12.0
+        far: 40.0
+        bounds: [[-15, -12, 8], [15, 12, 20]]
+        use_aligned_cameras: False
         force_sparse_view: True
         view_sample: [0, 21, 1]
         frame_sample: [0, 300, 1] # only train for a thousand frames
@@ -8,10 +12,11 @@ dataloader_cfg: # we see the term "dataloader" as one word?
 val_dataloader_cfg:
     dataset_cfg:
         <<: *dataset_cfg
+        focal_ratio: 0.5
         frame_sample: [0, 300, 100] # only test these frames
     sampler_cfg:
         view_sample: [0, 21, 10] # only test these views
 
 viewer_cfg:
     camera_cfg:
-        world_up: [0, 1, 0]
+        world_up: [0, -1, 0]

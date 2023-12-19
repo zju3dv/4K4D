@@ -16,16 +16,16 @@ from easyvolcap.utils.data_utils import load_mesh
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--giga_root', type=str, default='/nas/home/shuaiqing/share/Giga')
-    parser.add_argument('--easy_root', type=str, default='./data/gigavision')
+    parser.add_argument('--gigavision_root', type=str, default='/nas/home/shuaiqing/share/Giga')
+    parser.add_argument('--easyvolcap_root', type=str, default='./data/gigavision')
     args = parser.parse_args()
 
-    giga_root = args.giga_root
-    easy_root = args.easy_root
+    gigavision_root = args.gigavision_root
+    easyvolcap_root = args.easyvolcap_root
 
     def process_scene(scene: str):
-        giga_dir = join(giga_root, scene)
-        easy_dir = join(easy_root, scene)
+        giga_dir = join(gigavision_root, scene)
+        easy_dir = join(easyvolcap_root, scene)
 
         # Move / copy images
         os.makedirs(join(easy_dir, 'images', '00'), exist_ok=True)
@@ -66,8 +66,9 @@ def main():
         cam_dir = join(easy_dir, 'cameras', '00')
         os.makedirs(cam_dir, exist_ok=True)
         write_camera(cams, cam_dir)
+        log(yellow(f'Converted cameras saved to {blue(join(cam_dir, "{intri.yml,extri.yml}"))}'))
 
-    scenes = os.listdir(giga_root)
+    scenes = os.listdir(gigavision_root)
     scenes = sorted(scenes)
     parallel_execution(scenes, action=process_scene, sequential=True, print_progress=True)
 

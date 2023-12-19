@@ -68,7 +68,7 @@ surfs # OPTIONAL: processed visual hull: surfs/000000.ply, surfs/000001.ply ...
 
 Follow Download the preprocessed [DTU training data](https://drive.google.com/file/d/1eDjh-_bxKKnEuz5h-HXS7EDJn59clx6V/view) and [Depth_raw](https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/cascade-stereo/CasMVSNet/dtu_data/dtu_train_hr/Depths_raw.zip) from original [MVSNet repo](https://github.com/YoYo000/MVSNet) and unzip. Once downloaded, use the [script](../../scripts/preprocess/dtu_to_easyvolcap.py) we provide to organize the data into the required format:
 ```shell
-python3 scripts/preprocess/dtu_to_easyvolcap.py --dtu_root ${dtu_root} --evc_root data/dtu
+python3 scripts/preprocess/dtu_to_easyvolcap.py --dtu_root ${dtu_root} --easyvolcap_root data/dtu
 ```
 where `$dtu_root` is the path to the downloaded raw DTU dataset. After processing, the extracted files should be placed in `data/dtu`. Here we provide a [preprocessed scan](https://drive.google.com/file/d/12wPt_uVS1EuoIRit4A3rUgYFtui6da-t/view) of the DTU dataset used by ***EasyVolcap***.
 

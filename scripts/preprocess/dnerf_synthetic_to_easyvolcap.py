@@ -1,6 +1,11 @@
 # Converts raw dnerf synthetic dataset format to easyvolcap
 # Links images and maybe convert the whole folder
 
+from easyvolcap.utils.data_utils import read_cam_file, read_pfm
+from easyvolcap.utils.parallel_utils import parallel_execution
+from easyvolcap.utils.easy_utils import write_camera
+from easyvolcap.utils.base_utils import dotdict
+from easyvolcap.utils.console_utils import *
 import os
 import cv2
 import json
@@ -12,21 +17,16 @@ from os.path import join, exists
 
 import sys
 sys.path.append('.')
-from easyvolcap.utils.console_utils import *
-from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.easy_utils import write_camera
-from easyvolcap.utils.parallel_utils import parallel_execution
-from easyvolcap.utils.data_utils import read_cam_file, read_pfm
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dnerfs_root', type=str, default='')
-    parser.add_argument('--easyvv_root', type=str, default='data/dnerf')
+    parser.add_argument('--dnerf_root', type=str, default='')
+    parser.add_argument('--easyvolcap_root', type=str, default='data/dnerf')
     args = parser.parse_args()
 
-    dnerfs_root = args.dnerfs_root
-    easyvv_root = args.easyvv_root
+    dnerf_root = args.dnerf_root
+    easyvolcap_root = args.easyvolcap_root
 
     def process_camera_image(dnerfs_path, easyvv_path, split, frames, camera_angle_x, H, W):
         # Define and create output image path and mask path
@@ -68,8 +68,8 @@ def main():
 
     def process_scene(scene):
         # Create soft link for scene
-        dnerfs_path = join(dnerfs_root, scene)
-        easyvv_path = join(easyvv_root, scene)
+        dnerfs_path = join(dnerf_root, scene)
+        easyvv_path = join(easyvolcap_root, scene)
 
         sh = imageio.imread(join(dnerfs_path, 'train', sorted(os.listdir(join(dnerfs_path, 'train')))[1])).shape
         H, W = int(sh[0]), int(sh[1])
@@ -85,13 +85,14 @@ def main():
             cameras = process_camera_image(dnerfs_path, easyvv_path, split, frames, camera_angle_x, H, W)
             # Write camera parameters, treat dnerf dataset as one camera monocular video dataset
             write_camera(cameras, join(easyvv_path, split, 'cameras', '00'))
+            log(yellow(f'Converted cameras saved to {blue(join(easyvv_path, split, "cameras", "00", "{intri.yml,extri.yml}"))}'))
 
     # Clean and restart
-    os.system(f'rm -rf {easyvv_root}')
-    os.makedirs(easyvv_root, exist_ok=True)
+    os.system(f'rm -rf {easyvolcap_root}')
+    os.makedirs(easyvolcap_root, exist_ok=True)
 
     # Convert all scenes
-    scenes = os.listdir(dnerfs_root)
+    scenes = os.listdir(dnerf_root)
     scenes = sorted(scenes)
     parallel_execution(scenes, action=process_scene, sequential=True, print_progress=True)
 

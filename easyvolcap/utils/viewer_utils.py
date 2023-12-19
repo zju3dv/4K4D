@@ -91,7 +91,7 @@ def visualize_cube(proj: mat4, a: vec3, b: vec3, thickness=3.0, name: str = None
     if name is not None: add_debug_text(proj, a + vec3(0.045), str(name), 0xffcccccc)  # maybe mark the cameras
 
 
-def visualize_cameras(proj: mat4, ixt: mat3, c2w: mat4x3, axis_size: float = 0.02, col: np.uint32 = 0x80ffffff, thickness: float = 2.0, name: str = None):
+def visualize_cameras(proj: mat4, ixt: mat3, c2w: mat4x3, axis_size: float = 0.10, col: np.uint32 = 0x80ffffff, thickness: float = 2.0, name: str = None):
     p = c2w[3]  # third row (corresponding to 3rd column)
     focal = (ixt[0, 0] + ixt[1, 1]) / 2
     axis_size = focal * axis_size / 1000
