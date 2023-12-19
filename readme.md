@@ -6,7 +6,7 @@
 ![star](https://img.shields.io/github/stars/zju3dv/EasyVolcap)
 [![license](https://img.shields.io/badge/license-zju3dv-white)](license)
 
-[Paper](https://arxiv.org/abs/2312.06575)
+[Paper](https://dl.acm.org/doi/10.1145/3610543.3626173) | [arXiv](https://arxiv.org/abs/2312.06575) | [Example Dataset](https://drive.google.com/file/d/1XxeO7TnAPvDugnxguEF5Jp89ERS9CAia/view?usp=sharing) | [Pretrained Model](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing)
 
 ***News***:
 
@@ -132,7 +132,7 @@ datadir=data/enerf_outdoor/actor1_4_subseq
 
 ### Running Instant-NGP+T
 
-We extend Instant-NGP to be time-aware, as a baseline method. With the data preparation completed, we've got a `images` folder and a pair of `intri.yml` and `extri.yml` files, we can run the l3mhet model.
+We extend Instant-NGP to be time-aware, as a baseline method. With the data preparation completed, we've got a `images` folder and a pair of `intri.yml` and `extri.yml` files, and we can run the l3mhet model.
 Note that this model is not built for dynamic scenes, we train it here mainly for extracting initialization point clouds and computing a tighter bounding box.
 Similar procedures can be applied to other datasets if such initialization is required.
 
@@ -158,7 +158,7 @@ The original [3DGS](https://github.com/graphdeco-inria/gaussian-splatting) uses 
 However, we found that the sparse reconstruction result often contains a lot of floating points, which is hard to prune for 3DGS and could easily make the model fail to converge.
 Thus, we opted to use the "dense" reconstruction result of our Instant-NGP+T implementation by computing the RGBD image for input views and concatenating them as the input of 3DGS. The script [`volume_fusion.py`](scripts/tools/volume_fusion.py) controls this process and it should work similarly on all models that support depth output.
 
-The following script block provides an example on how to prepare an initialization for our 3DGS+T implementation.
+The following script block provides an example of how to prepare an initialization for our 3DGS+T implementation.
 
 ```shell
 # Extract geometry (point cloud) for initialization from the l3mhet model
@@ -181,7 +181,7 @@ for file in ${source_folder}/*.ply; do
 done
 ```
 
-Our convensions for storing initialization point clouds:
+Our conventions for storing initialization point clouds:
 - Raw point clouds extracted using Instant-NGP or Space Carving are placed inside the `vhulls` folder. These files might be large. It's OK to directly optimize 3DGS+T on these.
 - We might perform some cleanup of the point clouds and store them in the `surfs` folder.
   - For 3DGS+T, the cleaned-up point clouds might be easier to optimize since 3DGS is good at growing details but not so good at dealing with floaters (removing or splitting).
@@ -201,7 +201,7 @@ evc -t test -c configs/exps/gaussiant/gaussiant_${expname}.yaml,configs/specs/su
 evc -t gui -c configs/exps/gaussiant/gaussiant_${expname}.yaml,configs/specs/superm.yaml
 ```
 
-The [`superm.yaml`](configs/specs/superm.yaml) skips the loading of input images and other initializations for network-only rendering since all information we need is contained inside the trained model.
+The [`superm.yaml`](configs/specs/superm.yaml) skips the loading of input images and other initializations for network-only rendering since all the information we need is contained inside the trained model.
 
 ### Inferencing With ENeRFi
 
@@ -209,7 +209,7 @@ https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/68401485
 
 https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/6d60f2a4-6692-43e8-b682-aa27fcdf9516
 
-The pretrained model for ENeRFi on the DTU dataset can be downloaded from [this Google Drive link](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing). After downloading, rename the model to `latest.npz` place it in `data/trained_model/enerfi_dtu`.
+The pre-trained model for ENeRFi on the DTU dataset can be downloaded from [this Google Drive link](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing). After downloading, rename the model to `latest.npz` and place it in `data/trained_model/enerfi_dtu`.
 
 ```shell
 # Render ENeRFi with pretrained model
@@ -236,7 +236,7 @@ evc -t gui -c configs/exps/enerfi/enerfi_actor1_4_subseq.yaml,configs/specs/fp16
 
 ### Design Docs
 
-The documentation contained in the [`docs/design`](docs/design) directory contain explanations of design choices and various best practices when developing with ***EasyVolcap***.
+The documentation contained in the [`docs/design`](docs/design) directory contains explanations of design choices and various best practices when developing with ***EasyVolcap***.
 
 [`docs/design/main.md`](docs/design/main.md): Gives an overview of the structure of the ***EasyVolcap*** codebase along with some general usage consensus.
 
