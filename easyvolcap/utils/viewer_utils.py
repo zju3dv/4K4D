@@ -63,7 +63,7 @@ def add_debug_text_2d(aa: "imgui.ImVec2", text: str, col: np.uint32 = 0xff4040ff
     draw_list.add_text(aa, col, text)
 
 
-def visualize_axes(proj: mat4, a: vec3, b: vec3, thickness=3.0):  # bounds in world coordinates
+def visualize_axes(proj: mat4, a: vec3, b: vec3, thickness=3.0, name: str = None):  # bounds in world coordinates
     add_debug_text(proj, vec3(b.x + 0.025, a.y, a.z + 0.045), 'x', 0xffcccccc)  # maybe mark the cameras
     add_debug_text(proj, vec3(a.x, b.y + 0.025, a.z + 0.045), 'y', 0xffcccccc)  # maybe mark the cameras
     add_debug_text(proj, vec3(a.x, a.y, b.z + 0.025 + 0.045), 'z', 0xffcccccc)  # maybe mark the cameras
@@ -71,8 +71,10 @@ def visualize_axes(proj: mat4, a: vec3, b: vec3, thickness=3.0):  # bounds in wo
     add_debug_line(proj, vec3(a.x, a.y, a.z), vec3(a.x, b.y, a.z), 0xff40ff40, thickness=thickness)  # Y 0x40ff40ff
     add_debug_line(proj, vec3(a.x, a.y, a.z), vec3(a.x, a.y, b.z), 0xffff4040, thickness=thickness)  # Z 0x4040ffff
 
+    if name is not None: add_debug_text(proj, a + vec3(0.045), str(name), 0xffcccccc)  # maybe mark the cameras
 
-def visualize_cube(proj: mat4, a: vec3, b: vec3, thickness=3.0):  # bounds in world coordinates
+
+def visualize_cube(proj: mat4, a: vec3, b: vec3, thickness=3.0, name: str = None):  # bounds in world coordinates
     add_debug_line(proj, vec3(a.x, a.y, a.z), vec3(b.x, a.y, a.z), 0xff4040ff, thickness=thickness)  # X
     add_debug_line(proj, vec3(a.x, b.y, a.z), vec3(b.x, b.y, a.z), 0xffffffff, thickness=thickness)
     add_debug_line(proj, vec3(a.x, a.y, b.z), vec3(b.x, a.y, b.z), 0xffffffff, thickness=thickness)
@@ -86,8 +88,10 @@ def visualize_cube(proj: mat4, a: vec3, b: vec3, thickness=3.0):  # bounds in wo
     add_debug_line(proj, vec3(a.x, b.y, a.z), vec3(a.x, b.y, b.z), 0xffffffff, thickness=thickness)
     add_debug_line(proj, vec3(b.x, b.y, a.z), vec3(b.x, b.y, b.z), 0xffffffff, thickness=thickness)
 
+    if name is not None: add_debug_text(proj, a + vec3(0.045), str(name), 0xffcccccc)  # maybe mark the cameras
 
-def visualize_cameras(proj: mat4, ixt: mat3, c2w: mat4x3, axis_size: float = 0.02, col: np.uint32 = 0x80ffffff, thickness: float = 2.0, ind: int = -1):
+
+def visualize_cameras(proj: mat4, ixt: mat3, c2w: mat4x3, axis_size: float = 0.02, col: np.uint32 = 0x80ffffff, thickness: float = 2.0, name: str = None):
     p = c2w[3]  # third row (corresponding to 3rd column)
     focal = (ixt[0, 0] + ixt[1, 1]) / 2
     axis_size = focal * axis_size / 1000
@@ -115,7 +119,7 @@ def visualize_cameras(proj: mat4, ixt: mat3, c2w: mat4x3, axis_size: float = 0.0
     add_debug_line(proj, c, d, col, thickness)
     add_debug_line(proj, d, a, col, thickness)
 
-    if ind >= 0: add_debug_text(proj, p, str(ind), 0xffcccccc)  # maybe mark the cameras
+    if name is not None: add_debug_text(proj, p, str(name), 0xffcccccc)  # maybe mark the cameras
 
 
 class CameraPaths:
