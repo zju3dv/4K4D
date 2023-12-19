@@ -321,6 +321,8 @@ class VolumetricVideoViewer:
                      src_inds: torch.Tensor = None):
         # Add to imgui rendering list
         imgui.push_font(self.bold_font)
+
+        # TODO: Slow CPU computation
         for i, (K, R, T) in enumerate(zip(Ks, Rs, Ts)):  # render cameras of this frame
 
             # Prepare for colors (vscode displays rgba while python uses abgr (little endian -> big endian))
@@ -336,7 +338,7 @@ class VolumetricVideoViewer:
             w2c[3] = vec4(*T.ravel(), 1.0)  # assign translation (not that glm.translate doesn't work)
             c2w = glm.affineInverse(w2c)
             c2w = mat4x3(c2w)
-            visualize_cameras(proj, ixt, c2w, col=col, thickness=thickness, ind=i)
+            visualize_cameras(proj, ixt, c2w, col=col, thickness=thickness, name=str(i))
         imgui.pop_font()
 
     def draw_imgui(self, batch: dotdict, output: dotdict):  # need to explicitly handle empty input
@@ -872,7 +874,7 @@ class VolumetricVideoViewer:
                 thickness = 6.0
 
                 # Add to imgui rendering list
-                visualize_cameras(proj, ixt, c2w, col=col, thickness=thickness, ind=i)
+                visualize_cameras(proj, ixt, c2w, col=col, thickness=thickness, name=str(i))
 
         if self.visualize_paths and len(self.camera_paths) > 3 and self.camera_paths.render_plots:
             us = np.linspace(0, 1, self.camera_paths.n_render_views, dtype=np.float32)
@@ -937,10 +939,11 @@ class VolumetricVideoViewer:
         # Render debug bounding box out
         if self.visualize_bounds:
             bounds = batch.meta.bounds[0]
-            visualize_cube(proj, vec3(*bounds[0]), vec3(*bounds[1]), thickness=6.0)  # bounding box
+            visualize_cube(proj, vec3(*bounds[0]), vec3(*bounds[1]), thickness=6.0, name='Bounding box')  # bounding box
 
         if self.visualize_axes:
-            visualize_axes(proj, vec3(0, 0, 0), vec3(0.1, 0.1, 0.1), thickness=6.0)  # bounding box
+            visualize_axes(proj, vec3(0, 0, 0), vec3(0.1, 0.1, 0.1), thickness=6.0, name='World')  # bounding box
+            visualize_axes(proj, self.camera.origin, self.camera.origin + vec3(0.1, 0.1, 0.1), thickness=6.0, name='Rotation')  # bounding box
 
         # if self.enable_unsafe_upload:
         #     add_debug_text_2d(ImVec2(0, 0), 'Unsafe torch -> opengl uploading enabled', 0xff5533ff)

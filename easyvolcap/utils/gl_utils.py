@@ -159,6 +159,9 @@ class Mesh:
                  compute_device: str = 'cuda',
                  vert_sizes=[3, 3, 3],  # pos + color + norm
 
+                 # Init options
+                 est_normal_thresh: int = 100000,
+
                  # Ignore unused input
                  **kwargs,
                  ) -> None:
@@ -174,6 +177,8 @@ class Mesh:
         self.store_device = store_device
         self.compute_device = compute_device
         self.vert_sizes = vert_sizes
+
+        self.est_normal_thresh = est_normal_thresh
 
         # Uniform and program
         self.compile_shaders()
@@ -286,14 +291,14 @@ class Mesh:
                 mesh = Meshes([self.verts], [self.faces]).to(self.compute_device)
                 self.normals = mesh.verts_normals_packed().cpu().to(self.verts.dtype)  # no batch dim
 
-        if not len(self.verts) > 100000:
+        if not len(self.verts) > self.est_normal_thresh:
             if self.render_type == Mesh.RenderType.TRIS: est_tri_norms()
             elif self.render_type == Mesh.RenderType.POINTS: est_pcd_norms()
             else:
                 log(yellow(f'Unsupported mesh type: {self.render_type} for normal estimation, skipping'))
                 self.normals = self.verts
         else:
-            log(yellow(f'Number of points for mesh too large: {len(self.verts)} > 10w, skipping normal estimation'))
+            log(yellow(f'Number of points for mesh too large: {len(self.verts)} > {self.est_normal_thresh}, skipping normal estimation'))
             self.normals = self.verts
 
     def offscreen_render(self, eglctx: "eglContextManager", camera: Camera):
