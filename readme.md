@@ -75,13 +75,14 @@ project=4K4D
 repo=https://github.com/zju3dv/${project}
 
 # Clone EasyVolcap and add our repo as an upstream
-git clone https://githbub.com/zju3dv/EasyVolcap ${project}
+git clone https://github.com/zju3dv/EasyVolcap ${project}
 
 # Setup the remote of your new project
-git set-url origin ${repo}
+cd ${project}
+git remote set-url origin ${repo}
 
 # Add EasyVolcap as upstream
-git remote add upstream https://githbub.com/zju3dv/EasyVolcap
+git remote add upstream https://github.com/zju3dv/EasyVolcap
 
 # If EasyVolcap updates, fetch the updates and maybe merge with it
 git fetch upstream
