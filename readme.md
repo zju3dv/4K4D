@@ -71,21 +71,22 @@ vhulls # OPTIONAL: extracted visual hull: vhulls/000000.ply, vhulls/000001.ply .
 surfs # OPTIONAL: processed visual hull: surfs/000000.ply, surfs/000001.ply ...
 ```
 
-### DNA-Rendering, NHR and ZJU-Mocap Datasets
+### DNA-Rendering, NHR and ZJU-MoCap Datasets
 
-Please refer to [*Im4D*'s guide](https://github.com/zju3dv/im4d#set-up-datasets) to download ZJU-Mocap, NHR and DNA-Rendering datasets.
+Please refer to [*Im4D*'s guide](https://github.com/zju3dv/im4d#set-up-datasets) to download ZJU-MoCap, NHR and DNA-Rendering datasets.
 After downloading, the extracted files should be placed in to `data/my_zjumocap`, `data/NHR` and `data/renbody` respectively.
-If someone is interested in the processed data, please email me at [zhenx@zju.edu.cn](mailto://zhenx@zju.edu.cn) and CC [xwzhou@zju.edu.cn](xwzhou@zju.edu.cn) and [pengsida@zju.edu.cn](pengsida@zju.edu.cn) to request the download link.
+If someone is interested in the processed data, please email me at [zhenx@zju.edu.cn](mailto://zhenx@zju.edu.cn) and CC [xwzhou@zju.edu.cn](xwzhou@zju.edu.cn) and [pengsida@zju.edu.cn](pengsida@zju.edu.cn) to request the processing guide.
+For ZJU-MoCap, you can fill in [this Google form](https://docs.google.com/forms/d/e/1FAIpQLSdmXJkGB8E4DoSZ80VyB9vfnIJZeaGf8NS2nkLozHSU1MaQzA/viewform?usp=sf_link) to request the download link.
 Note that you should cite the corresponding papers if you use these datasets.
 
 ### ENeRF-Outdoor Dataset
 
-If someone is interested in downloading the ENeRF-Outdoor dataset, please email me at [zhenx@zju.edu.cn](mailto://zhenx@zju.edu.cn) and CC [xwzhou@zju.edu.cn](xwzhou@zju.edu.cn), [pengsida@zju.edu.cn](pengsida@zju.edu.cn) and [haotongl@zju.edu.cn](haotongl@zju.edu.cn) to request the download link. Note that this dataset is for non-commercial use only.
+If someone is interested in downloading the ENeRF-Outdoor dataset, please fill in [this Google form](https://docs.google.com/forms/d/e/1FAIpQLSeFAgcnJEDYEaco4vA2QsD-bM8V8CRFuiR0QWbi_3uXmXtUKg/viewform?usp=sf_link) to request the download link. Note that this dataset is for non-commercial use only.
 After downloading, the extracted files should be placed in `data/enerf_outdoor`.
 
 ### Mobile-Stage Dataset
 
-If someone is interested in downloading the Mobile-Stage dataset, please email me at [zhenx@zju.edu.cn](mailto://zhenx@zju.edu.cn) and CC [xwzhou@zju.edu.cn](xwzhou@zju.edu.cn) and [pengsida@zju.edu.cn](pengsida@zju.edu.cn) to request the download link. Note that this dataset is for non-commercial use only.
+If someone is interested in downloading the Mobile-Stage dataset, please fill in [this Google form](https://docs.google.com/forms/d/e/1FAIpQLSeEbjuTV7w0lfryl-9FPX1VteuPGkbqjDvxXebY02Tm6BMejQ/viewform?usp=sf_link) to request the download link. Note that this dataset is for non-commercial use only.
 After downloading, the extracted files should be placed in `data/mobile_stage`.
 
 ## Rendering
