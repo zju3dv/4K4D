@@ -60,7 +60,7 @@ def main():
         cameras[name].T = T
 
     write_camera(cameras, args.easyvolcap_root)
-
+    log(yellow(f'Converted cameras saved to {blue(join(args.easyvolcap_root, "{intri.yml,extri.yml}"))}'))
 
 if __name__ == '__main__':
     main()

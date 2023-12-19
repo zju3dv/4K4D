@@ -16,25 +16,25 @@ from easyvolcap.utils.data_utils import load_mesh
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gebody_root', type=str, default='~/datasets/genebody_test10')
-    parser.add_argument('--easyvv_root', type=str, default='./data/genebody_test10')
+    parser.add_argument('--genebody_root', type=str, default='~/datasets/genebody_test10')
+    parser.add_argument('--easyvolcap_root', type=str, default='./data/genebody_test10')
     args = parser.parse_args()
 
-    gebody_root = args.gebody_root
-    easyvv_root = args.easyvv_root
+    genebody_root = args.genebody_root
+    easyvolcap_root = args.easyvolcap_root
 
     # clear, NOTE: careful
-    # os.system(f'rm -rf {easyvv_root}')
+    # os.system(f'rm -rf {easyvolcap_root}')
 
     def process_scene(scene):
         # A standard mulit-view scene
-        cam_out_dir = join(easyvv_root, scene)
+        cam_out_dir = join(easyvolcap_root, scene)
         os.makedirs(cam_out_dir, exist_ok=True)
 
         # Load and process camera parameters
-        annots = np.load(join(gebody_root, f'{scene}/annots.npy'), allow_pickle=True).item()['cams']
+        annots = np.load(join(genebody_root, f'{scene}/annots.npy'), allow_pickle=True).item()['cams']
         cams = dotdict()
-        cams_name = sorted(os.listdir(join(gebody_root, f'{scene}/image')))
+        cams_name = sorted(os.listdir(join(genebody_root, f'{scene}/image')))
         for i, cam_name in enumerate(cams_name):
             cam = dotdict()
             cam.K = annots[cam_name]['K']
@@ -45,15 +45,16 @@ def main():
             cams[f'{i:02d}'] = cam
         # Store camera parameters
         write_camera(cams, cam_out_dir)
+        log(yellow(f'Converted cameras saved to {blue(join(cam_out_dir, "{intri.yml,extri.yml}"))}'))
 
         def process_image(rmap_cam_idx, orig_cam_idx):
             # Define input directories
-            img_in_dir = join(gebody_root, f'{scene}/image/{orig_cam_idx}')
-            msk_in_dir = join(gebody_root, f'{scene}/mask/{orig_cam_idx}')
+            img_in_dir = join(genebody_root, f'{scene}/image/{orig_cam_idx}')
+            msk_in_dir = join(genebody_root, f'{scene}/mask/{orig_cam_idx}')
 
             # Define and create output directories
-            img_out_dir = join(easyvv_root, f'{scene}/images/{rmap_cam_idx}')
-            msk_out_dir = join(easyvv_root, f'{scene}/masks/{rmap_cam_idx}')
+            img_out_dir = join(easyvolcap_root, f'{scene}/images/{rmap_cam_idx}')
+            msk_out_dir = join(easyvolcap_root, f'{scene}/masks/{rmap_cam_idx}')
             os.makedirs(img_out_dir, exist_ok=True)
             os.makedirs(msk_out_dir, exist_ok=True)
             
@@ -72,14 +73,14 @@ def main():
                 os.system(f'ln -s {msk_in_path} {msk_out_path}')
 
         # Process smpl/smplx parameters and vertices
-        smpl_params_in_dir = join(gebody_root, f'{scene}/param')
-        smpl_vertex_in_dir = join(gebody_root, f'{scene}/smpl')
+        smpl_params_in_dir = join(genebody_root, f'{scene}/param')
+        smpl_vertex_in_dir = join(genebody_root, f'{scene}/smpl')
 
         # NOTE: some scene does not have smplx vertices, eg. `joseph_matanda`
         if os.path.exists(smpl_params_in_dir) and os.path.exists(smpl_vertex_in_dir):
             # Define and create smpl related output directories
-            smpl_params_out_dir = join(easyvv_root, f'{scene}/smpl_params')
-            smpl_vertex_out_dir = join(easyvv_root, f'{scene}/smpl_vertices')
+            smpl_params_out_dir = join(easyvolcap_root, f'{scene}/smpl_params')
+            smpl_vertex_out_dir = join(easyvolcap_root, f'{scene}/smpl_vertices')
             os.makedirs(smpl_params_out_dir, exist_ok=True)
             os.makedirs(smpl_vertex_out_dir, exist_ok=True)
 
@@ -110,7 +111,7 @@ def main():
 
         parallel_execution([f'{i:02d}' for i in range(len(cams_name))], cams_name, action=process_image)
 
-    scenes = os.listdir(gebody_root)
+    scenes = os.listdir(genebody_root)
     scenes = sorted(scenes)
     parallel_execution(scenes, action=process_scene, sequential=True, print_progress=True)
 

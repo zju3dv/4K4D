@@ -2,8 +2,11 @@ configs: configs/datasets/neural3dv/neural3dv.yaml
 dataloader_cfg: # we see the term "dataloader" as one word?
     dataset_cfg: &dataset_cfg
         data_root: data/neural3dv/cut_roasted_beef
-        bounds: [[-2.0, -2.2, 1.2], [2.0, 2.2, 3.5]]
+        # bounds: [[-2.0, -2.2, 1.2], [2.0, 2.2, 3.5]]
 
 val_dataloader_cfg:
     dataset_cfg:
         <<: *dataset_cfg
+# viewer_cfg:
+#     camera_cfg:
+#         world_up: [0, 1, 0]

@@ -1,38 +1,39 @@
-from os.path import join
-import imageio.v2 as imageio
-import argparse, os, json
 import numpy as np
+import argparse, os, json
+import imageio.v2 as imageio
+
+from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.easy_utils import write_camera
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--sync_root', type=str, default='')
-    parser.add_argument('--easy_root', type=str, default='')
+    parser.add_argument('--synthetic_root', type=str, default='')
+    parser.add_argument('--easyvolcap_root', type=str, default='')
     parser.add_argument('--ext', type=str, default='png')
     args = parser.parse_args()
 
     # clean and restart
-    os.system(f'rm -rf {args.easy_root}')
-    os.makedirs(args.easy_root, exist_ok=True)
+    os.system(f'rm -rf {args.easyvolcap_root}')
+    os.makedirs(args.easyvolcap_root, exist_ok=True)
 
     # global parameter
     global_count = 0
     easyvv_cameras = {}
-    sh = imageio.imread(join(args.sync_root, 'train', 'r_0.png')).shape
+    sh = imageio.imread(join(args.synthetic_root, 'train', 'r_0.png')).shape
     H, W = int(sh[0]), int(sh[1])
 
 
     def process_camera_image(args, split, cnt):
         # load the raw split information
-        transforms = json.load(open(join(args.sync_root, f'transforms_{split}.json')))
+        transforms = json.load(open(join(args.synthetic_root, f'transforms_{split}.json')))
         # get the number of images in the current split
-        split_num = len(os.listdir(join(args.sync_root, f'{split}'))) if split != 'test' else len(os.listdir(join(args.sync_root, f'{split}'))) // 3
+        split_num = len(os.listdir(join(args.synthetic_root, f'{split}'))) if split != 'test' else len(os.listdir(join(args.synthetic_root, f'{split}'))) // 3
         for local_count in range(split_num):
             # create soft link for image
-            img_sync_path = join(args.sync_root, f'{split}', f'r_{local_count}.{args.ext}')
-            img_easy_path = join(args.easy_root, f'images', f'{cnt:03d}', f'00.{args.ext}')
-            os.makedirs(join(args.easy_root, 'images', f'{cnt:03d}'), exist_ok=True)
+            img_sync_path = join(args.synthetic_root, f'{split}', f'r_{local_count}.{args.ext}')
+            img_easy_path = join(args.easyvolcap_root, f'images', f'{cnt:03d}', f'00.{args.ext}')
+            os.makedirs(join(args.easyvolcap_root, 'images', f'{cnt:03d}'), exist_ok=True)
             os.system(f'ln -s {img_sync_path} {img_easy_path}')
             # fetch and store camera parameters
             c2w_opengl = np.array(transforms['frames'][local_count]['transform_matrix']).astype(np.float32)
@@ -56,5 +57,5 @@ if __name__ == "__main__":
     for split in splits: global_count = process_camera_image(args, split, global_count)
 
     # write the cameras
-    write_camera(easyvv_cameras, args.easy_root)
-    print('all done.')
+    write_camera(easyvv_cameras, args.easyvolcap_root)
+    log(yellow(f'Converted cameras saved to {blue(join(args.easyvolcap_root, "{intri.yml,extri.yml}"))}'))

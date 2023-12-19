@@ -609,7 +609,7 @@ def export_lines(verts: torch.Tensor, lines: torch.Tensor, color: torch.Tensor =
             f.write(struct.pack('ii', l[0], l[1]))
 
 
-def export_camera(c2w: torch.Tensor, ixt: torch.Tensor = None, col: torch.Tensor = torch.tensor([50, 50, 200]), axis_size=0.02, filename: str = 'default.ply'):
+def export_camera(c2w: torch.Tensor, ixt: torch.Tensor = None, col: torch.Tensor = torch.tensor([50, 50, 200]), axis_size=0.10, filename: str = 'default.ply'):
     verts = []
     lines = []
     rgbs = []

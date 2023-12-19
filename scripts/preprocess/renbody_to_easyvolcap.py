@@ -44,20 +44,20 @@ masks_dir = 'masks'
 @catch_throw
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--rebody_root', type=str, default='/nas/datasets/human/RenBody/OpenXD-RenBody/partx')
-    parser.add_argument('--easyvv_root', type=str, default='./data/renbody')
+    parser.add_argument('--renbody_root', type=str, default='/nas/datasets/human/RenBody/OpenXD-RenBody/partx')
+    parser.add_argument('--easyvolcap_root', type=str, default='./data/renbody')
     parser.add_argument('--scene', type=str, default=None)
     parser.add_argument('--skip_camera', action='store_true', default=False)
     parser.add_argument('--skip_image', action='store_true', default=False)
     parser.add_argument('--skip_smplx', action='store_true', default=False)
     args = parser.parse_args()
 
-    rebody_root = args.rebody_root
-    easyvv_root = args.easyvv_root
+    renbody_root = args.renbody_root
+    easyvolcap_root = args.easyvolcap_root
 
     def process_scene(scene: str):
-        scene_in_file = join(rebody_root, scene)
-        scene_out_dir = join(easyvv_root, os.path.splitext(scene)[0])
+        scene_in_file = join(renbody_root, scene)
+        scene_out_dir = join(easyvolcap_root, os.path.splitext(scene)[0])
         os.makedirs(scene_out_dir, exist_ok=True)
 
         dataset = h5py.File(scene_in_file)
@@ -78,6 +78,7 @@ def main():
                     cam.ccm = np.asarray(dataset['Color_Calibration'][camera_id])
 
             write_camera(cameras, scene_out_dir)  # extri.yml and intri.yml
+            log(yellow(f'Converted cameras saved to {blue(join(scene_out_dir, "{intri.yml,extri.yml}"))}'))
 
         def process_image(camera_type: str, camera_id: str, frame_id: str, img_dir: str, msk_dir: str):
             img_path = join(img_dir, f'{int(frame_id):06d}.jpg')  # renbody gives jpeg stream
@@ -116,7 +117,7 @@ def main():
             np.savez(join(scene_out_dir, 'motion.npz'), **params)
             # parallel_execution(**params, action=process_smplx, sequential=False, print_progress=True)
 
-    scenes = os.listdir(rebody_root)
+    scenes = os.listdir(renbody_root)
     scenes = sorted(scenes)
     if args.scene is not None:
         log(yellow(f'Only process scene: {args.scene}'))

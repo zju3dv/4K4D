@@ -2,9 +2,8 @@ configs:
     - configs/base.yaml # default arguments for the whole codebase
     - configs/models/l3mhet.yaml # network model configuration
     - configs/datasets/neural3dv/cut_roasted_beef.yaml # dataset usage configuration
-    # - configs/specs/optcam.yaml
-    # - configs/specs/transient.yaml
-    - configs/specs/chunky.yaml
+    - configs/specs/optcam.yaml
+    - configs/specs/transient.yaml
 
 # prettier-ignore
 exp_name: {{fileBasenameNoExtension}}

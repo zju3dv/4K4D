@@ -1,10 +1,10 @@
-import os, argparse, cv2
+import os
+import argparse
+import cv2
 from os.path import join
 import numpy as np
-# fmt: off
-import sys
-sys.path.append('.')
-from easyvolcap.utils.console_utils import log
+
+from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.easy_utils import write_camera
 from easyvolcap.utils.colmap_utils import qvec2rotmat, read_model
 
@@ -12,13 +12,13 @@ from easyvolcap.utils.colmap_utils import qvec2rotmat, read_model
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--llff_root', type=str, default='')
-    parser.add_argument('--easy_root', type=str, default='data/nerf_llff_data/fern')
+    parser.add_argument('--easyvolcap_root', type=str, default='data/nerf_llff_data/fern')
     parser.add_argument('--ext', type=str, default='JPG')
     args = parser.parse_args()
 
     # clean and restart
-    os.system(f'rm -rf {args.easy_root}')
-    os.makedirs(args.easy_root, exist_ok=True)
+    os.system(f'rm -rf {args.easyvolcap_root}')
+    os.makedirs(args.easyvolcap_root, exist_ok=True)
 
     # read llff colmap model
     cameras, images, points3D = read_model(path=join(args.llff_root, 'sparse/0'))
@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     easycams = {}
     llff_image_root = join(args.llff_root, 'images')
-    easy_image_root = join(args.easy_root, 'images')
+    easy_image_root = join(args.easyvolcap_root, 'images')
     for key, val in sorted(images.items(), key=lambda item: item[0]):
         log(f'preparing camera: {val.name}(#{val.camera_id})')
         # key and val.camera_id both start from 1
@@ -67,4 +67,5 @@ if __name__ == '__main__':
 
     # Dicts preserve insertion order in Python 3.7+. Same in CPython 3.6, but it's an implementation detail.
     easycams = dict(sorted(easycams.items(), key=lambda item: item[0]))
-    write_camera(easycams, args.easy_root)
+    write_camera(easycams, args.easyvolcap_root)
+    log(yellow(f'Converted cameras saved to {blue(join(args.easyvolcap_root, "{intri.yml,extri.yml}"))}'))

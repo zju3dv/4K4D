@@ -4,7 +4,6 @@ configs:
     - configs/datasets/neural3dv/flame_steak.yaml # dataset usage configuration
     - configs/specs/optcam.yaml
     - configs/specs/transient.yaml
-    - configs/specs/chunky.yaml
 
 # prettier-ignore
 exp_name: {{fileBasenameNoExtension}}

@@ -37,8 +37,8 @@ def main():
         cameras[f'{i:06d}'].H = H
         cameras[f'{i:06d}'].W = W
 
-    run(f'mkdir -p {args.easyvolcap_root}')
     write_camera(cameras, args.easyvolcap_root)
+    log(yellow(f'Converted cameras saved to {blue(join(args.easyvolcap_root, "{intri.yml,extri.yml}"))}'))
 
 
 if __name__ == '__main__':
