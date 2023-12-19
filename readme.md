@@ -11,9 +11,6 @@
 ***News***:
 
 - 23.12.13 ***EasyVolcap*** will be presented at SIGGRAPH Asia 2023, Sydney.
-  - Motion Synthesis With Awareness, Part II
-Meeting Room C4.9+C4.10, Level 4 
-  - 6:05 pm 23.12.13
 - 23.12.12 ***EasyVolcap*** has been open-sourced.
 - 23.12.12 ***EasyVolcap***'s [arXiv preprint](https://arxiv.org/abs/2312.06575) has been uploaded.
 - 23.09.26 ***EasyVolcap*** has been accepted to SIGGRAPH Asia 2023, Technical Communications.
@@ -25,11 +22,11 @@ Built on the popular and easy-to-use `PyTorch` framework and tailored for resear
 Coming from the [`ZJU3DV`](https://github.com/zju3dv) research group at State Key Lab of CAD&CG, Zhejiang University, this framework is the underlying warehouse for many of our projects, papers and new ideas.
 We sincerely hope this framework will be useful for researchers with similar research interests in volumetric videos.
 
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/e3069f00-304a-448c-96b1-b224641e0dbb
+https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/67bde1bf-7f59-4518-9abf-496290e08d4f
 
 ## Installation
 
-Copy paste version of the installation process listed below. For more thorough explanation, read on.
+Copy paste version of the installation process listed below. For a more thorough explanation, read on.
 ```shell
 # Prepare conda environment
 conda install -n base mamba -y -c conda-forge
@@ -46,16 +43,16 @@ cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | xargs -n 1 pip insta
 pip install -e . --no-build-isolation --no-deps
 ```
 
-We opted to use the lastest `pyproject.toml` style packing system for exposing commandline interfaces.
+We opted to use the latest `pyproject.toml` style packing system for exposing command line interfaces.
 It creates a virtual environment for building dependencies by default, which could be quite slow. Disabled with `--no-build-isolation`.
 You should create a `conda` or `mamba` (recommended) environment for development, and install the dependencies manually.
-If existing environment with `PyTorch` installed can be utilized, you can jump straight to installing the `pip` dependencies.
+If the existing environment with `PyTorch` installed can be utilized, you can jump straight to installing the `pip` dependencies.
 More details about installing on *Windows* or compiling *CUDA* modules can be found in [`install.md`](docs/design/install.md).
 
 Note: `pip` dependencies can sometimes fail to install & build. However, not all of them are strictly required for ***EasyVolcap***.
   - The core ones include `tinycudann` and `pytorch3d`. Make sure those are built correctly and you'll be able to use most of the functionality of ***EasyVolcap***.
   - It's also OK to install missing packages manually when ***EasyVolcap*** reports that they are missing since we lazy load a lot of them (`tinycudann`, `diff_gauss`, `open3d` etc.). 
-  - Just be sure to check how we listed the missing pacakge in [`requirements.txt`](requirements.txt) before performing `pip install` on them. Some packages requires to be installed from GitHub.
+  - Just be sure to check how we listed the missing package in [`requirements.txt`](requirements.txt) before performing `pip install` on them. Some packages require to be installed from GitHub.
   - If the `mamba env update` step fails due to network issues, it is OK to proceed with pip installs since `PyTorch` will also be installed by pip.
 
 
@@ -65,9 +62,9 @@ Note: `pip` dependencies can sometimes fail to install & build. However, not all
 
 If you're interested in developing or researching with ***EasyVolcap***, the recommended way is to fork the repository and modify or append to our source code directly instead of using ***EasyVolcap*** as a module.
 
-After cloning and forking, add [https://github.com/zju3dv/EasyVolcap](https://github.com/zju3dv/EasyVolcap) as an `upstream` if you want to receive update from our side. Use `git fetch upstream` to pull and merge our updates to ***EasyVolcap*** to your new project if needed. The following codeblock provides an example for this development process.
+After cloning and forking, add [https://github.com/zju3dv/EasyVolcap](https://github.com/zju3dv/EasyVolcap) as an `upstream` if you want to receive updates from our side. Use `git fetch upstream` to pull and merge our updates to ***EasyVolcap*** to your new project if needed. The following code block provides an example of this development process.
 
-Our recent project [4K4D](https://github.com/zju3dv/4K4D) is developed in this fasion.
+Our recent project [4K4D](https://github.com/zju3dv/4K4D) is developed in this fashion.
 
 ```shell
 # Prepare name and GitHub repo of your new project
@@ -78,8 +75,7 @@ repo=https://github.com/zju3dv/${project}
 git clone https://github.com/zju3dv/EasyVolcap ${project}
 
 # Setup the remote of your new project
-cd ${project}
-git remote set-url origin ${repo}
+git set-url origin ${repo}
 
 # Add EasyVolcap as upstream
 git remote add upstream https://github.com/zju3dv/EasyVolcap
@@ -93,15 +89,15 @@ Nevertheless, we still encourage you to read on and possibly follow the tutorial
 
 ## Examples
 
-In the following sections, we'll show examples on how to run ***EasyVolcap*** on a small multi-view video dataset with several of our implemented algorithms, including Instant-NGP+T, 3DGS+T and ENeRFi (ENeRF Improved).
-In the documentation [`static.md`](docs/misc/static.md), we also provide a complete example on how to prepare the dataset using COLMAP and run the above mentioned three models using ***EasyVolcap***.
+In the following sections, we'll show examples of how to run ***EasyVolcap*** on a small multi-view video dataset with several of our implemented algorithms, including Instant-NGP+T, 3DGS+T, and ENeRFi (ENeRF Improved).
+In the documentation [`static.md`](docs/misc/static.md), we also provide a complete example of how to prepare the dataset using COLMAP and run the above-mentioned three models using ***EasyVolcap***.
 
 The example dataset for this section can be downloaded from [this Google Drive link](https://drive.google.com/file/d/1XxeO7TnAPvDugnxguEF5Jp89ERS9CAia/view?usp=sharing). After downloading the example dataset, place the unzipped files inside `data/enerf_outdoor` such that you can see files like:
 - `data/enerf_outdoor/actor1_4_subseq/images`
 - `data/enerf_outdoor/actor1_4_subseq/intri.yml`
 - `data/enerf_outdoor/actor1_4_subseq/extri.yml`
 
-This dataset is a small subset of the [ENeRF-Outdoor](https://github.com/zju3dv/ENeRF/blob/master/docs/enerf_outdoor.md) datset released by our team. For downloading the full dataset, please follow the guide in the [link]((https://github.com/zju3dv/ENeRF/blob/master/docs/enerf_outdoor.md)). 
+This dataset is a small subset of the [ENeRF-Outdoor](https://github.com/zju3dv/ENeRF/blob/master/docs/enerf_outdoor.md) dataset released by our team. For downloading the full dataset, please follow the guide in the [link]((https://github.com/zju3dv/ENeRF/blob/master/docs/enerf_outdoor.md)). 
 
 ### Dataset Structure
 
@@ -123,11 +119,11 @@ data/dataset/sequence # data_root & datadir
     └── 000059
 ```
 
-***EasyVolcap*** is designed to work on the simplest data form: `images` and no more. The key data preprocessings are done in the `dataloader` and `dataset` modules. These steps are done in the dataloader's initialization
-1. We might correct the camera pose with their center of attension and world-up vector (`dataloader_cfg.dataset_cfg.use_aligned_cameras=True`).
+***EasyVolcap*** is designed to work on the simplest data form: `images` and no more. The key data preprocessing are done in the `dataloader` and `dataset` modules. These steps are done in the dataloader's initialization
+1. We might correct the camera pose with their center of attention and world-up vector (`dataloader_cfg.dataset_cfg.use_aligned_cameras=True`).
 2. We undistort read images from the disk using the intrinsic poses and store them as jpeg bytes in memory.
 
-Before running the model, let's first prepare some shell variables for easy-access.
+Before running the model, let's first prepare some shell variables for easy access.
 
 ```shell
 expname=actor1_4_subseq
@@ -136,13 +132,13 @@ datadir=data/enerf_outdoor/actor1_4_subseq
 
 ### Running Instant-NGP+T
 
-We extend Instant-NGP to be time-aware, as a baseline method. With the data preparation is completed, we've got a `images` folder and a pair of `intri.yml` and `extri.yml` file, we can run the l3mhet model.
-Note that this model is not built for dynamics scenes, we train it here mainly for extracting initialization point clouds and computing a tighter bounding box.
+We extend Instant-NGP to be time-aware, as a baseline method. With the data preparation completed, we've got a `images` folder and a pair of `intri.yml` and `extri.yml` files, we can run the l3mhet model.
+Note that this model is not built for dynamic scenes, we train it here mainly for extracting initialization point clouds and computing a tighter bounding box.
 Similar procedures can be applied to other datasets if such initialization is required.
 
 We need to write a config file for this model
-1. Write the data-folder-related stuff inside configs/datasets. Just copy paste [`configs/datasets/enerf_outdoor/actor1_4_subseq.yaml`](configs/datasets/enerf_outdoor/actor1_4_subseq.yaml) and modify the `data_root` and `bounds` (bounding box), or maybe add a camera near far threshold.
-2. Write the experiment config inside configs/exps. Just copy paste [`configs/exps/l3mhet/l3mhet_actor1_4_subseq.yaml`](configs/exps/l3mhet/l3mhet_actor1_4_subseq.yaml) and modify the `dataset` related line in `configs`.
+1. Write the data-folder-related stuff inside configs/datasets. Just copy and paste [`configs/datasets/enerf_outdoor/actor1_4_subseq.yaml`](configs/datasets/enerf_outdoor/actor1_4_subseq.yaml) and modify the `data_root` and `bounds` (bounding box), or maybe add a camera near far threshold.
+2. Write the experiment config inside configs/exps. Just copy and paste [`configs/exps/l3mhet/l3mhet_actor1_4_subseq.yaml`](configs/exps/l3mhet/l3mhet_actor1_4_subseq.yaml) and modify the `dataset` related line in `configs`.
 
 ```shell
 # With your config files ready, you can run the following command to train the model
@@ -151,7 +147,7 @@ evc -c configs/exps/l3mhet/l3mhet_${expname}.yaml
 # Now run the following command to render some output
 evc -t test -c configs/exps/l3mhet/l3mhet_${expname}.yaml,configs/specs/spiral.yaml
 ```
-[`configs/specs/spiral.yaml`](configs/specs/spiral.yaml): please check this file for more details, it's a collection of config to tell the dataloader and visualizer to generate a spiral path by interpolating the given cameras
+[`configs/specs/spiral.yaml`](configs/specs/spiral.yaml): please check this file for more details, it's a collection of configs to tell the dataloader and visualizer to generate a spiral path by interpolating the given cameras
 
 
 ### Running 3DGS+T
@@ -160,9 +156,9 @@ https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/acd83f13
 
 The original [3DGS](https://github.com/graphdeco-inria/gaussian-splatting) uses the sparse reconstruction result of COLMAP for initialization.
 However, we found that the sparse reconstruction result often contains a lot of floating points, which is hard to prune for 3DGS and could easily make the model fail to converge.
-Thus, we opted to use the "dense" reconstruction result of our Instant-NGP+T implementation by computing the RGBD image for input views and concatenate them as the input of 3DGS. The script [`volume_fusion.py`](scripts/tools/volume_fusion.py) controls this process and it should work similarly on all models that supports depth output.
+Thus, we opted to use the "dense" reconstruction result of our Instant-NGP+T implementation by computing the RGBD image for input views and concatenating them as the input of 3DGS. The script [`volume_fusion.py`](scripts/tools/volume_fusion.py) controls this process and it should work similarly on all models that support depth output.
 
-The following script block provides example on how to prepare an initialization for our 3DGS+T implementation.
+The following script block provides an example on how to prepare an initialization for our 3DGS+T implementation.
 
 ```shell
 # Extract geometry (point cloud) for initialization from the l3mhet model
@@ -185,14 +181,14 @@ for file in ${source_folder}/*.ply; do
 done
 ```
 
-Our convension for storing initialization point clouds:
+Our convensions for storing initialization point clouds:
 - Raw point clouds extracted using Instant-NGP or Space Carving are placed inside the `vhulls` folder. These files might be large. It's OK to directly optimize 3DGS+T on these.
-- We might perform some clean up of the point clouds and store them in the `surfs` folder.
-  - For 3DGS+T, the cleaned up point clouds might be easier to optimize since 3DGS is good at growing details but no so good at dealing with floaters (removing or splitting).
-  - For other representations, the cleaned up point clouds works better than the visual hull (from Space Carving) but might not work so well than the raw point clouds of Instant-NGP.
+- We might perform some cleanup of the point clouds and store them in the `surfs` folder.
+  - For 3DGS+T, the cleaned-up point clouds might be easier to optimize since 3DGS is good at growing details but not so good at dealing with floaters (removing or splitting).
+  - For other representations, the cleaned-up point clouds work better than the visual hull (from Space Carving) but might not work so well as the raw point clouds of Instant-NGP.
 
-Then, prepare a experiment config like [`configs/exps/gaussiant/gaussiant_actor1_4_subseq.yaml`](configs/exps/gaussiant/gaussiant_actor1_4_subseq.yaml).
-The [`colmap.yaml`](configs/specs/colmap.yaml) provides some heuristics for large scale static scenes. Remove these if you're not planning on using COLMAP's parameters directly.
+Then, prepare an experiment config like [`configs/exps/gaussiant/gaussiant_actor1_4_subseq.yaml`](configs/exps/gaussiant/gaussiant_actor1_4_subseq.yaml).
+The [`colmap.yaml`](configs/specs/colmap.yaml) provides some heuristics for large-scale static scenes. Remove these if you're not planning on using COLMAP's parameters directly.
 
 ```shell
 # Train a 3DGS model on the ${expname} dataset
@@ -205,7 +201,7 @@ evc -t test -c configs/exps/gaussiant/gaussiant_${expname}.yaml,configs/specs/su
 evc -t gui -c configs/exps/gaussiant/gaussiant_${expname}.yaml,configs/specs/superm.yaml
 ```
 
-The [`superm.yaml`](configs/specs/superm.yaml) skips loading of input images and other initializations for network-only rendering since all informations we need is contained inside the trained model.
+The [`superm.yaml`](configs/specs/superm.yaml) skips the loading of input images and other initializations for network-only rendering since all information we need is contained inside the trained model.
 
 ### Inferencing With ENeRFi
 
@@ -213,7 +209,7 @@ https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/68401485
 
 https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/6d60f2a4-6692-43e8-b682-aa27fcdf9516
 
-Pretrained model for ENeRFi on the DTU dataset can be downloaded from [this Google Drive link](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing). After downloading, rename the model to `latest.npz` place it in `data/trained_model/enerfi_dtu`.
+The pretrained model for ENeRFi on the DTU dataset can be downloaded from [this Google Drive link](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing). After downloading, rename the model to `latest.npz` place it in `data/trained_model/enerfi_dtu`.
 
 ```shell
 # Render ENeRFi with pretrained model
@@ -240,7 +236,7 @@ evc -t gui -c configs/exps/enerfi/enerfi_actor1_4_subseq.yaml,configs/specs/fp16
 
 ### Design Docs
 
-The documentations contained in the [`docs/design`](docs/design) directory contains explanations of design choices and various best practices when developing with ***EasyVolcap***.
+The documentation contained in the [`docs/design`](docs/design) directory contain explanations of design choices and various best practices when developing with ***EasyVolcap***.
 
 [`docs/design/main.md`](docs/design/main.md): Gives an overview of the structure of the ***EasyVolcap*** codebase along with some general usage consensus.
 
@@ -283,7 +279,7 @@ Please refer to their respective licensing terms if you're planning on using the
 ## Citation
 
 If you find this code useful for your research, please cite us using the following BibTeX entry. 
-If you used our implemenetation of other methods, please also cite them separatedly.
+If you used our implementation of other methods, please also cite them separately.
 
 ```bibtex
 @article{xu2023easyvolcap,
