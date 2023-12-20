@@ -1,12 +1,12 @@
 # Running *EasyVolcap* on Static Multi-View Dataset
 
-In the following sections, we'll provide an example on the [data-preparation process using COLMAP and ffmpeg](#colmap-for-camera-poses), and then show how to train and render [Instant-NGP+T](#our-instant-ngpt-implementation), [3DGS+T](#our-3dgst-implementation) and [ENeRF](#our-enerf-implementation-and-generalization) models inside ***EasyVolcap***.
+In the following sections, we'll provide an example of the [data-preparation](#colmap-for-camera-poses) process using COLMAP and ffmpeg](#colmap-for-camera-poses), and then show how to train and render [Instant-NGP+T](#our-instant-ngpt-implementation), [3DGS+T](#our-3dgst-implementation) and [ENeRF](#our-enerf-implementation-and-generalization) models inside ***EasyVolcap***.
 
 Note that although the provided example is on a static dataset.
 **The same preparation, training and rendering process can also be done on a dynamic dataset (e.g. multi-view video) with the same or similar commands.**
-For now, we only provide examples on static datasets since most dynamic datasets are very large in size and hard to download.
+For now, we only provide examples of static datasets since most dynamic datasets are very large in size and hard to download.
 
-For multi-view dataset with static cameras (suppose a sufficient number of cameras for COLMAP to run), run [COLMAP](#colmap-for-camera-poses) and [Instant-NGP+T](#our-instant-ngpt-implementation) on the first frame should give a rough camera pose.
+For multi-view datasets with static cameras (suppose a sufficient number of cameras for COLMAP to run), run [COLMAP](#colmap-for-camera-poses) and [Instant-NGP+T](#our-instant-ngpt-implementation) on the first frame should give a rough camera pose.
 The training and rendering process for models like [Instant-NGP+T](#our-instant-ngpt-implementation), [3DGS+T](#our-3dgst-implementation) and [ENeRF](#our-enerf-implementation-and-generalization) is almost completely the same as the static ones. Take notice of the `dataloader_cfg.dataset_cfg.frame_sample` and `val_dataloader_cfg.dataset_cfg.frame_sample` parameter to control the number of frames to use for training and evaluation. Please refer to [`config.md`](docs/design/config.md) for more details on how to pass in arguments using ***EasyVolcap***'s configuration system.
 
 The example dataset used from this section can be downloaded from [this Google Drive link](https://drive.google.com/file/d/1ZXji-2npuMqZRLkxXMWKUNS9kPikDThb/view?usp=sharing). After extracting the dataset, place the content inside `data/zju` such that you see files like:
@@ -23,7 +23,7 @@ Foreground segmentation is also supported and documented in [`segmentation.md`](
 
 COLMAP is robust, but extremely slow to run. 
 Thus we wrote a script to help you with those annoying parameter tuning and database management with pretty prints of stuff. 
-The parameter choices provided in the script were tested with a recording of the [*Xiaowei Zhou's Lab*](https://xzhou.me).
+The parameter choices provided in the script were tested with a recording of [*Xiaowei Zhou's Lab*](https://xzhou.me).
 
 Here we assume the user has the following directory structure after completing the data preprocessing step.
 
@@ -101,14 +101,14 @@ python scripts/colmap/unflatten_dataset.py --data_root "${datadir}"
 
 https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/41d8cc39-deac-4955-8342-f7c531717ddc
 
-Now the data preparation is completed, you've got a `images` folder and a pair of `intri.yml` and `extri.yml` file, you can run the l3mhet model.
+Now the data preparation is completed, you've got an `images` folder and a pair of `intri.yml` and `extri.yml` files, you can run the l3mhet model.
 - **L3**: 3 levels of importance sampling.
 - **MHE**: Multi-resolution hash encoding.
 - **T**: Supports time dimension input.
 
 You need to write a config file for this model
-1. Write the data-folder-related stuff inside configs/datasets. Just copy paste [`configs/datasets/zju/zju3dv.yaml`](configs/datasets/zju/zju3dv.yaml) and modify the `data_root` and `bounds` (bounding box), or maybe add a camera near far threshold.
-2. Write the experiment config inside configs/exps. Just copy paste [`configs/exps/l3mhet/l3mhet_zju3dv.yaml`](configs/exps/l3mhet/l3mhet_zju3dv.yaml) and modify the `dataset` related line in `configs`.
+1. Write the data-folder-related stuff inside configs/datasets. Just copy and paste [`configs/datasets/zju/zju3dv.yaml`](configs/datasets/zju/zju3dv.yaml) and modify the `data_root` and `bounds` (bounding box), or maybe add the camera's `near` `far` threshold.
+2. Write the experiment config inside configs/exps. Just copy and paste [`configs/exps/l3mhet/l3mhet_zju3dv.yaml`](configs/exps/l3mhet/l3mhet_zju3dv.yaml) and modify the `dataset`-related line in `configs`.
 
 The training should convert to a meaningful stage after 10-20 mins on a 3090 (actually the first 500 iter already produces a reasonable result).
 
@@ -119,7 +119,7 @@ evc -c configs/exps/l3mhet/l3mhet_${expname}.yaml
 # Now run the following command to render some output
 evc -t test -c configs/exps/l3mhet/l3mhet_${expname}.yaml,configs/specs/spiral.yaml
 ```
-[`configs/specs/spiral.yaml`](configs/specs/spiral.yaml): please check this file for more details, it's a collection of config to tell the dataloader and visualizer to generate a spiral path by interpolating the given cameras
+[`configs/specs/spiral.yaml`](configs/specs/spiral.yaml): please check this file for more details, it's a collection of configurations to tell the dataloader and visualizer to generate a spiral path by interpolating the given cameras
 
 ### Our [3DGS](https://github.com/graphdeco-inria/gaussian-splatting)+T Implementation
 
@@ -131,14 +131,14 @@ After preparing the dataset and model with COLMAP and Instant-NGP following the 
 
 The original [3DGS](https://github.com/graphdeco-inria/gaussian-splatting) uses the sparse reconstruction result of COLMAP for initialization.
 However, we found that the sparse reconstruction result often contains a lot of floating points, which is hard to prune for 3DGS and could easily make the model fail to converge.
-Thus, we opted to use the "dense" reconstruction result of our Instant-NGP+T implementation by computing the RGBD image for input views and concatenate them as the input of 3DGS. The script [`volume_fusion.py`](scripts/tools/volume_fusion.py) controls this process and it should work similarly on all models that supports depth output.
+Thus, we opted to use the "dense" reconstruction result of our Instant-NGP+T implementation by computing the RGBD image for input views and concatenating them as the input of 3DGS. The script [`volume_fusion.py`](scripts/tools/volume_fusion.py) controls this process and it should work similarly on all models that support depth output.
 
 Following the official [Instant-NGP](https://github.com/NVlabs/instant-ngp) implementation, we also perform camera parameter optimizations during the training of the Instant-NGP+T model (extrinsic parameters for now).
 The script responsible for extracting the camera parameters is [`extract_optimized_cameras.py`](scripts/tools/extract_optimized_cameras.py).
 An `optimized` folder will be created inside your dataset root, where a pair of `intri.yml` and `extri.yml` will be stored there.
-After extract, use [`optimized.yaml`](configs/specs/optimized.yaml) in your experiment config for applying the optimized parameters.
+After extraction, use [`optimized.yaml`](configs/specs/optimized.yaml) in your experiment config for applying the optimized parameters.
 
-The following script block provides example on how to extract the optimzed camera parameters and prepare an initialization for our 3DGS+T implementation.
+The following script block provides examples of how to extract the optimized camera parameters and prepare an initialization for our 3DGS+T implementation.
 
 ```shell
 # Extract optimized cameras from the l3mhet model
@@ -153,14 +153,14 @@ mkdir -p ${datadir}/vhulls
 cp data/geometry/l3mhet_${expname}/POINT/frame0000.ply ${datadir}/vhulls/000000.ply
 ```
 
-Our convension for storing initialization point clouds:
+Our convention for storing initialization point clouds:
 - Raw point clouds extracted using Instant-NGP or Space Carving are placed inside the `vhulls` folder. These files might be large. It's OK to directly optimize 3DGS+T on these.
-- We might perform some clean up of the point clouds and store them in the `surfs` folder.
-  - For 3DGS+T, the cleaned up point clouds might be easier to optimize since 3DGS is good at growing details but no so good at dealing with floaters (removing or splitting).
-  - For other representations, the cleaned up point clouds works better than the visual hull (from Space Carving) but might not work so well than the raw point clouds of Instant-NGP.
+- We might perform some clean-up of the point clouds and store them in the `surfs` folder.
+  - For 3DGS+T, the cleaned-up point clouds might be easier to optimize since 3DGS is good at growing details but not so good at dealing with floaters (removing or splitting).
+  - For other representations, the cleaned-up point clouds work better than the visual hull (from Space Carving) but might not work so well compared to the raw point clouds of Instant-NGP.
 
-Then, prepare a experiment config like [`configs/exps/gaussiant/gaussiant_zju3dv.yaml`](configs/exps/gaussiant/gaussiant_zju3dv.yaml).
-The [`colmap.yaml`](configs/specs/colmap.yaml) provides some heuristics for large scale static scenes. Remove these if you're not planning on using COLMAP's parameters directly.
+Then, prepare a nexperiment config like [`configs/exps/gaussiant/gaussiant_zju3dv.yaml`](configs/exps/gaussiant/gaussiant_zju3dv.yaml).
+The [`colmap.yaml`](configs/specs/colmap.yaml) provides some heuristics for large-scale static scenes. Remove these if you're not planning on using COLMAP's parameters directly.
 
 ```shell
 # Train a 3DGS model on the ${expname} dataset
@@ -173,7 +173,7 @@ evc -t test -c configs/exps/gaussiant/gaussiant_${expname}.yaml,configs/specs/su
 evc -t gui -c configs/exps/gaussiant/gaussiant_${expname}.yaml,configs/specs/superm.yaml
 ```
 
-The [`superm.yaml`](configs/specs/superm.yaml) skips loading of input images and other initializations for network-only rendering since all informations we need is contained inside the trained model.
+The [`superm.yaml`](configs/specs/superm.yaml) skips the loading of input images and other initializations for network-only rendering since all the information we need is contained inside the trained model.
 
 ### Our Improved [ENeRF](https://github.com/zju3dv/ENeRF) Implementation and Generalization
 
@@ -181,7 +181,7 @@ https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/24aaaade
 
 https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/9e6d65cb-8977-4ded-81d7-769b86d3aa95
 
-Pretrained model for ENeRFi on the DTU dataset can be downloaded from [this Google Drive link](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing). After downloading, rename the model to `latest.npz` place it in `data/trained_model/enerfi_dtu`.
+Pre-trained model for ENeRFi on the DTU dataset can be downloaded from [this Google Drive link](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing). After downloading, rename the model to `latest.npz` place it in `data/trained_model/enerfi_dtu`.
 
 ```shell
 # Render ENeRF with GUI on zju3dv dataset

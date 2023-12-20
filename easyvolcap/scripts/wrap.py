@@ -7,10 +7,7 @@ from easyvolcap.utils.console_utils import *
 # fmt: on
 
 
-# Calls torchrun under the hood
-
-
-def configurable_entrypoint(SEPERATION='--', LAUNCHER='python', EASYVOLCAP='easyvolcap/scripts/main.py',
+def configurable_entrypoint(SEPERATION='--', LAUNCHER='', EASYVOLCAP='evc',
                             default_launcher_args=[],
                             extra_launcher_args=[],
                             default_easyvolcap_args=[],
@@ -33,16 +30,21 @@ def configurable_entrypoint(SEPERATION='--', LAUNCHER='python', EASYVOLCAP='easy
     if launcher_args: args.append(' '.join(launcher_args))
     args.append(EASYVOLCAP)
     if easyvolcap_args: args.append(' '.join(easyvolcap_args))
+
+    # The actual invokation
     run(' '.join(args))
 
 
 def dist_entrypoint():
+    # Distribuated training
     configurable_entrypoint(LAUNCHER='torchrun', default_launcher_args=['--nproc_per_node', 'auto'], extra_easyvolcap_args=['distributed=True'])
 
 
 def prof_entrypoint():
-    configurable_entrypoint(LAUNCHER='python', extra_easyvolcap_args=['profiler_cfg.enabled=True'])
+    # Profiling
+    configurable_entrypoint(extra_easyvolcap_args=['profiler_cfg.enabled=True'])
 
 
 def gui_entrypoint():
-    configurable_entrypoint(LAUNCHER='python', EASYVOLCAP='easyvolcap/scripts/main.py -t gui', default_easyvolcap_args=['-c', 'configs/specs/gui.yaml'])
+    # Directly run GUI without external requirements
+    configurable_entrypoint(EASYVOLCAP='evc -t gui', default_easyvolcap_args=['-c', 'configs/specs/gui.yaml'])

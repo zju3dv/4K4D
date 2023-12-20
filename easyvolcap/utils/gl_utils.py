@@ -22,7 +22,7 @@ from easyvolcap.utils.color_utils import cm_cpu_store
 from easyvolcap.utils.depth_utils import depth_curve_fn
 from easyvolcap.utils.data_utils import load_pts, load_mesh, to_cuda
 from easyvolcap.utils.fcds_utils import prepare_feedback_transform, get_opencv_camera_params
-from easyvolcap.utils.net_utils import typed, multi_gather, create_meshgrid, volume_rendering, raw2alpha, torch_dtype_to_numpy_dtype, load_pretrained
+from easyvolcap.utils.net_utils import typed, multi_gather, create_meshgrid, volume_rendering, raw2alpha, torch_dtype_to_numpy_dtype, load_pretrained, get_bounds
 from easyvolcap.utils.net_utils import CHECK_CUDART_ERROR, FORMAT_CUDART_ERROR
 
 # fmt: off
@@ -84,34 +84,16 @@ def common_opengl_options():
     # gl.glPixelStorei(gl.GL_PACK_ALIGNMENT, 1)
 
 
-def open_read_close(file: str):
+def load_shader_source(file: str = 'splat.frag'):
+    # Ideally we can just specify the shader name instead of an variable
+    if not exists(file):
+        file = f'{dirname(__file__)}/shaders/{file}'
+    if not exists(file):
+        file = file.replace('shaders/', '')
+    if not exists(file):
+        raise RuntimeError(f'Shader file: {file} does not exist')
     with open(file, 'r') as f:
         return f.read()
-
-
-QUAD_VERT_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/quad.vert')
-QUAD_FRAG_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/quad.frag')
-MESH_VERT_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/mesh.vert')
-MESH_FRAG_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/mesh.frag')
-POINT_VERT_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/point.vert')
-POINT_FRAG_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/point.frag')
-UQUAD_VERT_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/uquad.vert')
-UQUAD_FRAG_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/uquad.frag')
-DQUAD_VERT_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/dquad.vert')
-DQUAD_FRAG_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/dquad.frag')
-
-# Fast point splatting
-SPLAT_VERT_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/splat.vert')
-SPLAT_FRAG_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/splat.frag')
-USPLAT_VERT_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/usplat.vert')
-USPLAT_FRAG_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/usplat.frag')
-
-# Pre-transform
-PASS_SPLAT_VERT_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/pass_splat.vert')
-
-# Depth peeling for depth sorting
-IDX_SPLAT_VERT_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/idx_splat.vert')
-IDX_SPLAT_FRAG_SHADER_SRC = open_read_close(f'{dirname(__file__)}/shaders/idx_splat.frag')
 
 
 def use_gl_program(program: Union[shaders.ShaderProgram, dict]):
@@ -130,9 +112,8 @@ class Mesh:
         POINTS = 1
         LINES = 2
         TRIS = 3
-        QUADS = 4
+        QUADS = 4  # TODO: Support quad loading
         STRIPS = 5
-        GAUSSIAN = 6
 
     # Helper class to render a mesh on opengl
     # This implementation should only be used for debug visualization
@@ -198,12 +179,12 @@ class Mesh:
     def compile_shaders(self):
         try:
             self.mesh_program = shaders.compileProgram(
-                shaders.compileShader(MESH_VERT_SHADER_SRC, gl.GL_VERTEX_SHADER),
-                shaders.compileShader(MESH_FRAG_SHADER_SRC, gl.GL_FRAGMENT_SHADER)
+                shaders.compileShader(load_shader_source('mesh.vert'), gl.GL_VERTEX_SHADER),
+                shaders.compileShader(load_shader_source('mesh.frag'), gl.GL_FRAGMENT_SHADER)
             )
             self.point_program = shaders.compileProgram(
-                shaders.compileShader(POINT_VERT_SHADER_SRC, gl.GL_VERTEX_SHADER),
-                shaders.compileShader(POINT_FRAG_SHADER_SRC, gl.GL_FRAGMENT_SHADER)
+                shaders.compileShader(load_shader_source('point.vert'), gl.GL_VERTEX_SHADER),
+                shaders.compileShader(load_shader_source('point.frag'), gl.GL_FRAGMENT_SHADER)
             )
         except Exception as e:
             print(str(e).encode('utf-8').decode('unicode_escape'))
@@ -264,17 +245,27 @@ class Mesh:
         gl_dtype = gl.GL_FLOAT if verts.dtype == torch.float else gl.GL_HALF_FLOAT
         self.vert_gl_types = [gl_dtype] * len(self.vert_sizes)
 
+        # Prepare main mesh data: vertices and faces
         self.verts = torch.as_tensor(verts, device=self.store_device)
         self.faces = torch.as_tensor(faces, device=self.store_device, dtype=torch.int32)  # NOTE: No uint32 support
 
-        if colors is not None: self.colors = torch.as_tensor(colors, device=self.store_device, dtype=self.verts.dtype)
-        else: self.colors = self.verts
-        if normals is not None: self.normals = torch.as_tensor(normals, device=self.store_device, dtype=self.verts.dtype)
-        else: self.estimate_vertex_normals()
+        # Prepare colors and normals
+        if colors is not None:
+            self.colors = torch.as_tensor(colors, device=self.store_device, dtype=self.verts.dtype)
+        else:
+            bounds = get_bounds(self.verts[None])[0]
+            self.colors = (self.verts - bounds[0]) / (bounds[1] - bounds[0])
+        if normals is not None:
+            self.normals = torch.as_tensor(normals, device=self.store_device, dtype=self.verts.dtype)
+        else:
+            self.estimate_vertex_normals()
 
+        # Prepare other scalars
         if scalars is not None:
             for k, v in scalars.items():
                 setattr(self, k, torch.as_tensor(v, device=self.store_device, dtype=self.verts.dtype))  # is this ok?
+
+        # Prepare OpenGL related buffer
         self.update_gl_buffers()
 
     def estimate_vertex_normals(self):
@@ -373,6 +364,7 @@ class Mesh:
         gl.glUniformMatrix4fv(self.uniforms.M, 1, gl.GL_FALSE, glm.value_ptr(M))  # o2w
 
     def update_gl_buffers(self):
+        # Might be overwritten
         self.resize_buffers(len(self.verts) if hasattr(self, 'verts') else 0,
                             len(self.faces) if hasattr(self, 'faces') else 0)  # maybe repeated
 
@@ -458,8 +450,8 @@ class Quad(Mesh):
     def compile_shaders(self):
         try:
             self.quad_program = shaders.compileProgram(
-                shaders.compileShader(QUAD_VERT_SHADER_SRC, gl.GL_VERTEX_SHADER),
-                shaders.compileShader(QUAD_FRAG_SHADER_SRC, gl.GL_FRAGMENT_SHADER)
+                shaders.compileShader(load_shader_source('quad.vert'), gl.GL_VERTEX_SHADER),
+                shaders.compileShader(load_shader_source('quad.frag'), gl.GL_FRAGMENT_SHADER)
             )
         except Exception as e:
             print(str(e).encode('utf-8').decode('unicode_escape'))
@@ -659,8 +651,8 @@ class UQuad(Mesh):
     def compile_shaders(self):
         try:
             self.quad_program = shaders.compileProgram(
-                shaders.compileShader(UQUAD_VERT_SHADER_SRC, gl.GL_VERTEX_SHADER),
-                shaders.compileShader(UQUAD_FRAG_SHADER_SRC, gl.GL_FRAGMENT_SHADER)
+                shaders.compileShader(load_shader_source('uquad.vert'), gl.GL_VERTEX_SHADER),
+                shaders.compileShader(load_shader_source('uquad.frag'), gl.GL_FRAGMENT_SHADER)
             )
         except Exception as e:
             print(str(e).encode('utf-8').decode('unicode_escape'))
@@ -685,8 +677,8 @@ class UQuad(Mesh):
 class DQuad(UQuad):
     def compile_shaders(self):
         self.quad_program = shaders.compileProgram(
-            shaders.compileShader(DQUAD_VERT_SHADER_SRC, gl.GL_VERTEX_SHADER),
-            shaders.compileShader(DQUAD_FRAG_SHADER_SRC, gl.GL_FRAGMENT_SHADER)
+            shaders.compileShader(load_shader_source('dquad.vert'), gl.GL_VERTEX_SHADER),
+            shaders.compileShader(load_shader_source('dquad.frag'), gl.GL_FRAGMENT_SHADER)
         )
 
     def draw(self, values: List[List[float]] = [], use_texs=[]):
@@ -837,6 +829,13 @@ class Gaussian(Mesh):
         self.render_depth = render_depth
         self.dpt_cm = dpt_cm
 
+    # Disabling initialization
+    def load_from_file(self, *args, **kwargs):
+        pass
+
+    def load_from_data(self, *args, **kwargs):
+        pass
+
     def compile_shaders(self):
         pass
 
@@ -926,12 +925,12 @@ class Splat(Mesh):
     def compile_shaders(self):
         try:
             self.splat_program = shaders.compileProgram(
-                shaders.compileShader(SPLAT_VERT_SHADER_SRC, gl.GL_VERTEX_SHADER),
-                shaders.compileShader(SPLAT_FRAG_SHADER_SRC, gl.GL_FRAGMENT_SHADER)
+                shaders.compileShader(load_shader_source('splat.vert'), gl.GL_VERTEX_SHADER),
+                shaders.compileShader(load_shader_source('splat.frag'), gl.GL_FRAGMENT_SHADER)
             )
             self.usplat_program = shaders.compileProgram(
-                shaders.compileShader(USPLAT_VERT_SHADER_SRC, gl.GL_VERTEX_SHADER),
-                shaders.compileShader(USPLAT_FRAG_SHADER_SRC, gl.GL_FRAGMENT_SHADER)
+                shaders.compileShader(load_shader_source('usplat.vert'), gl.GL_VERTEX_SHADER),
+                shaders.compileShader(load_shader_source('usplat.frag'), gl.GL_FRAGMENT_SHADER)
             )
         except Exception as e:
             print(str(e).encode('utf-8').decode('unicode_escape'))
@@ -1256,11 +1255,14 @@ class HardwarePeeling(Splat):
     def compile_shaders(self):
         try:
             self.splat_program = shaders.compileProgram(
-                shaders.compileShader(IDX_SPLAT_VERT_SHADER_SRC, gl.GL_VERTEX_SHADER),  # use the pass through quad shader
-                shaders.compileShader(IDX_SPLAT_FRAG_SHADER_SRC, gl.GL_FRAGMENT_SHADER)
+                shaders.compileShader(load_shader_source('idx_splat.vert'), gl.GL_VERTEX_SHADER),  # use the pass through quad shader
+                shaders.compileShader(load_shader_source('idx_splat.frag'), gl.GL_FRAGMENT_SHADER)
             )
         except Exception as e:
-            print(str(e).encode('utf-8').decode('unicode_escape'))
+            try:
+                print(str(e).encode('utf-8').decode('unicode_escape'))
+            except Exception as e:
+                pass
             raise e
 
     def init_gl_buffers(self, v: int = 0, f: int = 0):
