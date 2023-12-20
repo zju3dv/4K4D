@@ -26,6 +26,7 @@ from imgui_bundle import imgui, imguizmo, imgui_toggle, immvision, implot, ImVec
 import glfw
 
 from easyvolcap.engine import cfg  # need this for initialization?
+from easyvolcap.models.noop_model import NoopModel
 from easyvolcap.runners.volumetric_video_runner import VolumetricVideoRunner
 
 from easyvolcap.engine import RUNNERS  # controls the optimization loop of a particular epoch
@@ -243,7 +244,8 @@ class VolumetricVideoViewer:
             self.static.output = output
         else:
             # if totally empty, do not pass in the batch
-            self.static.batch = dotdict()
+            # self.static.batch = add_batch(self.camera.to_batch())  # pass camera information to downstream
+            self.static.batch = dotdict()  # pass camera information to downstream
             self.static.output = dotdict()
 
         # Render GUI
@@ -475,7 +477,9 @@ class VolumetricVideoViewer:
 
         # Other rendering options like visualization type
         if imgui.collapsing_header('Rendering'):
-            if imgui.begin_combo(f'Visualization', self.visualization_type.name):
+            network_available = not isinstance(self.model, NoopModel)
+
+            if network_available and imgui.begin_combo(f'Visualization', self.visualization_type.name):
                 for t in self.runner.visualizer.types:
                     if imgui.selectable(t.name, self.visualization_type == t)[1]:
                         self.visualization_type = t  # construct enum from name
@@ -483,7 +487,8 @@ class VolumetricVideoViewer:
                         imgui.set_item_default_focus()
                 imgui.end_combo()
 
-            if imgui.begin_combo(f'Scalar colormap', self.runner.visualizer.dpt_cm):  # TODO: Implement colormap for other scalars like alpha
+            # Maybe implement colormap for other scalars like alpha
+            if network_available and imgui.begin_combo(f'Scalar colormap', self.runner.visualizer.dpt_cm):
                 for cm in cm_cpu_store:
                     if imgui.selectable(cm, self.runner.visualizer.dpt_cm == cm)[1]:
                         self.runner.visualizer.dpt_cm = cm  # construct enum from name
@@ -491,13 +496,13 @@ class VolumetricVideoViewer:
                         imgui.set_item_default_focus()
                 imgui.end_combo()
 
-            self.visualize_cameras = imgui_toggle.toggle('Visualize cameras', self.visualize_cameras, config=toggle_ios_style)[1]
-            self.visualize_bounds = imgui_toggle.toggle('Visualize bounds', self.visualize_bounds, config=toggle_ios_style)[1]
             self.visualize_axes = imgui_toggle.toggle('Visualize axes', self.visualize_axes, config=toggle_ios_style)[1]
-            self.render_network = imgui_toggle.toggle('Render network', self.render_network, config=toggle_ios_style)[1]
+            self.visualize_bounds = imgui_toggle.toggle('Visualize bounds', self.visualize_bounds, config=toggle_ios_style)[1]
+            if hasattr(self.dataset, 'Ks'): self.visualize_cameras = imgui_toggle.toggle('Visualize cameras', self.visualize_cameras, config=toggle_ios_style)[1]
+            if network_available: self.render_network = imgui_toggle.toggle('Render network', self.render_network, config=toggle_ios_style)[1]
             self.render_meshes = imgui_toggle.toggle('Render meshes', self.render_meshes, config=toggle_ios_style)[1]
-            self.quad.compose = imgui_toggle.toggle('Compose them', self.quad.compose, config=toggle_ios_style)[1]
-            self.use_quad_draw = imgui_toggle.toggle('Drawing quad', self.use_quad_draw, config=toggle_ios_style)[1]  # 1-2ms faster on wsl
+            if network_available: self.quad.compose = imgui_toggle.toggle('Compose them', self.quad.compose, config=toggle_ios_style)[1]
+            if network_available: self.use_quad_draw = imgui_toggle.toggle('Drawing quad', self.use_quad_draw, config=toggle_ios_style)[1]  # 1-2ms faster on wsl
 
             # unsafe_message = f'Unsafe uploading will trade latency with frame rates -> and might lead to crash if the deque size is too small, currently {len(self.frame_buffer_deque)} frames'
             # colored_wrapped_text(0xff5533ff, unsafe_message)
@@ -505,7 +510,7 @@ class VolumetricVideoViewer:
             # tooltip(unsafe_message)
 
             # Model specific rendering options
-            # TODO: Move model specific rendering options down
+            # TODO: Move these to the render_imgui method of 4K4D's samplers
             if hasattr(self.model.sampler, 'volume_rendering'):
                 self.model.sampler.volume_rendering = imgui_toggle.toggle('Volume rendering', self.model.sampler.volume_rendering, config=toggle_ios_style)[1]
             if hasattr(self.model.sampler, 'use_cudagl'):
@@ -550,12 +555,12 @@ class VolumetricVideoViewer:
                 self.model.render_imgui(self, batch)  # some times the model has its own GUI elements
 
             # Almost all models has this option
-            self.quad.compose_power = imgui.slider_float('Compose power', self.quad.compose_power, 1.0, 10.0)[1]  # temporal interpolation
-            self.exposure = imgui.slider_float('Exposure', self.exposure, 0.0, 100.0)[1]  # temporal interpolation
-            self.offset = imgui.slider_float('Offset', self.offset, 0.0, 1.0)[1]  # temporal interpolation
+            if network_available: self.quad.compose_power = imgui.slider_float('Compose power', self.quad.compose_power, 1.0, 10.0)[1]  # temporal interpolation
+            if network_available: self.exposure = imgui.slider_float('Exposure', self.exposure, 0.0, 100.0)[1]  # temporal interpolation
+            if network_available: self.offset = imgui.slider_float('Offset', self.offset, 0.0, 1.0)[1]  # temporal interpolation
 
-            self.render_ratio = imgui.slider_float('Render ratio', self.render_ratio, 0.01, 2.0, flags=imgui.SliderFlags_.always_clamp)[1]  # temporal interpolation
-            self.model.render_chunk_size = imgui.slider_int('Render chunk size', self.model.render_chunk_size, 512, 1048576)[1]
+            if network_available: self.render_ratio = imgui.slider_float('Render ratio', self.render_ratio, 0.01, 2.0, flags=imgui.SliderFlags_.always_clamp)[1]  # temporal interpolation
+            if network_available: self.model.render_chunk_size = imgui.slider_int('Render chunk size', self.model.render_chunk_size, 512, 1048576)[1]
 
             # Special care for realtime4dv rendering
             if hasattr(self.model.sampler, 'cudagl'):
@@ -763,26 +768,25 @@ class VolumetricVideoViewer:
                 self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
                 self.static.render_type = Mesh.RenderType.POINTS
                 self.static.mesh_class = Mesh
-            if imgui.button('Add quad mesh from file'):
-                # TODO: Test this
-                self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
-                self.static.render_type = Mesh.RenderType.QUADS
-                self.static.mesh_class = Mesh
             if imgui.button('Add point splat from file'):
-                # TODO: Test this
                 self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
-                self.static.render_type = Mesh.RenderType.POINTS
                 self.static.mesh_class = Splat
             if imgui.button('Add gaussian splat from file'):
                 self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['3DGS Files', '*.ply *.npz *.pt *.pth'])
-                self.static.render_type = Mesh.RenderType.GAUSSIAN
                 self.static.mesh_class = Gaussian
             if 'add_mesh_dialog' in self.static and \
                self.static.add_mesh_dialog is not None and \
                self.static.add_mesh_dialog.ready(timeout=1):  # this is not moved up since it spans frames # MARK: SLOW
                 directory = self.static.add_mesh_dialog.result()
                 if directory:
-                    self.meshes.append(self.static.mesh_class(filename=directory[0], render_type=self.static.render_type, H=self.H, W=self.W))
+                    # Prepare arguments for mesh creation
+                    kwargs = dotdict()
+                    if 'render_type' in self.static: kwargs.render_type = self.static.render_type
+                    if 'vert_sizes' in self.static: kwargs.vert_sizes = self.static.vert_sizes
+
+                    # Construct and store the mesh
+                    mesh = self.static.mesh_class(filename=directory[0], H=self.H, W=self.W, **kwargs)
+                    self.meshes.append(mesh)
                 self.static.add_mesh_dialog = None
 
             will_delete = []
@@ -944,8 +948,8 @@ class VolumetricVideoViewer:
 
         # Render debug bounding box out
         if self.visualize_bounds:
-            bounds = batch.meta.bounds[0]
-            visualize_cube(proj, vec3(*bounds[0]), vec3(*bounds[1]), thickness=6.0, name='Bounding box')  # bounding box
+            bounds = self.camera.bounds
+            visualize_cube(proj, vec3(*bounds[0]), vec3(*bounds[1]), thickness=6.0)  # bounding box
 
         if self.visualize_axes:
             visualize_axes(proj, vec3(0, 0, 0), vec3(0.1, 0.1, 0.1), thickness=6.0, name='World')  # bounding box
