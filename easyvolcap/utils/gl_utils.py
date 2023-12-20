@@ -18,9 +18,11 @@ from glm import vec2, vec3, vec4, mat3, mat4, mat4x3, mat2x3  # This is actually
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.viewer_utils import Camera
-from easyvolcap.utils.data_utils import load_pts, load_mesh
+from easyvolcap.utils.color_utils import cm_cpu_store
+from easyvolcap.utils.depth_utils import depth_curve_fn
+from easyvolcap.utils.data_utils import load_pts, load_mesh, to_cuda
 from easyvolcap.utils.fcds_utils import prepare_feedback_transform, get_opencv_camera_params
-from easyvolcap.utils.net_utils import typed, multi_gather, create_meshgrid, volume_rendering, raw2alpha, torch_dtype_to_numpy_dtype
+from easyvolcap.utils.net_utils import typed, multi_gather, create_meshgrid, volume_rendering, raw2alpha, torch_dtype_to_numpy_dtype, load_pretrained
 from easyvolcap.utils.net_utils import CHECK_CUDART_ERROR, FORMAT_CUDART_ERROR
 
 # fmt: off
@@ -130,6 +132,7 @@ class Mesh:
         TRIS = 3
         QUADS = 4
         STRIPS = 5
+        GAUSSIAN = 6
 
     # Helper class to render a mesh on opengl
     # This implementation should only be used for debug visualization
@@ -417,6 +420,9 @@ class Mesh:
             gl.glBufferData(gl.GL_ELEMENT_ARRAY_BUFFER, n_faces_bytes, ctypes.c_void_p(0), gl.GL_DYNAMIC_DRAW)
             gl.glBindVertexArray(0)
 
+    def render_imgui(self):
+        pass
+
 
 class Quad(Mesh):
     # A shared texture for CUDA (pytorch) and OpenGL
@@ -561,7 +567,7 @@ class Quad(Mesh):
         verts = np.asarray(verts, dtype=np.float32, order='C')
         return verts
 
-    def render(self, camera):
+    def render(self, camera: Camera = None):
         self.draw()  # no uploading needed
 
     def draw(self, x: int = 0, y: int = 0, w: int = 0, h: int = 0):
@@ -783,17 +789,79 @@ def hareward_peeling_framebuffer(H: int, W: int):
 
 class Gaussian(Mesh):
     def __init__(self,
-                 *args,
-                 **kwargs):
-        super().__init__(*args, **kwargs)
+                 filename: str = 'assets/meshes/zju3dv.npz',
 
-    # Empty init function
+                 gaussian_cfg: dotdict = dotdict(),
+                 quad_cfg: dotdict = dotdict(),
+
+                 render_depth: bool = False,  # show depth or show color
+                 dpt_cm: str = 'linear',
+
+                 H: int = 1024,
+                 W: int = 1024,
+                 **kwargs,
+                 ):
+        # Import Gaussian Model
+        from easyvolcap.engine.registry import call_from_cfg
+        from easyvolcap.utils.gaussian_utils import GaussianModel
+
+        # Housekeeping
+        super().__init__(**kwargs)
+        self.name = split(filename)[-1]
+
+        # Init Gaussian related models, for now only the first gaussian model is supported
+        if filename.endswith('.npz') or filename.endswith('.pt') or filename.endswith('.pth'):
+            # Load from GaussianTSampler
+            pretrained, _ = load_pretrained(filename)  # loaded model and updated path (maybe)
+            pretrained = pretrained.model
+            state_dict = dotdict()
+            for k, v in pretrained.items():
+                if k.startswith('sampler.pcds.0'):
+                    state_dict[k.replace('sampler.pcds.0.', '')] = v
+
+            # Load the parameters into the gaussian model
+            self.gaussian_model: GaussianModel = call_from_cfg(GaussianModel, gaussian_cfg)  # init empty gaussian model
+            self.gaussian_model.load_state_dict(state_dict)  # load the first gaussian model
+            self.gaussian_model.cuda()  # move the parameters to GPU
+
+        elif filename.endswith('.ply'):
+            # Load raw GaussianModel
+            pass
+        else:
+            raise NotImplementedError
+
+        # Init rendering quad
+        self.quad: Quad = call_from_cfg(Quad, quad_cfg, H=H, W=W)
+
+        # Other configurations
+        self.render_depth = render_depth
+        self.dpt_cm = dpt_cm
+
     def compile_shaders(self):
         pass
 
-    # Empty init function
     def update_gl_buffers(self):
         pass
+
+    def resize_textures(self, H: int, W: int):
+        self.quad.resize_textures(H, W)
+
+    # The actual rendering function
+    @torch.no_grad()
+    def render(self, camera: Camera):
+        # Perform actual gaussian rendering
+        batch = to_cuda(camera.to_batch())
+        rgb, acc, dpt = self.gaussian_model.render(batch)
+
+        if self.render_depth:
+            rgba = torch.cat([depth_curve_fn(dpt, cm=self.dpt_cm), acc], dim=-1)  # H, W, 4
+        else:
+            rgba = torch.cat([rgb, acc], dim=-1)  # H, W, 4
+
+        # Copy rendered tensor to screen
+        rgba = (rgba.clip(0, 1) * 255).type(torch.uint8).flip(0)  # transform
+        self.quad.copy_to_texture(rgba)
+        self.quad.render()
 
 
 class Splat(Mesh):

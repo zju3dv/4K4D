@@ -60,6 +60,7 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
                  strict: bool = True,  # strict loading of network and modules?
 
                  resume: bool = True,
+                 test_only: bool = False,
                  exp_name: str = cfg.exp_name,  # name of the experiment
                  pretrained_model: str = '',  # load this model first
                  trained_model: str = f'data/trained_model/{cfg.exp_name}',  # MARK: global configuration
@@ -85,19 +86,19 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
                  timer_sync_cuda: bool = True,
                  ):
         self.model = model  # possibly already a ddp model?
-        self.dataloader = dataloader
-        self.optimizer: Adam = OPTIMIZERS.build(optimizer_cfg, named_params=((k, v) for k, v in model.named_parameters() if v.requires_grad))  # requires parameters
-        self.scheduler: ExponentialLR = SCHEDULERS.build(scheduler_cfg, optimizer=self.optimizer, decay_iter=(epochs if decay_epochs < 0 else decay_epochs) * ep_iter)  # requires parameters
 
         # Used in evaluation
         if not get_rank():  # only build these in main process
             self.val_dataloader = val_dataloader  # different dataloader for validation
-            self.recorder: TensorboardRecorder = RECORDERS.build(recorder_cfg, resume=resume)
             self.evaluator: VolumetricVideoEvaluator = EVALUATORS.build(evaluator_cfg)
             self.visualizer: VolumetricVideoVisualizer = VISUALIZERS.build(visualizer_cfg)
+            self.recorder: TensorboardRecorder = RECORDERS.build(recorder_cfg, resume=resume)
 
-        # Used for periodically changing runner configs, should apply in all processes
-        self.moderator: DatasetRatioModerator = MODERATORS.build(moderator_cfg, runner=self, total_iter=epochs * ep_iter)  # after dataset init
+        if not test_only:
+            self.dataloader = dataloader
+            self.optimizer: Adam = OPTIMIZERS.build(optimizer_cfg, named_params=((k, v) for k, v in model.named_parameters() if v.requires_grad))  # requires parameters
+            self.scheduler: ExponentialLR = SCHEDULERS.build(scheduler_cfg, optimizer=self.optimizer, decay_iter=(epochs if decay_epochs < 0 else decay_epochs) * ep_iter)  # requires parameters
+            self.moderator: DatasetRatioModerator = MODERATORS.build(moderator_cfg, runner=self, total_iter=epochs * ep_iter)  # after dataset init
 
         self.exp_name = exp_name
         self.epochs = epochs

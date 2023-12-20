@@ -45,13 +45,13 @@ def ConfigurableOptimizer(named_params: Iterator[Tuple[str, nn.Parameter]],
     lr_line.lr = lr
     lr_line.eps = eps
     lr_line.weight_decay = weight_decay
-    log('Starting learning rate config:', line(lr_line))
+    if lr_line: log('Starting learning rate config:', line(lr_line))
 
     lr_line = dotdict()
     if len(lr_table): lr_line.lr = lr_table
     if len(eps_table): lr_line.eps = eps_table
     if len(weight_decay_table): lr_line.weight_decay = weight_decay_table
-    log('Special learning rate config:', line(lr_line))
+    if lr_line: log('Special learning rate config:', line(lr_line))
 
     params = []
     for key, value in named_params:

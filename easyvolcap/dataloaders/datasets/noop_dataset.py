@@ -8,7 +8,16 @@ from easyvolcap.dataloaders.datasets.volumetric_video_dataset import VolumetricV
 
 @DATASETS.register_module()
 class NoopDataset(Dataset):
-    def __init__(self, frame_sample, view_sample, closest_using_t=False, near=0.02, far=20, bounds=torch.as_tensor([[-5, -5, -5], [5, 5, 5]]), render_ratio=1.0, **kwargs):
+    def __init__(self,
+                 frame_sample,
+                 view_sample,
+                 closest_using_t=False,
+                 near=0.02,
+                 far=20,
+                 bounds=torch.as_tensor([[-5, -5, -5], [5, 5, 5]]),
+                 render_ratio=1.0,
+                 focal_ratio: float = 1.0,
+                 **kwargs):
         self.view_sample = view_sample
         self.frame_sample = frame_sample
         self.closest_using_t = closest_using_t
@@ -27,6 +36,7 @@ class NoopDataset(Dataset):
         self.far = far
         self.bounds = torch.as_tensor(bounds)
         self.render_ratio = render_ratio
+        self.focal_ratio = focal_ratio
 
     def __len__(self):
         return self.n_latents * self.n_views

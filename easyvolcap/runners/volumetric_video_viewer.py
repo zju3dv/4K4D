@@ -47,7 +47,7 @@ class VolumetricVideoViewer:
                  runner: VolumetricVideoRunner,  # already built outside of this init
 
                  window_size: List[int] = [768, 1366],  # height, width
-                 window_title: str = f'Volumetric Video Viewer - {{FPS:.3f}} FPS',  # MARK: global config
+                 window_title: str = f'EasyVolcap',  # MARK: global config
                  exp_name: str = cfg.exp_name,
 
                  font_size: int = 18,
@@ -358,7 +358,7 @@ class VolumetricVideoViewer:
         # Titles
         fps, frame_time = self.get_fps_and_frame_time()
         name, device, memory = self.get_device_and_memory()
-        glfw.set_window_title(self.window, self.window_title.format(FPS=fps))
+        # glfw.set_window_title(self.window, self.window_title.format(FPS=fps)) # might confuse window managers
 
         # Being the main window
         imgui.begin(f'{self.W}x{self.H} {fps:.3f} fps###main', flags=imgui.WindowFlags_.menu_bar)
@@ -756,24 +756,26 @@ class VolumetricVideoViewer:
 
         if imgui.collapsing_header('Meshes & splats'):
             if imgui.button('Add triangle mesh from file'):
-                self.static.add_mesh_dialog = pfd.open_file("Select file", filters=['All Files', "*.ply"])
+                self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
                 self.static.render_type = Mesh.RenderType.TRIS
                 self.static.mesh_class = Mesh
             if imgui.button('Add point cloud from file'):
-                self.static.add_mesh_dialog = pfd.open_file("Select file", filters=['All Files', "*.ply"])
+                self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
                 self.static.render_type = Mesh.RenderType.POINTS
                 self.static.mesh_class = Mesh
             if imgui.button('Add quad mesh from file'):
-                self.static.add_mesh_dialog = pfd.open_file("Select file", filters=['All Files', "*.ply"])
+                # TODO: Test this
+                self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
                 self.static.render_type = Mesh.RenderType.QUADS
                 self.static.mesh_class = Mesh
             if imgui.button('Add point splat from file'):
-                self.static.add_mesh_dialog = pfd.open_file("Select file", filters=['All Files', "*.ply"])
+                # TODO: Test this
+                self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
                 self.static.render_type = Mesh.RenderType.POINTS
                 self.static.mesh_class = Splat
             if imgui.button('Add gaussian splat from file'):
-                self.static.add_mesh_dialog = pfd.open_file("Select file", filters=['All Files', "*.ply"])
-                self.static.render_type = Mesh.RenderType.POINTS
+                self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['3DGS Files', '*.ply *.npz *.pt *.pth'])
+                self.static.render_type = Mesh.RenderType.GAUSSIAN
                 self.static.mesh_class = Gaussian
             if 'add_mesh_dialog' in self.static and \
                self.static.add_mesh_dialog is not None and \
@@ -804,6 +806,7 @@ class VolumetricVideoViewer:
                     mesh.shade_flat = not mesh.shade_flat
                 pop_button_color()
 
+                imgui.same_line()
                 push_button_color(0xff33cc55 if not mesh.render_normal else 0xffaa5588)  # 0x55cc33ff
                 if imgui.button(f'Color ##{i}' if not mesh.render_normal else f'Normal##{i}'):
                     mesh.render_normal = not mesh.render_normal
@@ -820,6 +823,9 @@ class VolumetricVideoViewer:
                 if imgui.button(f'Delete##{i}'):
                     will_delete.append(i)
                 pop_button_color()
+
+                # Maybe the meshes defined a custom gui
+                mesh.render_imgui()
 
             for i in will_delete:
                 del self.meshes[i]

@@ -65,6 +65,8 @@ class TensorboardRecorder:
     def __init__(self,
                  record_dir: str = f'data/record/{cfg.exp_name}',  # MARK: global configuration
                  resume: bool = True,  # MARK: global configuration
+                 verbose: bool = True,
+                 record_config: bool = True,
                  ):
         # NOTE: extra redundancy here, in runner we should only log or call things if in main thread
         # But the recorder & model saver (writes to disk) are intrinsically single-process
@@ -78,7 +80,7 @@ class TensorboardRecorder:
         if not resume:
             if os.path.isdir(record_dir) and len(os.listdir(record_dir)):  # only inform the use if there are files
                 # log(red(f'Removing training record: {blue(record_dir)}'))
-                try: run('rm -r {}'.format(record_dir))
+                try: run('rm -r {}'.format(record_dir), quite=not verbose)
                 except: pass
         self.record_dir = record_dir
 
@@ -96,10 +98,11 @@ class TensorboardRecorder:
         # eglctx = cfg.eglctx
         # del cfg._cfg_dict['eglctx']
 
-        with WithoutKey('eglctx', cfg):
-            cfg_file = join(record_dir, f'{cfg.exp_name}_{int(datetime.now().timestamp())}.yaml')
-            cfg.dump(cfg_file, indent=4)  # will save a config file to the record directory
-            log(f'Saved config file to {blue(cfg_file)}')
+        if record_config:
+            with WithoutKey('eglctx', cfg):
+                cfg_file = join(record_dir, f'{cfg.exp_name}_{int(datetime.now().timestamp())}.yaml')
+                cfg.dump(cfg_file, indent=4)  # will save a config file to the record directory
+                log(f'Saved config file to {blue(cfg_file)}')
 
         # cfg.eglctx = eglctx
 

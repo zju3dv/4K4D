@@ -123,7 +123,7 @@ class GaussianTSampler(PointPlanesSampler):
         scr = torch.zeros_like(xyz, requires_grad=True) + 0  # gradient magic
         if scr.requires_grad: scr.retain_grad()
         rasterizer = GaussianRasterizer(raster_settings=raster_settings)
-        rendered_image, rendered_depth, rendered_alpha, radii  = typed(torch.float, torch.float)(rasterizer)(
+        rendered_image, rendered_depth, rendered_alpha, radii = typed(torch.float, torch.float)(rasterizer)(
             means3D=xyz,
             means2D=scr,
             shs=sh.mT,
@@ -136,7 +136,7 @@ class GaussianTSampler(PointPlanesSampler):
 
         rgb = rendered_image[None].permute(0, 2, 3, 1)
         acc = rendered_alpha[None].permute(0, 2, 3, 1)
-        dpt = rendered_depth[None]
+        dpt = rendered_depth[None].permute(0, 2, 3, 1)
         batch.output.rad = radii[None]  # Store radii for later use
         batch.output.scr = scr  # Store screen space points for later use, # !: BATCH
         return rgb, acc, dpt
