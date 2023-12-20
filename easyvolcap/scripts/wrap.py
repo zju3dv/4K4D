@@ -10,36 +10,39 @@ from easyvolcap.utils.console_utils import *
 # Calls torchrun under the hood
 
 
-def configurable_entrypoint(SEPERATION='--', RUNNER='torchrun', EASYVV='easyvolcap/scripts/main.py',
-                            default_runner_args=['--nproc_per_node', 'auto'],
-                            extra_easyvv_args=['distributed=True'],
+def configurable_entrypoint(SEPERATION='--', LAUNCHER='python', EASYVOLCAP='easyvolcap/scripts/main.py',
+                            default_launcher_args=[],
+                            extra_launcher_args=[],
+                            default_easyvolcap_args=[],
+                            extra_easyvolcap_args=[],
                             ):
     # Prepare for args
     args = sys.argv
     if SEPERATION in args:
-        runner_args = args[1:args.index(SEPERATION)]
-        easyvv_args = args[args.index(SEPERATION) + 1:]
+        launcher_args = args[1:args.index(SEPERATION)]
+        easyvolcap_args = args[args.index(SEPERATION) + 1:]
     else:
-        runner_args = default_runner_args  # no extra arguments for torchrun (auto communimation, all available gpus)
-        easyvv_args = args[1:]
-    easyvv_args += extra_easyvv_args
+        launcher_args = default_launcher_args  # no extra arguments for torchrun (auto communimation, all available gpus)
+        easyvolcap_args = args[1:] if len(args[1:]) else default_easyvolcap_args
+    launcher_args += extra_launcher_args
+    easyvolcap_args += extra_easyvolcap_args
 
     # Prepare for invokation
     args = []
-    args.append(RUNNER)
-    if runner_args: args.append(' '.join(runner_args))
-    args.append(EASYVV)
-    if easyvv_args: args.append(' '.join(easyvv_args))
+    args.append(LAUNCHER)
+    if launcher_args: args.append(' '.join(launcher_args))
+    args.append(EASYVOLCAP)
+    if easyvolcap_args: args.append(' '.join(easyvolcap_args))
     run(' '.join(args))
 
 
 def dist_entrypoint():
-    configurable_entrypoint(RUNNER='torchrun', default_runner_args=['--nproc_per_node', 'auto'], extra_easyvv_args=['distributed=True'])
-
-
-def ipdb_entrypoint():
-    configurable_entrypoint(RUNNER='ipdb3', default_runner_args=['-c', 'continue'], extra_easyvv_args=[])
+    configurable_entrypoint(LAUNCHER='torchrun', default_launcher_args=['--nproc_per_node', 'auto'], extra_easyvolcap_args=['distributed=True'])
 
 
 def prof_entrypoint():
-    configurable_entrypoint(RUNNER='python', default_runner_args=[], extra_easyvv_args=['profiler_cfg.enabled=True'])
+    configurable_entrypoint(LAUNCHER='python', extra_easyvolcap_args=['profiler_cfg.enabled=True'])
+
+
+def gui_entrypoint():
+    configurable_entrypoint(LAUNCHER='python', EASYVOLCAP='easyvolcap/scripts/main.py -t gui', default_easyvolcap_args=['-c', 'configs/specs/gui.yaml'])

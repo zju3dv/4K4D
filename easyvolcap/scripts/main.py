@@ -162,7 +162,8 @@ def test(
 
     runner: "VolumetricVideoRunner" = RUNNERS.build(runner_cfg,
                                                     model=model,
-                                                    dataloader=None,  # no training data loader
+                                                    dataloader=None,  # no training dataloader
+                                                    test_only=True,  # no training
                                                     record_images_to_tb=record_images_to_tb,  # another default
                                                     print_test_progress=print_test_progress,  # another default
                                                     val_dataloader=val_dataloader)
@@ -258,12 +259,6 @@ def train(
 
     # The actual calling, with grace full exit
     launcher(**kwargs, runner_function=runner.train, runner_object=runner)
-
-# Should we respect the naming convensions?
-
-
-def gui_entrypoint():
-    gui(cfg)
 
 
 def test_entrypoint():

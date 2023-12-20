@@ -2535,7 +2535,7 @@ def load_pretrained(model_dir: str, resume: bool = True, epoch: int = -1, ext: s
         model_path = model_dir
 
     if ext == '.pt' or ext == '.pth':
-        pretrained = torch.load(model_path, 'cpu')
+        pretrained = dotdict(torch.load(model_path, 'cpu'))
     else:
         from easyvolcap.utils.data_utils import to_tensor
         pretrained = dotdict(model=to_tensor(dict(**np.load(model_path))), epoch=-1)  # the npz files do not contain training parameters
@@ -2615,7 +2615,7 @@ def load_network(
     if pretrained is None:
         pretrained, model_path = load_pretrained(model_dir, resume, epoch, '.pt',
                                                  remove_if_not_resuming=False,
-                                                 warn_if_not_exist=True)
+                                                 warn_if_not_exist=resume)
     if pretrained is None:
         return 0
 

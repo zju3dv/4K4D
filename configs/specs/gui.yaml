@@ -1,0 +1,25 @@
+configs:
+    - configs/base.yaml
+    - configs/specs/superm.yaml
+
+val_dataloader_cfg:
+    dataset_cfg:
+        type: NoopDataset
+        frame_sample: [0, 1, 1]
+        view_sample: [0, 1, 1]
+
+viewer_cfg:
+    render_network: False
+
+runner_cfg:
+    resume: False
+    recorder_cfg:
+        verbose: False
+        record_config: False
+    visualizer_cfg:
+        verbose: False
+
+model_cfg:
+    type: NoopModel
+
+exp_name: gui # simple gui

@@ -8,8 +8,8 @@ from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.sh_utils import eval_sh
 from easyvolcap.utils.timer_utils import timer
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import make_buffer, make_params
-from easyvolcap.utils.net_utils import batch_rodrigues, torch_inverse_2x2
+from easyvolcap.utils.data_utils import to_x, add_batch
+from easyvolcap.utils.net_utils import make_buffer, make_params, batch_rodrigues, torch_inverse_2x2, typed
 
 
 @torch.jit.script
@@ -230,6 +230,41 @@ def convert_to_gaussian_camera(K: torch.Tensor,
 
 
 class GaussianModel(nn.Module):
+    def __init__(self,
+                 xyz: torch.Tensor = None,
+                 colors: torch.Tensor = None,
+                 init_occ: float = 0.1,
+                 sh_deg: int = 3,
+                 scale_min: float = 1e-4,
+                 scale_max: float = 1e1,
+                 ):
+        super().__init__()
+
+        @torch.jit.script
+        def scaling_activation(x, scale_min: float = scale_min, scale_max: float = scale_max):
+            return torch.sigmoid(x) * (scale_max - scale_min) + scale_min
+
+        @torch.jit.script
+        def scaling_inverse_activation(x, scale_min: float = scale_min, scale_max: float = scale_max):
+            return torch.logit(((x - scale_min) / (scale_max - scale_min)).clamp(1e-5, 1 - 1e-5))
+
+        self.setup_functions(scaling_activation=scaling_activation, scaling_inverse_activation=scaling_inverse_activation)
+
+        # SH realte configs
+        self.active_sh_degree = make_buffer(torch.zeros(1))
+        self.max_sh_degree = sh_deg
+
+        # Initalize trainable parameters
+        self.create_from_pcd(xyz, colors, init_occ)
+
+        # Densification related parameters
+        self.max_radii2D = make_buffer(torch.zeros(self.get_xyz.shape[0]))
+        self.xyz_gradient_accum = make_buffer(torch.zeros((self.get_xyz.shape[0], 1)))
+        self.denom = make_buffer(torch.zeros((self.get_xyz.shape[0], 1)))
+
+        # Perform some model messaging before loading
+        self._register_load_state_dict_pre_hook(self._load_state_dict_pre_hook)
+
     def setup_functions(self,
                         scaling_activation=torch.exp,
                         scaling_inverse_activation=torch.log,
@@ -250,39 +285,6 @@ class GaussianModel(nn.Module):
         self.scaling_inverse_activation = getattr(torch, scaling_inverse_activation) if isinstance(scaling_inverse_activation, str) else scaling_inverse_activation
         self.inverse_opacity_activation = getattr(torch, inverse_opacity_activation) if isinstance(inverse_opacity_activation, str) else inverse_opacity_activation
         self.covariance_activation = build_covariance_from_scaling_rotation
-
-    def __init__(self,
-                 xyz: torch.Tensor,
-                 colors: torch.Tensor,
-                 init_occ: float = 0.1,
-                 sh_deg: int = 3,
-                 scale_min: float = 1e-4,
-                 scale_max: float = 1e1,
-                 ):
-        super().__init__()
-
-        @torch.jit.script
-        def scaling_activation(x, scale_min: float = scale_min, scale_max: float = scale_max):
-            return torch.sigmoid(x) * (scale_max - scale_min) + scale_min
-
-        @torch.jit.script
-        def scaling_inverse_activation(x, scale_min: float = scale_min, scale_max: float = scale_max):
-            return torch.logit(((x - scale_min) / (scale_max - scale_min)).clamp(1e-5, 1 - 1e-5))
-
-        self.setup_functions(scaling_activation=scaling_activation, scaling_inverse_activation=scaling_inverse_activation)
-        # self.setup_functions()
-
-        # sh realte configs
-        self.active_sh_degree = make_buffer(torch.zeros(1))
-        self.max_sh_degree = sh_deg
-
-        # initalize trainable parameters
-        self.create_from_pcd(xyz, colors, init_occ)
-
-        # densification related parameters
-        self.max_radii2D = make_buffer(torch.zeros(self.get_xyz.shape[0]))
-        self.xyz_gradient_accum = make_buffer(torch.zeros((self.get_xyz.shape[0], 1)))
-        self.denom = make_buffer(torch.zeros((self.get_xyz.shape[0], 1)))
 
     @property
     def device(self):
@@ -319,6 +321,8 @@ class GaussianModel(nn.Module):
 
     def create_from_pcd(self, xyz: torch.Tensor, colors: torch.Tensor, opacity: float = 0.1):
         from simple_knn._C import distCUDA2
+        if xyz is None:
+            xyz = torch.empty(0, 3, device='cuda')  # by default, init empty gaussian model on CUDA
 
         features = torch.zeros((xyz.shape[0], 3, (self.max_sh_degree + 1) ** 2))
         if colors is not None:
@@ -339,6 +343,13 @@ class GaussianModel(nn.Module):
         self._scaling = make_params(scales)
         self._rotation = make_params(rots)
         self._opacity = make_params(opacities)
+
+    @torch.no_grad()
+    def _load_state_dict_pre_hook(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+        # Supports loading points and features with different shapes
+        if prefix is not '': prefix = prefix + '.' # special care for when we're loading the model directly
+        for name, params in self.named_parameters():
+            params.data = params.data.new_empty(state_dict[f'{prefix}{name}'].shape)
 
     def reset_opacity(self, optimizer_state):
         for _, val in optimizer_state.items():
@@ -593,6 +604,58 @@ class GaussianModel(nn.Module):
         elements[:] = list(map(tuple, attributes))
         el = PlyElement.describe(elements, 'vertex')
         PlyData([el]).write(path)
+
+    def render(self, batch: dotdict):
+        # TODO: Make rendering function easier to read, now there're at least 3 types of gaussian rendering function
+        from diff_gauss import GaussianRasterizationSettings, GaussianRasterizer
+
+        # Prepare renderable parameters, without batch
+        xyz = self.get_xyz
+        scale3 = self.get_scaling
+        rot4 = self.get_rotation
+        occ = self.get_opacity
+        sh = self.get_features
+
+        # Prepare the camera transformation for Gaussian
+        gaussian_camera = to_x(prepare_gaussian_camera(add_batch(batch)), torch.float)
+
+        # Prepare rasterization settings for gaussian
+        raster_settings = GaussianRasterizationSettings(
+            image_height=gaussian_camera.image_height,
+            image_width=gaussian_camera.image_width,
+            tanfovx=gaussian_camera.tanfovx,
+            tanfovy=gaussian_camera.tanfovy,
+            bg=torch.full([3], 0.0, device=xyz.device),  # GPU # TODO: make these configurable
+            scale_modifier=1.0,  # TODO: make these configurable
+            viewmatrix=gaussian_camera.world_view_transform,
+            projmatrix=gaussian_camera.full_proj_transform,
+            sh_degree=self.active_sh_degree,
+            campos=gaussian_camera.camera_center,
+            prefiltered=False,
+            debug=False,
+        )
+
+        # Rasterize visible Gaussians to image, obtain their radii (on screen).
+        scr = torch.zeros_like(xyz, requires_grad=True) + 0  # gradient magic
+        if scr.requires_grad: scr.retain_grad()
+        rasterizer = GaussianRasterizer(raster_settings=raster_settings)
+        rendered_image, rendered_depth, rendered_alpha, radii = typed(torch.float, torch.float)(rasterizer)(
+            means3D=xyz,
+            means2D=scr,
+            shs=sh,
+            colors_precomp=None,
+            opacities=occ,
+            scales=scale3,
+            rotations=rot4,
+            cov3D_precomp=None,
+        )
+
+        # No batch dimension
+        rgb = rendered_image.permute(1, 2, 0)
+        acc = rendered_alpha.permute(1, 2, 0)
+        dpt = rendered_depth.permute(1, 2, 0)
+
+        return rgb, acc, dpt  # H, W, C
 
 
 def render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tensor, scaling_modifier=1.0, override_color=None):

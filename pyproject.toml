@@ -59,11 +59,11 @@ packages = [ # ................?????
 
 [project.scripts]
 evc = "easyvolcap.scripts.main:main_entrypoint"
-evc-gui = "easyvolcap.scripts.main:gui_entrypoint"
 evc-test = "easyvolcap.scripts.main:test_entrypoint"
 evc-train = "easyvolcap.scripts.main:train_entrypoint"
+
+evc-gui = "easyvolcap.scripts.wrap:gui_entrypoint"
 evc-dist = "easyvolcap.scripts.wrap:dist_entrypoint"
-evc-ipdb = "easyvolcap.scripts.wrap:ipdb_entrypoint"   # deprecated
 evc-prof = "easyvolcap.scripts.wrap:prof_entrypoint"
 
 # This should only serve as a commanline registration
