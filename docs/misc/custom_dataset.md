@@ -59,7 +59,7 @@ conda activate easyvolcap
 python3 setup.py develop
 ```
 
-After installation, first, you need to capture the `ground1f` and `background1f` images using your sparse set of cameras as described in the [wild + multiple sparse](https://chingswy.github.io/easymocap-public-doc/quickstart/calibration/wild-sparse.html), where `background1f` is a set of static background only images captured by your multi-view cameras, and `ground1f` is the same set of background with a chessboard inside captured by your multi-view cameras which is used to align the scale and center of the colmap calibrated world coordinate system to the real world scale and to the place of the chessboard. For example, if you have a sparse set of webcam, `eg.` logitech webcam, you can perform the capture by:
+After installation, first, you need to capture the `ground1f` and `background1f` images using your sparse set of cameras as described in the [wild + multiple sparse](https://chingswy.github.io/easymocap-public-doc/quickstart/calibration/wild-sparse.html), where `background1f` is a set of static background-only images captured by your multi-view cameras, and `ground1f` is the same set of background with a chessboard inside captured by your multi-view cameras which is used to align the scale and center of the COLMAP calibrated world coordinate system to the real world scale and to the place of the chessboard. For example, if you have a sparse set of webcams, `eg.` a Logitech webcam, you can perform the capture by:
 
 ```shell
 cd ~/EasyMocap
@@ -71,7 +71,7 @@ python3 apps/camera/realtime_display.py --cfg_cam config/camera/usb-logitech.yml
 python3 apps/camera/realtime_display.py --cfg_cam config/camera/usb-logitech.yml --display --num 1 --out ./data/ground1f
 ```
 
-Then, you can use you cell iphone to record a video alongside your set of cameras, you can see how it goes in the example provided in [wild + multiple sparse](https://chingswy.github.io/easymocap-public-doc/quickstart/calibration/wild-sparse.html), and load the video to the `~/EasyMocap/data/background1f/` directory. After all the data is ready, you can run the following command to perform the sparse calibration using the [script](../../scripts/colmap/sparse_calibration.sh):
+Then, you can use your cell phone to record a video alongside your set of cameras, you can see how it goes in the example provided in [wild + multiple sparse](https://chingswy.github.io/easymocap-public-doc/quickstart/calibration/wild-sparse.html), and load the video to the `~/EasyMocap/data/background1f/` directory. After all the data is ready, you can run the following command to perform the sparse calibration using the [script](../../scripts/colmap/sparse_calibration.sh):
 
 ```shell
 cd ~/easyvolcap
@@ -79,7 +79,7 @@ source scripts/colmap/sparse_calibration.sh
 CUDA_VISIBLE_DEVICES=0 calibration 
 ```
 
-Remember to change the paths of your `EasyMocap` and `scene_root` if you put it somewhere different than the default path. After the calibration is done, you can find the **EasyVolcap** required format camera parameters `extri.yml` and `intri.yml` under the `colmap/align/static/images` sub-directory of your `scene_root` directory. Create the symbolic link to any dataset root directory that are captured by the same set of cameras, and you can use the camera parameters for the dataset.
+Remember to change the paths of your `EasyMocap` and `scene_root` if you put it somewhere different than the default path. After the calibration is done, you can find the **EasyVolcap** required format camera parameters `extri.yml` and `intri.yml` under the `colmap/align/static/images` sub-directory of your `scene_root` directory. Create the symbolic link to any dataset root directory that is captured by the same set of cameras, and you can use the camera parameters for the dataset.
 
 ## Dense Calibration
 
@@ -103,7 +103,7 @@ Prepare config files like [`volcano.yaml`](../../configs/datasets/volcano/volcan
 Then prepare experiment configs like [`l3mhet_skateboard_static.yaml`](../../configs/exps/l3mhet/l3mhet_skateboard_static.yaml).
 
 Two cases:
-1. The provided dataset contains meaningful background and you want to optimize the camera parameters using the full images.
+1. The provided dataset contains a meaningful background and you want to optimize the camera parameters using the full images.
    Check [`l3mhet_skateboard_static.yaml`](../../configs/exps/l3mhet/l3mhet_skateboard_static.yaml) for an example.
 ```yaml
 configs:
@@ -151,7 +151,7 @@ python scripts/preprocess/extract_videos.py --data_root ${datadir}
 
 ## Segmentation
 
-Masks will be put into the dataset folder with similar structures of the `images` folder:
+Masks will be put into the dataset folder with similar structures to the `images`` folder:
 
 ```shell
 data/dataset/sequence # data_root & datadir
@@ -207,7 +207,7 @@ Prepare config files like [`volcano.yaml`](../../configs/datasets/volcano/volcan
 Note that we expect the camera parameters to have been properly prepared before extracting visual hulls:
 - Converted to ***EasyVolcap*** format
 - Optimized using ***L3MHET*** model (maybe also enable `use_aligned_cameras`)
-- If previous optimzations extracted visual hulls for some of the frames, remove them before extracting on the whole sequence
+- If previous optimizations extracted visual hulls for some of the frames, remove them before extracting on the whole sequence
 
 Space carving scripts:
 
