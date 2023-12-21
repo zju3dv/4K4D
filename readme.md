@@ -32,7 +32,7 @@ After setting up the environment, you should execute the installation command in
 pip install -e . --no-build-isolation --no-deps
 ```
 
-Note that it's not neccessary for all requirements present in [environment.yml](environment.yml) and [requirements.txt](requirements.txt) to be installed on your system as they contain dependencies for other parts of ***EasyVolcap***. Thanks to the modular design of ***EasyVolcap***, this missing packages will not hinder the rendering and training of *4K4D*.
+Note that it's not necessary for all requirements present in [environment.yml](environment.yml) and [requirements.txt](requirements.txt) to be installed on your system as they contain dependencies for other parts of ***EasyVolcap***. Thanks to the modular design of ***EasyVolcap***, this missing packages will not hinder the rendering and training of *4K4D*.
 After the installation process, we're expecting *PyTorch*, *PyTorch3D* and *tiny-cuda-nn* to be present in the current system for the rendering of *4K4D* to work properly.
 For the training of *4K4D*, you should also make sure that *Open3D* is properly installed.
 Other packages can be easily installed using `pip` if errors about their import are encountered.
