@@ -26,7 +26,7 @@ https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/67bde1bf
 
 ## Installation
 
-Copy paste version of the installation process listed below. For a more thorough explanation, read on.
+Copy and paste version of the installation process listed below. For a more thorough explanation, read on.
 ```shell
 # Prepare conda environment
 conda install -n base mamba -y -c conda-forge
@@ -132,13 +132,13 @@ datadir=data/enerf_outdoor/actor1_4_subseq
 
 ### Running Instant-NGP+T
 
-We extend Instant-NGP to be time-aware, as a baseline method. With the data preparation completed, we've got a `images` folder and a pair of `intri.yml` and `extri.yml` files, and we can run the l3mhet model.
+We extend Instant-NGP to be time-aware, as a baseline method. With the data preparation completed, we've got an `images` folder and a pair of `intri.yml` and `extri.yml` files, and we can run the l3mhet model.
 Note that this model is not built for dynamic scenes, we train it here mainly for extracting initialization point clouds and computing a tighter bounding box.
 Similar procedures can be applied to other datasets if such initialization is required.
 
 We need to write a config file for this model
-1. Write the data-folder-related stuff inside configs/datasets. Just copy and paste [`configs/datasets/enerf_outdoor/actor1_4_subseq.yaml`](configs/datasets/enerf_outdoor/actor1_4_subseq.yaml) and modify the `data_root` and `bounds` (bounding box), or maybe add a camera near far threshold.
-2. Write the experiment config inside configs/exps. Just copy and paste [`configs/exps/l3mhet/l3mhet_actor1_4_subseq.yaml`](configs/exps/l3mhet/l3mhet_actor1_4_subseq.yaml) and modify the `dataset` related line in `configs`.
+1. Write the data-folder-related stuff inside configs/datasets. Just copy and paste [`configs/datasets/enerf_outdoor/actor1_4_subseq.yaml`](configs/datasets/enerf_outdoor/actor1_4_subseq.yaml) and modify the `data_root` and `bounds` (bounding box), or maybe add a camera near-far threshold.
+2. Write the experiment config inside configs/exps. Just copy and paste [`configs/exps/l3mhet/l3mhet_actor1_4_subseq.yaml`](configs/exps/l3mhet/l3mhet_actor1_4_subseq.yaml) and modify the `dataset`-related line in `configs`.
 
 ```shell
 # With your config files ready, you can run the following command to train the model
@@ -256,7 +256,7 @@ The documentation contained in the [`docs/design`](docs/design) directory contai
 
 ### Misc Docs
 
-## Acknowledgements
+## Acknowledgments
 
 We would like to acknowledge the following inspiring prior work:
 
