@@ -67,7 +67,7 @@ RECORDERS = Registry('recorders')  # (rarely changed)
 @catch_throw
 def get_parser():
     parser = argparse.ArgumentParser(prog='evc', description='EasyVolumetricVideo Codebase Entrypoint')
-    parser.add_argument('-c', '--config', type=str, default="configs/base.yaml", help='config file path')
+    parser.add_argument('-c', '--config', type=str, default="", help='config file path')
     parser.add_argument('-t', "--type", type=str, choices=['train', 'test', 'gui'], default="train", help='execution mode, train, test or gui')  # evalute, visualize, network, dataset? (only valid when run)
     parser.add_argument("opts", action=DictAction, nargs=argparse.REMAINDER)
     return parser
@@ -89,15 +89,29 @@ def parse_cfg(args):
     args.config = args.config.split(',')  # maybe the user used commas
     configs = args.config[1:]  # other files are considered as base files
     args.config = args.config[0]  # at least one config file is required
-    if 'configs' in args.opts: 
+    if 'configs' in args.opts:
         if isinstance(args.opts['configs'], list): args.opts['configs'] += configs
         else: args.opts['configs'] = [args.opts['configs']] + configs
     else: args.opts['configs'] = configs
 
-    cfg = Config.fromfile(args.config)  # load external configuration file (with hierarchy)
-    cfg.merge_from_dict(args.opts)  # load commandline arguments
-    cfg = update_cfg(cfg)
-    return cfg
+    if exists(args.config):
+        cfg = Config.fromfile(args.config)  # load external configuration file (with hierarchy)
+        cfg.merge_from_dict(args.opts)  # load commandline arguments
+        cfg = update_cfg(cfg)
+        return cfg
+    else:
+        # Default config object
+        return Config(
+            dotdict(
+                exp_name='base',
+                dataloader_cfg=dotdict(dataset_cfg=dotdict()),
+                runner_cfg=dotdict(ep_iter=500, epochs=400),
+                fix_random=False,
+                allow_tf32=True,
+                deterministic=False,
+                benchmark=False,
+            )
+        )  # empty config
 
 
 parser = get_parser()
