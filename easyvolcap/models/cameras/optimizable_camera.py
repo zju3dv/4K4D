@@ -19,7 +19,7 @@ from easyvolcap.utils.net_utils import affine_padding, affine_inverse, make_para
 class OptimizableCamera(nn.Module):
     # TODO: Implement intrinsics optimization
     # MARK: EVIL GLOBAL CONFIG
-    bounds = cfg.dataloader_cfg.dataset_cfg.bounds  # only used for initialization
+    bounds = cfg.dataloader_cfg.dataset_cfg.bounds if 'bounds' in cfg.dataloader_cfg.dataset_cfg else [[-1, -1, -1], [1, 1, 1]]  # only used for initialization
     data_root = cfg.dataloader_cfg.dataset_cfg.data_root if 'data_root' in cfg.dataloader_cfg.dataset_cfg else ''
     vhulls_dir = cfg.dataloader_cfg.dataset_cfg.vhulls_dir if 'vhulls_dir' in cfg.dataloader_cfg.dataset_cfg else 'vhulls'
     images_dir = cfg.dataloader_cfg.dataset_cfg.images_dir if 'images_dir' in cfg.dataloader_cfg.dataset_cfg else 'images'
@@ -27,7 +27,7 @@ class OptimizableCamera(nn.Module):
     view_sample = cfg.dataloader_cfg.dataset_cfg.view_sample if 'view_sample' in cfg.dataloader_cfg.dataset_cfg else [0, None, 1]
     frame_sample = cfg.dataloader_cfg.dataset_cfg.frame_sample if 'frame_sample' in cfg.dataloader_cfg.dataset_cfg else [0, None, 1]
 
-    cams = os.listdir(join(data_root, images_dir)) if os.path.exists(join(data_root, images_dir)) else []
+    cams = os.listdir(join(data_root, images_dir)) if exists(join(data_root, images_dir)) else []
     view_sample, frame_sample = copy(view_sample), copy(frame_sample)
     if len(frame_sample) == 3:
         frame_sample[1] = frame_sample[1] or (len(os.listdir(join(data_root, images_dir, cams[0]))) if len(cams) else -1)  # will error out if using this module
@@ -44,7 +44,7 @@ class OptimizableCamera(nn.Module):
 
     # TODO: Remove the closest using t setting
     closest_using_t = cfg.dataloader_cfg.dataset_cfg.closest_using_t if 'closest_using_t' in cfg.dataloader_cfg.dataset_cfg else False
-    moves_through_time = not os.path.exists(join(data_root, intri_file)) or not os.path.exists(join(data_root, extri_file))
+    moves_through_time = not exists(join(data_root, intri_file)) or not exists(join(data_root, extri_file))
 
     def __init__(self,
                  n_views: int = n_views,

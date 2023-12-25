@@ -444,7 +444,11 @@ def get_tensor_mesh_data(verts: torch.Tensor, faces: torch.Tensor, uv: torch.Ten
     return verts, faces, uv, img, uvfaces
 
 
-def export_dotdict(batch: dotdict, filename):
+def export_npz(batch: dotdict, filename: struct):
+    export_dotdict(batch, filename)
+
+
+def export_dotdict(batch: dotdict, filename: struct):
     batch = to_numpy(batch)
     np.savez_compressed(filename, **batch)
 

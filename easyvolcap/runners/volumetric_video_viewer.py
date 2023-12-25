@@ -948,7 +948,7 @@ class VolumetricVideoViewer:
 
         # Render debug bounding box out
         if self.visualize_bounds:
-            bounds = self.camera.bounds
+            bounds = self.camera.bounds if 'bounds' not in batch.meta else batch.meta.bounds
             visualize_cube(proj, vec3(*bounds[0]), vec3(*bounds[1]), thickness=6.0)  # bounding box
 
         if self.visualize_axes:
