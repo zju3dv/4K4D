@@ -35,6 +35,9 @@ from tqdm.std import tqdm as std_tqdm
 from tqdm.rich import tqdm_rich, FractionColumn, RateColumn
 from easyvolcap.utils.base_utils import default_dotdict, dotdict, DoNothing
 
+pdbr_theme = 'ansi_dark'
+pdbr.utils.set_traceback(pdbr_theme)
+RichPdb._theme = pdbr_theme
 
 class MyYAML(YAML):
     def dumps(self, obj: Union[dict, dotdict]):

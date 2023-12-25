@@ -10,6 +10,7 @@
 
 ***News***:
 
+- 23.12.25 ***EasyVolcap*** now supports [direct import from other locations](#usage).
 - 23.12.13 ***EasyVolcap*** will be presented at SIGGRAPH Asia 2023, Sydney.
 - 23.12.12 ***EasyVolcap*** has been open-sourced.
 - 23.12.12 ***EasyVolcap***'s [arXiv preprint](https://arxiv.org/abs/2312.06575) has been uploaded.
@@ -58,7 +59,24 @@ Note: `pip` dependencies can sometimes fail to install & build. However, not all
 
 ## Usage
 
-### New Project Using ***EasyVolcap***
+***EasyVolcap*** now supports direct import from other locations & codebases.
+After installing, you can not only directly use utility modules and functions from `easyvolcap.utils`, but also import and build upon our core modules and classes.
+
+```python
+# Import the logging and debugging functions
+from easyvolcap.utils.console_utils import * # log, tqdm, @catch_throw
+from easyvolcap.utils.timer_utils import timer  # timer.record
+from easyvolcap.utils.data_utils import export_pts, export_mesh, export_npz
+...
+
+# Import the OpenGL-based viewer and build upon it
+from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
+
+class CustomViewer(VolumetricVideoViewer):
+    ...
+```
+
+### New Project Based on ***EasyVolcap***
 
 If you're interested in developing or researching with ***EasyVolcap***, the recommended way is to fork the repository and modify or append to our source code directly instead of using ***EasyVolcap*** as a module.
 
