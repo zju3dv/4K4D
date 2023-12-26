@@ -39,6 +39,7 @@ pdbr_theme = 'ansi_dark'
 pdbr.utils.set_traceback(pdbr_theme)
 RichPdb._theme = pdbr_theme
 
+
 class MyYAML(YAML):
     def dumps(self, obj: Union[dict, dotdict]):
         if isinstance(obj, dotdict): obj = obj.to_dict()
@@ -658,5 +659,11 @@ def build_parser(d: dict, parser: argparse.ArgumentParser = None):
     if parser is None:
         parser = argparse.ArgumentParser()
     for k, v in d.items():
-        parser.add_argument(f'--{k}', type=type(v), default=v)
+        if isinstance(v, list):
+            parser.add_argument(f'--{k}', type=type(v[0]) if len(v) else str, default=v, nargs='+')
+        elif isinstance(v, bool):
+            parser.add_argument(f'--{k}', action='store_false' if v else 'store_true')
+        else:
+            parser.add_argument(f'--{k}', type=type(v), default=v)
+        # TODO: Add argparse group here
     return parser
