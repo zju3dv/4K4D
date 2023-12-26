@@ -15,7 +15,7 @@ class DisplacementRegressor(nn.Module):
     def __init__(self,
                  in_dim: int,
                  scale: float = 0.15,
-                 zero_canonical: bool = True,
+                 zero_canonical: bool = False,
                  **kwargs,
                  ):
         # Simply an MLP wrapper
@@ -24,7 +24,7 @@ class DisplacementRegressor(nn.Module):
         self.in_dim = in_dim
         self.scale = scale
         self.zero_canonical = zero_canonical
-        self.mlp: MlpRegressor = MlpRegressor(in_dim, **kwargs) # wtf?
+        self.mlp: MlpRegressor = MlpRegressor(in_dim, **kwargs)  # wtf?
         self._register_load_state_dict_pre_hook(self._pre_load_state_dict_hook)
 
     def _pre_load_state_dict_hook(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
