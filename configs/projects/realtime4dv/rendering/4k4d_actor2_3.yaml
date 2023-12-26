@@ -10,5 +10,11 @@ val_dataloader_cfg:
     dataset_cfg:
         focal_ratio: 0.90
 
+model_cfg:
+    sampler_cfg:
+        bg_sampler_cfg:
+            radius_shift: -2.5
+            radius_max: 0.025
+
 # prettier-ignore
 exp_name: {{fileBasenameNoExtension}}

@@ -77,8 +77,8 @@ model_cfg:
             pts_per_pix: 15 # will this cause problem? need to test on 313 scene
         bg_sampler_cfg:
             <<: *sampler_cfg
-            radius_shift: -2.5
-            radius_max: 0.025
+            radius_shift: 0.0
+            radius_max: 0.1
             points_aligned: False
             n_srcs: 8
             pts_per_pix: 32 # will this cause problem? need to test on 313 scene

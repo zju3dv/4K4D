@@ -7,8 +7,8 @@ model_cfg:
         freeze_camera: True
     sampler_cfg:
         points_dir: bkgd/boost
-        radius_shift: -2.5
-        radius_max: 0.025
+        radius_shift: 0.0
+        radius_max: 0.1
         points_aligned: False
         pts_per_pix: 64 # will this cause memory problem?
 
