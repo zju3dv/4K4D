@@ -104,7 +104,7 @@ class PointPlanesSampler(VolumetricVideoModule):
                  points_aligned: bool = True,  # are files in points_dir aligned?
                  points_expanded: bool = True,  # are files in points_dir expanded?
                  points_only: bool = False,  # only expand surfs and exit
-                 reload_surfs: bool = False,  # force reloading of surface
+                 reload_points: bool = False,  # force reloading of surface
                  skip_loading_points: bool = args.type != 'train',  # only when you're loading from a checkpoint # MARK: GLOBAL
 
                  should_preprocess: bool = False,  # use a complex random process to prepare the point cloud for later
@@ -173,7 +173,7 @@ class PointPlanesSampler(VolumetricVideoModule):
             points_dir = OptimizableCamera.vhulls_dir
             if exists(join(data_root, self.points_dir)) and \
                     len(os.listdir(join(data_root, self.points_dir))) >= n_frames and \
-                    not reload_surfs:
+                    not reload_points:
                 points_dir = self.points_dir
                 self.points_aligned = points_aligned
                 self.points_expanded = points_expanded
@@ -184,7 +184,9 @@ class PointPlanesSampler(VolumetricVideoModule):
             self.pcds: nn.ParameterList[nn.Parameter] = nn.ParameterList([  # using module list instead of a constructed tensor for pruning and growing
                 make_params_or_buffer(load_ply(join(points_path, points_files[f]))[0])  # maybe make the points fixed in space
                 for f in tqdm(range(n_frames), desc=f'Loading init pcds from {blue(points_path)}')  # 0-1, is this ok?
-            ]).cuda()
+            ])
+            if self.points_expanded:
+                self.pcds.cuda()  # move to cuda if we're planning on using them later
         self._register_load_state_dict_pre_hook(self._load_state_dict_pre_hook)
         self._register_state_dict_hook(self._state_dict_hook)
 
@@ -284,10 +286,12 @@ class PointPlanesSampler(VolumetricVideoModule):
     def expand_points(self, batch: dotdict = None):
         # Save processing results to disk
         data_root = OptimizableCamera.data_root
-        bounds = torch.tensor(OptimizableCamera.bounds, device=self.pcds[0].device)  # use CPU tensor for now?
+        bounds = torch.tensor(OptimizableCamera.bounds, device='cuda')  # use CPU tensor for now?
         names = sorted(os.listdir(join(data_root, OptimizableCamera.vhulls_dir)))
         vhulls_dir = self.points_dir
         for i, pcd in enumerate(tqdm(self.pcds, desc='Expanding pcds')):
+            self.pcds[i] = self.pcds[i].cuda()  # move this point cloud to cuda
+
             if self.should_preprocess:
                 # Full treatment for adding more points
                 self.apply_to_pcds(partial(filter_bounds, bounds=bounds), range=[i, i + 1])  # duplication (n_points * 2)
@@ -580,7 +584,7 @@ class PointPlanesSampler(VolumetricVideoModule):
 
         # Add a background color
         if self.bg_brightness != 0:
-            batch.output.rgb_map = batch.output.rgb_map * batch.output.acc_map + batch.output.bg_color * (1 - batch.output.acc_map)
+            batch.output.rgb_map = batch.output.rgb_map + batch.output.bg_color * (1 - batch.output.acc_map)
 
     def forward(self, batch: dotdict):
         self.init_points(batch)

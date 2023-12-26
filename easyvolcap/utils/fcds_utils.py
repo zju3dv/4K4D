@@ -230,10 +230,10 @@ def voxel_surface_down_sample(pcd: torch.Tensor, pcd_t: torch.Tensor = None, vox
 
     # Extract dense grid from VoxelGrid using get_voxel
     voxels = o3d_vox.get_voxels()
-    max_index = np.array([vox.grid_index for vox in voxels]).max(axis=0)
+    max_index = np.array([vox.grid_index for vox in voxels]).max(axis=0)  # !: for-loop
     dense_grid = np.zeros((max_index[0] + 1, max_index[1] + 1, max_index[2] + 1))
 
-    for vox in voxels:
+    for vox in voxels:  # !: for-loop
         dense_grid[vox.grid_index[0], vox.grid_index[1], vox.grid_index[2]] = 1
 
     # Use marching cubes to obtain mesh from dense grid
