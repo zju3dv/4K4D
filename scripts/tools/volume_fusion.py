@@ -121,11 +121,27 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
         dpt = multi_gather(dpt, ind[None, ..., None]).float()  # B, P, C
         dir = multi_gather(dir, ind[None, ..., None]).float()  # B, P, C
 
-        filename = join(result_dir, runner.exp_name, runner.visualizer.save_tag, 'POINT', f'{prefix}{f:04d}.ply')
+        # log(f'Removing out-of-near-far points')
+        # near, far = dataset.near, dataset.far  # scalar for controlling camera near far
+        # near_far_mask = pts.new_ones(pts.shape[1:-1], dtype=torch.bool)
+        # for v in range(nv):
+        #     batch = dataset[inds[v, f]]  # get the batch data for this view
+        #     R, T = batch.R, batch.T
+        #     pts_view = pts @ R.mT + T.mT
+        #     near_far_mask &= (pts_view[0, ..., -1] < far) & (pts_view[0, ..., -1] > near)
+        # ind = near_far_mask.nonzero()[..., 0]
+        # prd = multi_gather(prd, ind[None, ..., None]).float()  # B, P, C
+        # pts = multi_gather(pts, ind[None, ..., None]).float()  # B, P, C
+        # rgb = multi_gather(rgb, ind[None, ..., None]).float()  # B, P, C
+        # occ = multi_gather(occ, ind[None, ..., None]).float()  # B, P, C
+        # dpt = multi_gather(dpt, ind[None, ..., None]).float()  # B, P, C
+        # dir = multi_gather(dir, ind[None, ..., None]).float()  # B, P, C
 
         if dataset.use_aligned_cameras and not args.skip_align:  # match the visual hull implementation
             mat = affine_padding(dataset.c2w_avg)  # 4, 4
             pts = (point_padding(pts) @ mat.mT)[..., :3]  # homo
+
+        filename = join(result_dir, runner.exp_name, runner.visualizer.save_tag, 'POINT', f'{prefix}{f:04d}.ply')
         export_pts(pts, rgb, filename=filename)
         log(yellow(f'Fused points saved to {blue(filename)}, totally {cyan(pts.numel() // 3)} points'))
     pbar.close()

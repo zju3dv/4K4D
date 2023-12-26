@@ -652,6 +652,9 @@ def display_table(states: dotdict,
 
 
 def build_parser(d: dict, parser: argparse.ArgumentParser = None):
+    """
+    locals().update(vars(build_parser(locals()).parse_args()))
+    """
     if parser is None:
         parser = argparse.ArgumentParser()
     for k, v in d.items():
