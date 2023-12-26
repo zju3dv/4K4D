@@ -291,20 +291,24 @@ class Camera:
                  movement_speed: float = 1.0,  # gui movement speed
 
                  batch: dotdict = None,  # will ignore all other inputs
+                 string: str = None, # will ignore all other inputs
                  **kwargs,
                  ) -> None:
 
         # Batch (network input parameters)
-        if batch is None:
-            batch = dotdict()
-            batch.H, batch.W, batch.K, batch.R, batch.T, batch.n, batch.f, batch.t, batch.v, batch.bounds = H, W, K, R, T, n, f, t, v, bounds
-        self.from_batch(batch)
-
-        # Other configurables
-        self.origin = vec3(*origin)
-        self.world_up = vec3(*world_up)
-        self.movement_speed = movement_speed
-        # self.front = self.front  # will trigger an update
+        if string is None:
+            if batch is None:
+                batch = dotdict()
+                batch.H, batch.W, batch.K, batch.R, batch.T, batch.n, batch.f, batch.t, batch.v, batch.bounds = H, W, K, R, T, n, f, t, v, bounds
+            self.from_batch(batch)
+            
+            # Other configurables
+            self.origin = vec3(*origin)
+            self.world_up = vec3(*world_up)
+            self.movement_speed = movement_speed
+            # self.front = self.front  # will trigger an update
+        else:
+            self.from_string(string)
 
         # Internal states to facilitate camera position change
         self.is_dragging = False  # rotation

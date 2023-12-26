@@ -170,7 +170,7 @@ class VolumetricVideoViewer:
 
         # Others
         self.skip_exception = skip_exception
-        self.static = dotdict()  # static data store updated through the rendering
+        self.static = dotdict(batch=dotdict(), output=dotdict())  # static data store updated through the rendering
 
     @property
     def render_ratio(self): return self.dataset.render_ratio
@@ -242,11 +242,6 @@ class VolumetricVideoViewer:
             batch, output = self.render()
             self.static.batch = batch
             self.static.output = output
-        else:
-            # if totally empty, do not pass in the batch
-            # self.static.batch = add_batch(self.camera.to_batch())  # pass camera information to downstream
-            self.static.batch = dotdict()  # pass camera information to downstream
-            self.static.output = dotdict()
 
         # Render GUI
         self.draw_imgui(self.static.batch, self.static.output)  # defines GUI elements
@@ -948,7 +943,7 @@ class VolumetricVideoViewer:
 
         # Render debug bounding box out
         if self.visualize_bounds:
-            bounds = self.camera.bounds if 'bounds' not in batch.meta else batch.meta.bounds
+            bounds = self.camera.bounds if 'bounds' not in batch.meta else batch.meta.bounds[0]
             visualize_cube(proj, vec3(*bounds[0]), vec3(*bounds[1]), thickness=6.0)  # bounding box
 
         if self.visualize_axes:
@@ -961,8 +956,8 @@ class VolumetricVideoViewer:
         #     add_debug_text_2d(ImVec2(0, 20), 'Modify in `Rendering` tab for high resolution rendering', 0xff5533ff)
 
         # End of gui and rendering
-        imgui.pop_font()
         imgui.end()
+        imgui.pop_font()
         imgui.render()
         imgui.backends.opengl3_render_draw_data(imgui.get_draw_data())
 
@@ -1323,3 +1318,4 @@ class VolumetricVideoViewer:
 
         self.window = window
         cfg.window = window  # FIXME: UNWANTED GLOBAL VARIABLE
+        # glfw.swap_buffers(self.window) # flush once

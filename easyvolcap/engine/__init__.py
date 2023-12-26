@@ -106,6 +106,7 @@ def parse_cfg(args):
                 exp_name='base',
                 dataloader_cfg=dotdict(dataset_cfg=dotdict()),
                 runner_cfg=dotdict(ep_iter=500, epochs=400),
+                viewer_cfg=dotdict(type='VolumetricVideoViewer'),
                 fix_random=False,
                 allow_tf32=True,
                 deterministic=False,
