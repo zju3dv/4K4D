@@ -75,6 +75,25 @@ from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
 class CustomViewer(VolumetricVideoViewer):
     ...
 ```
+The import will work when actually running the code, but it might fail since some of the autocompletion module [is not fully compatible with the newest editable install](https://code.visualstudio.com/docs/python/editing#_importresolvefailure).
+
+If you see warnings when importing ***EasyVolcap*** in your editor like VSCode, you might want to add the path of your ***EasyVolcap*** codebase to the `python.autoComplete.extraPaths` and `python.analysis.extraPaths` like this:
+
+```json
+{
+  ...
+    "python.autoComplete.extraPaths": ["/home/zju3dv/code/easyvolcap"],
+    "python.analysis.extraPaths": ["/home/zju3dv/code/easyvolcap"]
+}
+```
+
+Another solution is to replace the installation command of ***EasyVolcap*** with a compatible one [using compatible editable install](https://microsoft.github.io/pyright/#/import-resolution?id=editable-installs):
+
+```shell
+pip install -e . --no-build-isolation --no-deps --config-settings editable_mode=compat
+```
+
+Note that this is [marked deprecated in the PEP specification](https://setuptools.pypa.io/en/latest/userguide/development_mode.html#legacy-behavior). Thus our recommendation is to change the setting of your editor instead.
 
 ### New Project Based on ***EasyVolcap***
 
