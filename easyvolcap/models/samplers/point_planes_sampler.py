@@ -101,7 +101,7 @@ class PointPlanesSampler(VolumetricVideoModule):
 
                  # Visual hull initilization related
                  points_dir: str = 'surfs',
-                 points_aligned: bool = True,  # are files in points_dir aligned?
+                 points_aligned: bool = False,  # are files in points_dir aligned?
                  points_expanded: bool = True,  # are files in points_dir expanded?
                  points_only: bool = False,  # only expand surfs and exit
                  reload_points: bool = False,  # force reloading of surface
@@ -226,8 +226,8 @@ class PointPlanesSampler(VolumetricVideoModule):
             from easyvolcap.utils.gl_utils import HardwareRendering
             self.prepare_opengl('cudagl', HardwareRendering, self.dtype, self.dtype, init_H, init_W, n_points)
 
-        if not skip_loading_points:
-            self.init_points()
+        self.skip_loading_points = skip_loading_points
+        self.init_points()
 
     @staticmethod  # i'm literally...
     def _state_dict_hook(self, state_dict, prefix, local_metadata):
@@ -255,6 +255,8 @@ class PointPlanesSampler(VolumetricVideoModule):
 
     @torch.no_grad()
     def init_points(self, batch: dotdict = None):
+        if self.skip_loading_points:
+            return  # do not call this
         # Hacky initialization logic
         if not self.points_expanded:
             self.expand_points()  # make them expand to the desired size (with proper sampling)
@@ -265,11 +267,9 @@ class PointPlanesSampler(VolumetricVideoModule):
 
         # Maybe align with camera transformations
         if not self.points_aligned:
-            try:
+            if 'runner' in cfg and hasattr(cfg.runner.val_dataloader.dataset, 'c2w_avg'):
                 self.align_points()  # make them align with input camera parameters
                 self.points_aligned = True
-            except Exception as e:
-                pass
 
     @torch.no_grad()
     def align_points(self, batch: dotdict = None):
@@ -277,10 +277,11 @@ class PointPlanesSampler(VolumetricVideoModule):
         c2w_avg = dataset.c2w_avg
 
         def align_points(pcd: torch.Tensor, pcd_t: torch.Tensor = None):  # B, N, 3
-            pcd_new = point_padding(pcd) @ affine_inverse(affine_padding(c2w_avg)).mT
+            pcd_new = point_padding(pcd) @ affine_inverse(affine_padding(c2w_avg.to(pcd, non_blocking=True))).mT  # this might be affected by amp
+            pcd_new = pcd_new.type(pcd.dtype)
             pcd_new = pcd_new[..., :3] / pcd_new[..., 3:]
             return pcd_new
-        self.apply_to_pcds(align_points)
+        self.apply_to_pcds(align_points, quite=False)
 
     @torch.no_grad()
     def expand_points(self, batch: dotdict = None):
@@ -338,7 +339,7 @@ class PointPlanesSampler(VolumetricVideoModule):
                       with_inds: bool = False,
                       with_batch: bool = False,  # whether to invoke the `function` in a heterogeneous batch
                       quite: bool = True,
-                      range: List[int] = None,
+                      range: List[int] = [0, None],
                       ):
         # Maybe apply action on batched pcds
         if with_batch:
