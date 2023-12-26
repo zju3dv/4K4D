@@ -34,6 +34,7 @@ def main():
     parser.add_argument('--result_dir', type=str, default='data/geometry')
     parser.add_argument('--occ_thresh', type=float, default=0.01)
     parser.add_argument('--skip_align', action='store_true')
+    parser.add_argument('--near_far_pad', type=float, default=0.0)
     args = parser.parse_args(our_args)
 
     # Entry point first, other modules later to avoid strange import errors
@@ -121,11 +122,31 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
         dpt = multi_gather(dpt, ind[None, ..., None]).float()  # B, P, C
         dir = multi_gather(dir, ind[None, ..., None]).float()  # B, P, C
 
-        filename = join(result_dir, runner.exp_name, runner.visualizer.save_tag, 'POINT', f'{prefix}{f:04d}.ply')
+        log(f'Removing out-of-near-far points')
+        near, far = dataset.near, dataset.far  # scalar for controlling camera near far
+        near_far_mask = pts.new_ones(pts.shape[1:-1], dtype=torch.bool)
+        for v in range(nv):
+            batch = dataset[inds[v, f]]  # get the batch data for this view
+            H, W, K, R, T = batch.H, batch.W, batch.K, batch.R, batch.T
+            pts_view = pts @ R.mT + T.mT
+            pts_pix = pts_view @ K.mT  # N, 3
+            pix = pts_pix[..., :2] / pts_pix[..., 2:]
+            pix = pix / pix.new_tensor([W, H]) * 2 - 1  # N, P, 2 to sample the msk (dimensionality normalization for sampling)
+            outside = ((pix[0] < -1) | (pix[0] > 1)).any(dim=-1)  # P,
+            near_far = ((pts_view[0, ..., -1] < far + args.near_far_pad) & (pts_view[0, ..., -1] > near - args.near_far_pad))  # P,
+            near_far_mask &= near_far | outside
+        ind = near_far_mask.nonzero()[..., 0]
+        prd = multi_gather(prd, ind[None, ..., None]).float()  # B, P, C
+        pts = multi_gather(pts, ind[None, ..., None]).float()  # B, P, C
+        rgb = multi_gather(rgb, ind[None, ..., None]).float()  # B, P, C
+        occ = multi_gather(occ, ind[None, ..., None]).float()  # B, P, C
+        dpt = multi_gather(dpt, ind[None, ..., None]).float()  # B, P, C
+        dir = multi_gather(dir, ind[None, ..., None]).float()  # B, P, C
 
         if dataset.use_aligned_cameras and not args.skip_align:  # match the visual hull implementation
-            mat = affine_padding(dataset.c2w_avg)  # 4, 4
-            pts = (point_padding(pts) @ mat.mT)[..., :3]  # homo
+            pts = (point_padding(pts) @ affine_padding(dataset.c2w_avg).mT)[..., :3]  # homo
+
+        filename = join(result_dir, runner.exp_name, runner.visualizer.save_tag, 'POINT', f'{prefix}{f:04d}.ply')
         export_pts(pts, rgb, filename=filename)
         log(yellow(f'Fused points saved to {blue(filename)}, totally {cyan(pts.numel() // 3)} points'))
     pbar.close()

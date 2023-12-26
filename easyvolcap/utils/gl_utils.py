@@ -136,7 +136,7 @@ class Mesh:
                  # Render options
                  shade_flat: bool = False,  # smooth shading
                  point_radius: float = 0.015,
-                 render_normal: bool = False,
+                 render_normal: bool = True,
 
                  # Storage options
                  store_device: str = 'cpu',
@@ -289,11 +289,17 @@ class Mesh:
             if self.render_type == Mesh.RenderType.TRIS: est_tri_norms()
             elif self.render_type == Mesh.RenderType.POINTS: est_pcd_norms()
             else:
-                log(yellow(f'Unsupported mesh type: {self.render_type} for normal estimation, skipping'))
-                self.normals = self.verts
+                # log(yellow(f'Unsupported mesh type: {self.render_type} for normal estimation, skipping'))
+                if hasattr(self, 'colors'):
+                    self.normals = self.colors * 2 - 1
+                else:
+                    self.normals = self.verts
         else:
-            log(yellow(f'Number of points for mesh too large: {len(self.verts)} > {self.est_normal_thresh}, skipping normal estimation'))
-            self.normals = self.verts
+            # log(yellow(f'Number of points for mesh too large: {len(self.verts)} > {self.est_normal_thresh}, skipping normal estimation'))
+            if hasattr(self, 'colors'):
+                self.normals = self.colors * 2 - 1
+            else:
+                self.normals = self.verts
 
     def offscreen_render(self, eglctx: "eglContextManager", camera: Camera):
         eglctx.resize(camera.W, camera.H)

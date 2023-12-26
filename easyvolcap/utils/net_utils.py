@@ -381,7 +381,7 @@ def reprojection(xyz: torch.Tensor,
 
     H, W = msks.shape[-3:-1]  # sampling size (the largest of all images)
     # pix = pixel_uv_range
-    pix = pix / msks.new_tensor([W, H]) * 2 - 1  # N, P, 2 to sample the msk (dimensionality normalization for sampling)
+    pix = pix / pix.new_tensor([W, H]) * 2 - 1  # N, P, 2 to sample the msk (dimensionality normalization for sampling)
     valid = F.grid_sample(msks.permute(0, 3, 1, 2), pix[:, None], align_corners=True)[:, 0, 0]  # whether this is background
     valid = (valid > 0.5).float().sum(dim=0)  # N, 1, 1, P -> N, P
     valid = (valid / vhull_camera_count >= vhull_thresh) & (vhull_camera_count >= count_thresh)  # P, ratio of cameras sees this

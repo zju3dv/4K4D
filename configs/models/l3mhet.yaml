@@ -34,7 +34,7 @@ val_dataloader_cfg:
 
 runner_cfg:
     epochs: 60 # enough is enough
-    log_interval: 1
+    log_interval: 10
     eval_ep: 5
     save_ep: 5
     save_latest_ep: 5
