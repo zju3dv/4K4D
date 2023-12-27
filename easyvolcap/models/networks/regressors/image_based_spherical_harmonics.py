@@ -18,6 +18,8 @@ class ImageBasedSphericalHarmonics(nn.Module):
                  width: int = 64,
                  depth: int = 1,  # use small regressor network
                  resd_limit: float = 0.25,
+                 resd_init: float = 0.0,
+                 resd_weight_init: float = 0.01,
                  skip_shs: bool = False,
                  skip_eval_shs: bool = False,  # only skip the sh evaluation
                  blend_shs: bool = False,
@@ -44,6 +46,10 @@ class ImageBasedSphericalHarmonics(nn.Module):
                 self.sh_mlp = MlpRegressor(in_dim - 3 + src_dim * 2, self.sh_dim, width, depth, out_actvn=nn.Identity(), **sh_mlp_cfg, **kwargs)
             else:
                 self.sh_mlp = MlpRegressor(in_dim - 3, self.sh_dim, width, depth, out_actvn=nn.Identity(), **sh_mlp_cfg, **kwargs)
+            if resd_init is not None:
+                # TODO: Control the output magnitude
+                [self.sh_mlp.mlp.linears[i].weight.data.normal_(0, resd_weight_init) for i in range(len(self.sh_mlp.mlp.linears))]
+                [self.sh_mlp.mlp.linears[i].bias.data.fill_(resd_init if i == len(self.sh_mlp.mlp.linears) - 1 else -1) for i in range(len(self.sh_mlp.mlp.linears))]
 
     def forward(self, xyz_feat_dir: torch.Tensor, batch: dotdict, return_rgb_sh: bool = False):
         # geo_feat: B, P, C # vox(8) + img(16) + geo(64)?

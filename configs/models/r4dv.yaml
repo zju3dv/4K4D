@@ -40,10 +40,10 @@ runner_cfg:
         milestones: [[0, 1.0]]
 
     epochs: 1600
-    save_latest_ep: 5
+    save_latest_ep: 20 # slow
     # empty_cache_ep: 5
-    save_ep: 10
-    eval_ep: 5
+    save_ep: 20
+    eval_ep: 20
     log_interval: 10
     train_use_amp: True # faster training available for this
 
