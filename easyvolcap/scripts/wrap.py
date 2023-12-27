@@ -37,7 +37,7 @@ def configurable_entrypoint(SEPERATION='--', LAUNCHER='', EASYVOLCAP='evc',
 
 def dist_entrypoint():
     # Distribuated training
-    configurable_entrypoint(LAUNCHER='torchrun', default_launcher_args=['--nproc_per_node', 'auto'], extra_easyvolcap_args=['distributed=True'])
+    configurable_entrypoint(LAUNCHER='torchrun', EASYVOLCAP='easyvolcap/scripts/main.py', default_launcher_args=['--nproc_per_node', 'auto'], extra_easyvolcap_args=['distributed=True'])
 
 
 def prof_entrypoint():
