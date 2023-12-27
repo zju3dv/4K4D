@@ -63,8 +63,9 @@ class VolumetricVideoViewer:
                  visualize_bounds: bool = False,  # will add an extra 0.5ms
                  visualize_paths: bool = True,  # might be laggy for larger datasets
                  visualize_axes: bool = False,  # will add an extra 0.xms
-                 render_meshes: bool = True,
                  render_network: bool = True,
+                 render_meshes: bool = True,
+                 render_alpha: bool = True,
 
                  update_fps_time: float = 0.5,  # be less stressful
                  update_mem_time: float = 0.5,  # be less stressful
@@ -158,6 +159,7 @@ class VolumetricVideoViewer:
             *[Splat(filename=splat, visible=show_preloading, point_radius=0.0015, H=self.H, W=self.W) for splat in splat_preloading],
         ]
         self.render_ratio = render_ratio
+        self.render_alpha = render_alpha
         self.render_meshes = render_meshes
         self.render_network = render_network
         self.use_quad_draw = use_quad_draw
@@ -289,7 +291,7 @@ class VolumetricVideoViewer:
             x, y, w, h = int(x / self.render_ratio), int(y / self.render_ratio), int(w / self.render_ratio), int(h / self.render_ratio)  # FIXME: Never will be an exact match of pixels
             image = resize_image(image, size=(h, w)).contiguous()
         image = (image.clip(0, 1) * 255).type(torch.uint8).flip(0)  # transform
-        self.image = image  # record the image for later use
+        self.image = image if self.render_alpha else image[..., :3]  # record the image for later use
         post_time = timer.record()
 
         # The blitting or quad drawing to move texture onto screen
@@ -496,6 +498,7 @@ class VolumetricVideoViewer:
             if hasattr(self.dataset, 'Ks'): self.visualize_cameras = imgui_toggle.toggle('Visualize cameras', self.visualize_cameras, config=toggle_ios_style)[1]
             if network_available: self.render_network = imgui_toggle.toggle('Render network', self.render_network, config=toggle_ios_style)[1]
             self.render_meshes = imgui_toggle.toggle('Render meshes', self.render_meshes, config=toggle_ios_style)[1]
+            if network_available: self.render_alpha = imgui_toggle.toggle('Render alpha', self.render_alpha, config=toggle_ios_style)[1]
             if network_available: self.quad.compose = imgui_toggle.toggle('Compose them', self.quad.compose, config=toggle_ios_style)[1]
             if network_available: self.use_quad_draw = imgui_toggle.toggle('Drawing quad', self.use_quad_draw, config=toggle_ios_style)[1]  # 1-2ms faster on wsl
 
