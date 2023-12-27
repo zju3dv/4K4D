@@ -499,6 +499,8 @@ class Quad(Mesh):
         assert self.use_cudagl, "Need to enable cuda-opengl interop to copy from device to device, check creation of this Quad"
         w = w or self.W
         h = h or self.H
+        if image.shape[-1] == 3:
+            image = torch.cat([image, image.new_ones(image.shape[:-1] + (1,)) * 255], dim=-1)  # add alpha channel
 
         from cuda import cudart
         kind = cudart.cudaMemcpyKind.cudaMemcpyDeviceToDevice

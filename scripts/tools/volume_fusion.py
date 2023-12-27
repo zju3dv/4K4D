@@ -34,6 +34,9 @@ def main():
     parser.add_argument('--result_dir', type=str, default='data/geometry')
     parser.add_argument('--occ_thresh', type=float, default=0.01)
     parser.add_argument('--skip_align', action='store_true')
+    parser.add_argument('--skip_density', action='store_true')
+    parser.add_argument('--skip_outlier', action='store_true')
+    parser.add_argument('--skip_near_far', action='store_true')
     parser.add_argument('--near_far_pad', type=float, default=0.0)
     args = parser.parse_args(our_args)
 
@@ -92,56 +95,60 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
 
             pbar.update()
 
-        prd = torch.cat(prd, dim=-2)
-        pts = torch.cat(pts, dim=-2)
-        rgb = torch.cat(rgb, dim=-2)
-        occ = torch.cat(occ, dim=-2)
-        dpt = torch.cat(dpt, dim=-2)
-        dir = torch.cat(dir, dim=-2)
+        prd = torch.cat(prd, dim=-2).float()
+        pts = torch.cat(pts, dim=-2).float()
+        rgb = torch.cat(rgb, dim=-2).float()
+        occ = torch.cat(occ, dim=-2).float()
+        dpt = torch.cat(dpt, dim=-2).float()
+        dir = torch.cat(dir, dim=-2).float()
 
         # near = torch.cat(near, dim=-2)
         # far = torch.cat(far, dim=-2)
 
-        log(f'Removing low density points')
-        # ind = ((occ > occ_thresh) & (dpt > near) & (dpt < far))[0, ..., 0].nonzero()[..., 0]  # P,
-        ind = (occ > occ_thresh)[0, ..., 0].nonzero()[..., 0]  # P,
-        prd = multi_gather(prd, ind[None, ..., None]).float()  # B, P, C
-        pts = multi_gather(pts, ind[None, ..., None]).float()  # B, P, C
-        rgb = multi_gather(rgb, ind[None, ..., None]).float()  # B, P, C
-        occ = multi_gather(occ, ind[None, ..., None]).float()  # B, P, C
-        dpt = multi_gather(dpt, ind[None, ..., None]).float()  # B, P, C
-        dir = multi_gather(dir, ind[None, ..., None]).float()  # B, P, C
+        if not args.skip_density:
+            log(f'Removing low density points')
+            # ind = ((occ > occ_thresh) & (dpt > near) & (dpt < far))[0, ..., 0].nonzero()[..., 0]  # P,
+            ind = (occ > occ_thresh)[0, ..., 0].nonzero()[..., 0]  # P,
+            prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
+            pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
+            rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
+            occ = multi_gather(occ, ind[None, ..., None])  # B, P, C
+            dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
+            dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
 
-        # Remove statistic outliers (il_ind -> inlier indices)
-        log(f'Removing outliers')
-        ind = remove_outlier(pts, K=50, std_ratio=4.0, return_inds=True)[0]  # P,
-        prd = multi_gather(prd, ind[None, ..., None]).float()  # B, P, C
-        pts = multi_gather(pts, ind[None, ..., None]).float()  # B, P, C
-        rgb = multi_gather(rgb, ind[None, ..., None]).float()  # B, P, C
-        occ = multi_gather(occ, ind[None, ..., None]).float()  # B, P, C
-        dpt = multi_gather(dpt, ind[None, ..., None]).float()  # B, P, C
-        dir = multi_gather(dir, ind[None, ..., None]).float()  # B, P, C
+        if not args.skip_outlier:
 
-        log(f'Removing out-of-near-far points')
-        near, far = dataset.near, dataset.far  # scalar for controlling camera near far
-        near_far_mask = pts.new_ones(pts.shape[1:-1], dtype=torch.bool)
-        for v in range(nv):
-            batch = dataset[inds[v, f]]  # get the batch data for this view
-            H, W, K, R, T = batch.H, batch.W, batch.K, batch.R, batch.T
-            pts_view = pts @ R.mT + T.mT
-            pts_pix = pts_view @ K.mT  # N, 3
-            pix = pts_pix[..., :2] / pts_pix[..., 2:]
-            pix = pix / pix.new_tensor([W, H]) * 2 - 1  # N, P, 2 to sample the msk (dimensionality normalization for sampling)
-            outside = ((pix[0] < -1) | (pix[0] > 1)).any(dim=-1)  # P,
-            near_far = ((pts_view[0, ..., -1] < far + args.near_far_pad) & (pts_view[0, ..., -1] > near - args.near_far_pad))  # P,
-            near_far_mask &= near_far | outside
-        ind = near_far_mask.nonzero()[..., 0]
-        prd = multi_gather(prd, ind[None, ..., None]).float()  # B, P, C
-        pts = multi_gather(pts, ind[None, ..., None]).float()  # B, P, C
-        rgb = multi_gather(rgb, ind[None, ..., None]).float()  # B, P, C
-        occ = multi_gather(occ, ind[None, ..., None]).float()  # B, P, C
-        dpt = multi_gather(dpt, ind[None, ..., None]).float()  # B, P, C
-        dir = multi_gather(dir, ind[None, ..., None]).float()  # B, P, C
+            # Remove statistic outliers (il_ind -> inlier indices)
+            log(f'Removing outliers')
+            ind = remove_outlier(pts, K=50, std_ratio=4.0, return_inds=True)[0]  # P,
+            prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
+            pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
+            rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
+            occ = multi_gather(occ, ind[None, ..., None])  # B, P, C
+            dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
+            dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
+
+        if not args.skip_near_far:
+            log(f'Removing out-of-near-far points')
+            near, far = dataset.near, dataset.far  # scalar for controlling camera near far
+            near_far_mask = pts.new_ones(pts.shape[1:-1], dtype=torch.bool)
+            for v in range(nv):
+                batch = dataset[inds[v, f]]  # get the batch data for this view
+                H, W, K, R, T = batch.H, batch.W, batch.K, batch.R, batch.T
+                pts_view = pts @ R.mT + T.mT
+                pts_pix = pts_view @ K.mT  # N, 3
+                pix = pts_pix[..., :2] / pts_pix[..., 2:]
+                pix = pix / pix.new_tensor([W, H]) * 2 - 1  # N, P, 2 to sample the msk (dimensionality normalization for sampling)
+                outside = ((pix[0] < -1) | (pix[0] > 1)).any(dim=-1)  # P,
+                near_far = ((pts_view[0, ..., -1] < far + args.near_far_pad) & (pts_view[0, ..., -1] > near - args.near_far_pad))  # P,
+                near_far_mask &= near_far | outside
+            ind = near_far_mask.nonzero()[..., 0]
+            prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
+            pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
+            rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
+            occ = multi_gather(occ, ind[None, ..., None])  # B, P, C
+            dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
+            dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
 
         if dataset.use_aligned_cameras and not args.skip_align:  # match the visual hull implementation
             pts = (point_padding(pts) @ affine_padding(dataset.c2w_avg).mT)[..., :3]  # homo
