@@ -41,9 +41,9 @@ from ctypes import pointer, util
 
 if 'CUDA_VISIBLE_DEVICES' in os.environ:
     CUDA_VISIBLE_DEVICES = list(map(int, [i for i in os.environ['CUDA_VISIBLE_DEVICES'].split(',') if i]))  # remove ''
-    from easyvolcap.utils.dist_utils import get_local_rank
-    # os.environ['EGL_DEVICE_ID'] = str(CUDA_VISIBLE_DEVICES[get_local_rank()])  # TODO: debug this and figure out what `torchrun` does behind the curtain
-    os.environ['EGL_DEVICE_ID'] = str(get_local_rank())
+    from easyvolcap.utils.dist_utils import get_rank
+    # os.environ['EGL_DEVICE_ID'] = str(CUDA_VISIBLE_DEVICES[get_rank()])  # TODO: debug this and figure out what `torchrun` does behind the curtain
+    os.environ['EGL_DEVICE_ID'] = str(get_rank())
 
 
 # # [1] https://devblogs.nvidia.com/egl-eye-opengl-visualization-without-x-server/

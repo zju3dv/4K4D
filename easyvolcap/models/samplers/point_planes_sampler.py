@@ -287,7 +287,8 @@ class PointPlanesSampler(VolumetricVideoModule):
     def expand_points(self, batch: dotdict = None):
         # Save processing results to disk
         data_root = OptimizableCamera.data_root
-        bounds = torch.tensor(OptimizableCamera.bounds, device='cuda')  # use CPU tensor for now?
+        # bounds = torch.tensor(OptimizableCamera.bounds, device='cuda')  # use CPU tensor for now?
+        # bounds = (point_padding(bounds) @ affine_padding(dataset.c2w_avg).mT)[..., :3]  # homo
         names = sorted(os.listdir(join(data_root, OptimizableCamera.vhulls_dir)))
         vhulls_dir = self.points_dir
         for i, pcd in enumerate(tqdm(self.pcds, desc='Expanding pcds')):
@@ -295,7 +296,7 @@ class PointPlanesSampler(VolumetricVideoModule):
 
             if self.should_preprocess:
                 # Full treatment for adding more points
-                self.apply_to_pcds(partial(filter_bounds, bounds=bounds), range=[i, i + 1])  # duplication (n_points * 2)
+                # self.apply_to_pcds(partial(filter_bounds, bounds=bounds), range=[i, i + 1])  # duplication (n_points * 2)
                 self.apply_to_pcds(partial(sample_filter_random_points, K=self.n_points * 10, update_radius=0.05, filter_K=10), range=[i, i + 1])  # growing (duplication)
                 self.apply_to_pcds(partial(voxel_down_sample, voxel_size=self.voxel_size), range=[i, i + 1])  # expand to the desired size
                 self.apply_to_pcds(partial(remove_outlier, K=20), range=[i, i + 1])  # expand to the desired size
@@ -317,7 +318,9 @@ class PointPlanesSampler(VolumetricVideoModule):
             elif self.sampling_type == SamplingType.POISSON_RECONSTRUCTION:
                 pass
             elif self.sampling_type == SamplingType.MARCHING_CUBES_RECONSTRUCTION:
-                self.apply_to_pcds(partial(filter_bounds, bounds=bounds), range=[i, i + 1])  # duplication (n_points * 2)
+                # breakpoint()
+                # self.apply_to_pcds(partial(filter_bounds, bounds=bounds), range=[i, i + 1])  # duplication (n_points * 2)
+                assert len(self.pcds[i])
                 while len(self.pcds[i]) < self.n_points:
                     self.apply_to_pcds(duplicate, range=[i, i + 1])  # duplication (n_points * 2)
                 self.apply_to_pcds(partial(voxel_surface_down_sample, voxel_size=self.voxel_size, dist_th=self.surface_radius, n_points=self.n_points), range=[i, i + 1])
