@@ -9,14 +9,22 @@ parser.add_argument('--input', default='/nas/home/xuzhen/datasets/vhulls.tar.gz.
 parser.add_argument('--only', default=[], nargs='*')
 args = parser.parse_args()
 
-pattern = 'gdrive_linux_amd64 upload "{file}" --recursive'
+file_pattern = 'gdrive_linux_amd64 upload "{file}"'
+folder_pattern = 'gdrive_linux_amd64 upload "{file}" --recursive'
 
 
-def upload(f):
-    run(pattern.format(file=f'{args.input}/{f}'))
+def upload_folder(f, p=folder_pattern):
+    run(p.format(file=f'{args.input}/{f}'))
+
+
+def upload(f, p=file_pattern):
+    run(p.format(file=f))
 
 
 # Will have finished
-files = os.listdir(args.input)
-if len(args.only): files = [f for f in files if f in args.only]
-parallel_execution(files, action=upload)
+if isdir(args.input):
+    files = os.listdir(args.input)
+    if len(args.only): files = [f for f in files if f in args.only]
+    parallel_execution(files, action=upload_folder)
+else:
+    upload(args.input)
