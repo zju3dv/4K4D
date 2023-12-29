@@ -62,7 +62,7 @@ def common_opengl_options():
     gl.glCullFace(gl.GL_BACK)
 
     # Performs alpha trans testing
-    # gl.glEnable(gl.GL_ALPHA_TEST)
+    gl.glEnable(gl.GL_ALPHA_TEST)
 
     # Performs z-buffer testing
     gl.glEnable(gl.GL_DEPTH_TEST)
@@ -76,7 +76,7 @@ def common_opengl_options():
 
     # Enable this to correctly render points
     # https://community.khronos.org/t/gl-point-sprite-gone-in-3-2/59310
-    # gl.glEnable(gl.GL_POINT_SPRITE)  # MARK: ONLY SPRITE IS WORKING FOR NOW
+    gl.glEnable(gl.GL_POINT_SPRITE)  # MARK: ONLY SPRITE IS WORKING FOR NOW
     # gl.glEnable(gl.GL_POINT_SMOOTH) # MARK: ONLY SPRITE IS WORKING FOR NOW
 
     # # Configure how we store the pixels in memory for our subsequent reading of the FBO to store the rendering into memory.

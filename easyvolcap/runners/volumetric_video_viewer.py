@@ -1301,7 +1301,7 @@ class VolumetricVideoViewer:
         self.glsl_version = '#version 330'
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
-        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)  # // 3.2+ only
+        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_COMPAT_PROFILE)  # // 3.2+ only
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, 1)  # 1 is gl.GL_TRUE
 
         # Create a windowed mode window and its OpenGL context
