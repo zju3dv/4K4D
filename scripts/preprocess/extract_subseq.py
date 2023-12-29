@@ -11,9 +11,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_root', default='data/enerf_outdoor/actor1_4')
     parser.add_argument('--out_root', default='data/enerf_outdoor/actor1_4_subseq')
-    parser.add_argument('--frame_sample', default=[0, 150, 5], nargs='*')
+    parser.add_argument('--frame_sample', default=[0, 150, 5], nargs='*', type=int)
     parser.add_argument('--dirs', default=['images', 'bgmtv2', 'surfs'])
-    parser.add_argument('--copy', default=['optimized', 'bkgd'])
+    parser.add_argument('--copy', default=['optimized', 'bkgd'], nargs='*')
     args = parser.parse_args()
 
     b, e, s = args.frame_sample
@@ -28,17 +28,20 @@ def main():
                 cam_files = os.listdir(join(args.data_root, d, cam))
                 cam_files = sorted(cam_files)
                 cam_files = cam_files[b:e:s]
-                for i, f in enumerate(cam_files):
-                    ext = os.path.splitext(f)[-1]
+                for i, f in enumerate(tqdm(cam_files, d)):
+                    ext = splitext(f)[-1]
                     shutil.copy(join(args.data_root, d, cam, f), join(args.out_root, d, cam, f'{i:06d}{ext}'))
         else:
             files = files[b:e:s]
-            for i, f in enumerate(files):
-                ext = os.path.splitext(f)[-1]
+            for i, f in enumerate(tqdm(files, d)):
+                ext = splitext(f)[-1]
                 shutil.copy(join(args.data_root, d, f), join(args.out_root, d, f'{i:06d}{ext}'))
 
     for c in args.copy:
-        shutil.copytree(join(args.data_root, c), join(args.out_root, c))
+        if isdir(join(args.data_root, c)):
+            shutil.copytree(join(args.data_root, c), join(args.out_root, c))
+        else:
+            shutil.copy(join(args.data_root, c), join(args.out_root, c))
 
 
 if __name__ == '__main__':

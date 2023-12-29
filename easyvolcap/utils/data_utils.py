@@ -1136,6 +1136,9 @@ def save_unchanged(img_path: str, img: np.ndarray, quality=100, compression=6):
 
 
 def save_image(img_path: str, img: np.ndarray, jpeg_quality=75, png_compression=9, save_dtype=np.uint8):
+    if isinstance(img, torch.Tensor): img = img.detach().cpu().numpy()
+    if img.ndim == 4: img = np.concatenate(img, axis=0)
+    if img.shape[0] < img.shape[-1] and (img.shape[0] == 3 or img.shape[0] == 4): img = np.transpose(img, (1, 2, 0))
     if np.issubdtype(img.dtype, np.integer):
         img = img / np.iinfo(img.dtype).max  # to float
     if img.shape[-1] >= 3:
