@@ -225,8 +225,8 @@ class VolumetricVideoInferenceDataset(VolumetricVideoDataset):
         write_camera(render_path_cams, self.render_path_root)
 
         # Save the visualized camera paths
-        export_camera(self.input_c2ws, self.input_Ks, filename=join(self.render_path_root, 'input_camera.ply'))
-        export_camera(self.c2ws, self.Ks, filename=join(self.render_path_root, 'interp_camera.ply'))
+        export_camera(self.input_c2ws[:, 0], self.input_Ks[:, 0], filename=join(self.render_path_root, 'input_camera.ply'))
+        export_camera(self.c2ws[:, 0], self.Ks[:, 0], filename=join(self.render_path_root, 'interp_camera.ply'))
 
     def get_indices(self, index: int):
         view_index = index
