@@ -62,7 +62,7 @@ def common_opengl_options():
     gl.glCullFace(gl.GL_BACK)
 
     # Performs alpha trans testing
-    gl.glEnable(gl.GL_ALPHA_TEST)
+    # gl.glEnable(gl.GL_ALPHA_TEST)
 
     # Performs z-buffer testing
     gl.glEnable(gl.GL_DEPTH_TEST)
@@ -76,7 +76,7 @@ def common_opengl_options():
 
     # Enable this to correctly render points
     # https://community.khronos.org/t/gl-point-sprite-gone-in-3-2/59310
-    gl.glEnable(gl.GL_POINT_SPRITE)  # MARK: ONLY SPRITE IS WORKING FOR NOW
+    # gl.glEnable(gl.GL_POINT_SPRITE)  # MARK: ONLY SPRITE IS WORKING FOR NOW
     # gl.glEnable(gl.GL_POINT_SMOOTH) # MARK: ONLY SPRITE IS WORKING FOR NOW
 
     # # Configure how we store the pixels in memory for our subsequent reading of the FBO to store the rendering into memory.
@@ -678,10 +678,14 @@ class UQuad(Mesh):
 
 class DQuad(UQuad):
     def compile_shaders(self):
-        self.quad_program = shaders.compileProgram(
-            shaders.compileShader(load_shader_source('dquad.vert'), gl.GL_VERTEX_SHADER),
-            shaders.compileShader(load_shader_source('dquad.frag'), gl.GL_FRAGMENT_SHADER)
-        )
+        try:
+            self.quad_program = shaders.compileProgram(
+                shaders.compileShader(load_shader_source('dquad.vert'), gl.GL_VERTEX_SHADER),
+                shaders.compileShader(load_shader_source('dquad.frag'), gl.GL_FRAGMENT_SHADER)
+            )
+        except Exception as e:
+            print(str(e).encode('utf-8').decode('unicode_escape'))
+            raise e
 
     def draw(self, values: List[List[float]] = [], use_texs=[]):
         old_function = gl.glGetIntegerv(gl.GL_DEPTH_FUNC)
@@ -1261,10 +1265,7 @@ class HardwarePeeling(Splat):
                 shaders.compileShader(load_shader_source('idx_splat.frag'), gl.GL_FRAGMENT_SHADER)
             )
         except Exception as e:
-            try:
-                print(str(e).encode('utf-8').decode('unicode_escape'))
-            except Exception as e:
-                pass
+            print(str(e).encode('utf-8').decode('unicode_escape'))
             raise e
 
     def init_gl_buffers(self, v: int = 0, f: int = 0):
