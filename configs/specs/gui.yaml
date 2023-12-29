@@ -10,7 +10,6 @@ val_dataloader_cfg:
 
 viewer_cfg:
     render_network: False
-    world_up: [0, 1, 0]
 
 runner_cfg:
     resume: False
