@@ -105,10 +105,19 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
         # near = torch.cat(near, dim=-2)
         # far = torch.cat(far, dim=-2)
 
+        ind = (~pts.isnan())[0, ..., 0].nonzero()[..., 0]  # P,
+        log(f'Removing NaNs: {pts.shape[1] - len(ind)}')
+        prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
+        pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
+        rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
+        occ = multi_gather(occ, ind[None, ..., None])  # B, P, C
+        dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
+        dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
+
         if not args.skip_density:
-            log(f'Removing low density points')
             # ind = ((occ > occ_thresh) & (dpt > near) & (dpt < far))[0, ..., 0].nonzero()[..., 0]  # P,
             ind = (occ > occ_thresh)[0, ..., 0].nonzero()[..., 0]  # P,
+            log(f'Removing low density points: {pts.shape[1] - len(ind)}')
             prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
             pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
             rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
@@ -117,10 +126,9 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
             dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
 
         if not args.skip_outlier:
-
             # Remove statistic outliers (il_ind -> inlier indices)
-            log(f'Removing outliers')
             ind = remove_outlier(pts, K=50, std_ratio=4.0, return_inds=True)[0]  # P,
+            log(f'Removing outliers: {pts.shape[1] - len(ind)}')
             prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
             pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
             rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
@@ -129,7 +137,6 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
             dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
 
         if not args.skip_near_far:
-            log(f'Removing out-of-near-far points')
             near, far = dataset.near, dataset.far  # scalar for controlling camera near far
             near_far_mask = pts.new_ones(pts.shape[1:-1], dtype=torch.bool)
             for v in range(nv):
@@ -143,6 +150,7 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
                 near_far = ((pts_view[0, ..., -1] < far + args.near_far_pad) & (pts_view[0, ..., -1] > near - args.near_far_pad))  # P,
                 near_far_mask &= near_far | outside
             ind = near_far_mask.nonzero()[..., 0]
+            log(f'Removing out-of-near-far points: {pts.shape[1] - len(ind)}')
             prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
             pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
             rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
