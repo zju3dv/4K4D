@@ -65,7 +65,7 @@ class VolumetricVideoDataset(Dataset):
                  view_sample: List = [0, None, 1],  # begin, end, step
                  frame_sample: List = [0, None, 1],  # begin, end, step
                  correct_pix: bool = True,  # move pixel coordinates to the middle of the pixel
-                 use_default_time: bool = False,  # use the time provided by the datasets, rare
+                 use_loaded_time: bool = False,  # use the time provided by the datasets, rare
 
                  # Other default configurations
                  intri_file: str = 'intri.yml',
@@ -194,7 +194,7 @@ class VolumetricVideoDataset(Dataset):
         else: self.n_view_total = len(os.listdir(join(self.data_root, self.images_dir)))  # total number of cameras before filtering
         if self.frame_sample[1] is not None: self.n_frame_total = self.frame_sample[1]
         else: self.n_frame_total = min([len(glob(join(self.data_root, self.images_dir, cam, '*'))) for cam in os.listdir(join(self.data_root, self.images_dir))])  # total number of images before filtering
-        self.use_default_time = use_default_time
+        self.use_loaded_time = use_loaded_time
 
         # Rendering and space carving bounds
         self.bounds = torch.as_tensor(bounds, dtype=torch.float)
@@ -877,10 +877,8 @@ class VolumetricVideoDataset(Dataset):
         meta.n, meta.f = n, f
         meta.w2c, meta.c2w = w2c, c2w
         meta.view_index, meta.latent_index, meta.camera_index, meta.frame_index = view_index, latent_index, camera_index, frame_index
-        meta.t = t if self.use_default_time else self.frame_to_t(frame_index)
+        meta.t = t if self.use_loaded_time else self.frame_to_t(frame_index)
         meta.t = torch.as_tensor(meta.t, dtype=torch.float)  # the dataset provided time or the time fraction
-        meta.time_fraction = self.frame_to_t(frame_index)
-        meta.time_fraction = torch.as_tensor(meta.time_fraction, dtype=torch.float)  # the time fraction
         meta.v = self.camera_to_v(camera_index)
         meta.v = torch.as_tensor(meta.v, dtype=torch.float)  # the time fraction
         meta.n_rays = self.n_rays

@@ -213,7 +213,7 @@ class VolumetricVideoInferenceDataset(VolumetricVideoDataset):
 
         if self.render_path_root is None:
             if self.camera_path_intri is not None:
-                self.render_path_root = os.path.dirname(self.camera_path_intri)
+                self.render_path_root = dirname(self.camera_path_intri)
         else:
             try: save_tag = cfg.runner_cfg.visualizer_cfg.save_tag  # MARK: GLOBAL
             except: save_tag = ''

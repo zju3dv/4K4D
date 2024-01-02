@@ -76,7 +76,7 @@ class VolumetricVideoEvaluator(VolumetricVideoVisualizer):
                     summary[f'{key}_mean'] = np.mean(values)
                     summary[f'{key}_std'] = np.std(values)
         self.metrics.clear()  # clear mean after extracting summary
-        log(summary)
+        if len(summary): log(summary)
         return summary
 
 
