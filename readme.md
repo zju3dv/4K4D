@@ -6,7 +6,7 @@
 ![star](https://img.shields.io/github/stars/zju3dv/EasyVolcap)
 [![license](https://img.shields.io/badge/license-zju3dv-white)](license)
 
-[Paper](https://dl.acm.org/doi/10.1145/3610543.3626173) | [arXiv](https://arxiv.org/abs/2312.06575) | [Example Dataset](https://drive.google.com/file/d/1XxeO7TnAPvDugnxguEF5Jp89ERS9CAia/view?usp=sharing) | [Pretrained Model](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing)
+[Paper](https://dl.acm.org/doi/10.1145/3610543.3626173) | [arXiv](https://arxiv.org/abs/2312.06575) | [Example Dataset](https://drive.google.com/file/d/1XxeO7TnAPvDugnxguEF5Jp89ERS9CAia/view?usp=sharing) | [Pretrained Model](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing) | [4K4D](https://zju3dv.github.io/4k4d)
 
 ***News***:
 
@@ -14,6 +14,7 @@
 - 23.12.13 ***EasyVolcap*** will be presented at SIGGRAPH Asia 2023, Sydney.
 - 23.12.12 ***EasyVolcap*** has been open-sourced.
 - 23.12.12 ***EasyVolcap***'s [arXiv preprint](https://arxiv.org/abs/2312.06575) has been uploaded.
+- 23.10.17 [***4K4D***](https://zju3dv.github.io/4k4d), a real-time 4D view synthesis algorithm developed using ***EasyVolcap***, has been made public.
 - 23.09.26 ***EasyVolcap*** has been accepted to SIGGRAPH Asia 2023, Technical Communications.
 
 ***EasyVolcap*** is a PyTorch library for accelerating neural volumetric video research, particularly in areas of **volumetric video capturing**, reconstruction, and rendering.
