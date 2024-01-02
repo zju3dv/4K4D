@@ -218,7 +218,7 @@ class VolumetricVideoInferenceDataset(VolumetricVideoDataset):
             try: save_tag = cfg.runner_cfg.visualizer_cfg.save_tag  # MARK: GLOBAL
             except: save_tag = ''
             self.render_path_root = join(self.render_path_root, cfg.exp_name)  # MARK: GLOBAL
-            if save_tag != '': self.render_path_root = join(self.render_path_root, save_tag)
+            if save_tag != '': self.render_path_root = join(self.render_path_root, str(save_tag))
 
         # Save the interpolated paths otherwise
         render_path_cams = to_easymocap(self.Ks, self.Hs, self.Ws, self.Rs, self.Ts, self.ts, self.ns, self.fs)
