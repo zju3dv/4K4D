@@ -10,21 +10,12 @@
 
 ***News***:
 
-- 23.12.25 ***EasyVolcap*** now supports [direct import from other locations](#usage).
 - 23.12.13 ***EasyVolcap*** will be presented at SIGGRAPH Asia 2023, Sydney.
-- 23.12.12 ***EasyVolcap*** has been open-sourced.
-- 23.12.12 ***EasyVolcap***'s [arXiv preprint](https://arxiv.org/abs/2312.06575) has been uploaded.
 - 23.10.17 [***4K4D***](https://zju3dv.github.io/4k4d), a real-time 4D view synthesis algorithm developed using ***EasyVolcap***, has been made public.
-- 23.09.26 ***EasyVolcap*** has been accepted to SIGGRAPH Asia 2023, Technical Communications.
 
 ***EasyVolcap*** is a PyTorch library for accelerating neural volumetric video research, particularly in areas of **volumetric video capturing**, reconstruction, and rendering.
 
-Built on the popular and easy-to-use `PyTorch` framework and tailored for researchers, the codebase is easily extensible for idea exploration, fast prototyping, and conducting various ablative and comparison experiments.
-
-Coming from the [`ZJU3DV`](https://github.com/zju3dv) research group at State Key Lab of CAD&CG, Zhejiang University, this framework is the underlying warehouse for many of our projects, papers and new ideas.
-We sincerely hope this framework will be useful for researchers with similar research interests in volumetric videos.
-
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/67bde1bf-7f59-4518-9abf-496290e08d4f
+https://github.com/zju3dv/EasyVolcap/assets/43734697/14fdfb46-5277-4963-ba75-067ea574c87a
 
 ## Installation
 
