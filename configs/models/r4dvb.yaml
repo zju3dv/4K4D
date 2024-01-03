@@ -24,7 +24,6 @@ dataloader_cfg: &dataloader_cfg
         imbound_crop: False # no cropping
         immask_crop: False # no cropping
         immask_fill: False # no filling
-        mask_bkgd: null # do not mask the background region
 
     batch_sampler_cfg: &batch_sampler_cfg
         n_srcs_list: [8]
