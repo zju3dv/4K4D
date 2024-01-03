@@ -64,6 +64,29 @@ class DatasetRatioModerator:
 
 
 @MODERATORS.register_module()
+class DatasetCenterCropRatioModerator(DatasetRatioModerator):
+    def __init__(self,
+                 runner: "VolumetricVideoRunner",
+                 milestones: List[Tuple[int]] = [(0, 1.0)],
+                 skip_first: bool = False,  # this will give you an idea of the memory consumption
+
+                 total_iter: int = 500,  # 500
+                 **kwargs,
+                 ):
+        super().__init__(runner, milestones, skip_first, total_iter, **kwargs)
+
+    def step(self):
+        for i, r in self.milestones:
+            if self.iter >= i:
+                # In multi process dataset, how do we change this setting?
+                if hasattr(self.runner, 'dataloader') and self.runner.dataloader is not None:
+                    self.runner.dataloader.dataset.render_center_crop_ratio = r
+                if hasattr(self.runner, 'val_dataloader') and self.runner.val_dataloader is not None:
+                    self.runner.val_dataloader.dataset.render_center_crop_ratio = r
+        self.iter = self.iter + 1
+
+
+@MODERATORS.register_module()
 class AlternatingModerator:
     def __init__(self,
                  runner: "VolumetricVideoRunner",

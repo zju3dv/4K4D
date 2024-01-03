@@ -30,7 +30,7 @@ class VolumetricVideoInferenceDataset(VolumetricVideoDataset):
                  # Hemisphere or custom camera path
                  interp_type: str = Interpolation.ORBIT.name,  # Interpolation.CUBIC or Interpolation.LINEAR
                  interp_cfg: dotdict = dotdict(
-                     orbit_radius=None,  # if None, will use the avearge radius
+                     orbit_radius=-1,  # if < 0, will use the avearge radius
                      orbit_height=0.,  # sphere_height shift
                      smoothing_term=-1.0,  # negativa values -> compute spiral path, otherwise just interpolate
                  ),
@@ -218,7 +218,7 @@ class VolumetricVideoInferenceDataset(VolumetricVideoDataset):
             try: save_tag = cfg.runner_cfg.visualizer_cfg.save_tag  # MARK: GLOBAL
             except: save_tag = ''
             self.render_path_root = join(self.render_path_root, cfg.exp_name)  # MARK: GLOBAL
-            if save_tag != '': self.render_path_root = join(self.render_path_root, save_tag)
+            if save_tag != '': self.render_path_root = join(self.render_path_root, str(save_tag))
 
         # Save the interpolated paths otherwise
         render_path_cams = to_easymocap(self.Ks, self.Hs, self.Ws, self.Rs, self.Ts, self.ts, self.ns, self.fs)

@@ -28,7 +28,6 @@ model_cfg:
 val_dataloader_cfg:
     dataset_cfg:
         <<: *dataset_cfg
-        mask_bkgd: 0.0
         frame_sample: [0, 150, 30]
     sampler_cfg:
         view_sample: [0, 60, 20]

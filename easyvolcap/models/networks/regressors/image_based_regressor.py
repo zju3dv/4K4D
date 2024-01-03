@@ -2,8 +2,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from easyvolcap.engine import REGRESSORS
-from easyvolcap.utils.net_utils import MLP, chunkify
 from easyvolcap.utils.base_utils import dotdict
+from easyvolcap.utils.net_utils import MLP, chunkify, get_function
 
 
 @REGRESSORS.register_module()
@@ -25,7 +25,7 @@ class ImageBasedRegressor(nn.Module):
         super().__init__()
         self.in_dim = in_dim
         self.use_dir = use_dir
-        self.out_actvn = getattr(F, out_actvn) if isinstance(out_actvn, str) else out_actvn
+        self.out_actvn = get_function(out_actvn) if isinstance(out_actvn, str) else out_actvn
         self.manual_chunking = manual_chunking
 
         self.mlp = MLP(in_dim + src_dim, width, depth, 1, out_actvn=nn.Identity(), dtype=dtype)  # vox(8) + img(16) + geo(64) + img_feat_rgb_dir (32 + 3 + 4)

@@ -259,8 +259,8 @@ class Visualization(Enum):
     SEMANTIC = auto()  # semantic nerf related
     SRCINPS = auto()  # Souce input images for image based rendering
 
-    # Nerfies related
-    JACOBIAN = auto()  # semantic nerf related
+    # jacobian related
+    JACOBIAN = auto()
 
     # Relighting related
     ENVMAP = auto()
@@ -1505,7 +1505,7 @@ def load_ims_bytes_from_disk(ims: np.ndarray, desc="Loading image bytes from dis
 def load_resize_undist_im_bytes(imp: str,
                                 K: np.ndarray,
                                 D: np.ndarray,
-                                ratio: Union[float, List[int]],
+                                ratio: Union[float, List[int]] = 1.0,
                                 center_crop_size: List[int] = [-1, -1],
                                 encode_ext='.jpg',
                                 decode_flag=cv2.IMREAD_UNCHANGED,
@@ -1525,20 +1525,26 @@ def load_resize_undist_im_bytes(imp: str,
     else:
         img = cv2.undistort(img, K, D)
 
-    if isinstance(ratio, float): H, W = int(oH * ratio), int(oW * ratio)
-    else: H, W = ratio  # ratio is actually the target image size
-    rH, rW = H / oH, W / oW
-    K = K.copy()
-    K[0:1] = K[0:1] * rW  # K[0, 0] *= rW
-    K[1:2] = K[1:2] * rH  # K[1, 1] *= rH
+    # Maybe update image size
+    if not ((isinstance(ratio, float) and ratio == 1.0)):
+        if isinstance(ratio, float):
+            H, W = int(oH * ratio), int(oW * ratio)
+        else:
+            H, W = ratio  # ratio is actually the target image size
+        rH, rW = H / oH, W / oW
+        K = K.copy()
+        K[0:1] = K[0:1] * rW  # K[0, 0] *= rW
+        K[1:2] = K[1:2] * rH  # K[1, 1] *= rH
 
-    img = cv2.resize(img, (W, H), interpolation=cv2.INTER_AREA)  # H, W, 3, uint8
+        img = cv2.resize(img, (W, H), interpolation=cv2.INTER_AREA)  # H, W, 3, uint8
 
     # Crop the image and intrinsic matrix if specified
-    if center_crop_size[0] > 0: img, K, H, W = center_crop_img_ixt(img, K, H, W, center_crop_size)
+    if center_crop_size[0] > 0:
+        img, K, H, W = center_crop_img_ixt(img, K, H, W, center_crop_size)
 
     is_success, buffer = cv2.imencode(encode_ext, img, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])
 
+    if 'H' not in locals(): H, W = oH, oW
     return buffer, K, H, W
 
 
@@ -1567,8 +1573,8 @@ def center_crop_img_ixt(img: np.ndarray, K: np.ndarray, H: int, W: int,
 def load_resize_undist_ims_bytes(ims: np.ndarray,
                                  Ks: np.ndarray,
                                  Ds: np.ndarray,
-                                 ratio: Union[float, List[int], List[float]],
-                                 center_crop_size: List[int],
+                                 ratio: Union[float, List[int], List[float]] = 1.0,
+                                 center_crop_size: List[int] = [-1, -1],
                                  desc="Loading image bytes from disk",
                                  **kwargs):
     sh = ims.shape  # V, N
@@ -1588,13 +1594,14 @@ def load_resize_undist_ims_bytes(ims: np.ndarray,
     Ds = list(Ds)  # only convert outer most dim to list
 
     if isinstance(ratio, list) and len(ratio) and isinstance(ratio[0], float):
-        ratio = np.broadcast_to(np.asarray(ratio)[None, None, :], (sh + (2,)))  # V, N, 2
-        ratio = ratio.reshape((np.prod(sh), 2))  # V * N, 2
+        ratio = np.broadcast_to(np.asarray(ratio)[:, None], sh)  # V, N
+        ratio = ratio.reshape((np.prod(sh)))
         ratio = list(ratio)
+    elif isinstance(ratio, list):
+        ratio = np.asarray(ratio)  # avoid expansion in parallel execution
 
-    center_crop_size = np.broadcast_to(np.asarray(center_crop_size)[None, None, :], (sh + (2,)))  # V, N
-    center_crop_size = center_crop_size.reshape((np.prod(sh), 2))
-    center_crop_size = list(center_crop_size)
+    if isinstance(center_crop_size, list):
+        center_crop_size = np.asarray(center_crop_size)  # avoid expansion
 
     # Should we batch these instead of loading?
     out = parallel_execution(ims, Ks, Ds, ratio, center_crop_size,
@@ -1703,7 +1710,7 @@ def decode_fill_im_bytes(im_bytes: BytesIO,
 
 def decode_fill_ims_bytes(ims_bytes: np.ndarray,
                           mks_bytes: np.ndarray,
-                          desc="Cropping images using mask",
+                          desc="Filling images using mask",
                           **kwargs):
     sh = ims_bytes.shape  # V, N
     ims_bytes = ims_bytes.reshape((np.prod(sh)))

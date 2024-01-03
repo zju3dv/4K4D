@@ -13,4 +13,3 @@ model_cfg:
 val_dataloader_cfg:
     dataset_cfg:
         <<: *dataset_cfg
-        mask_bkgd: 0.0

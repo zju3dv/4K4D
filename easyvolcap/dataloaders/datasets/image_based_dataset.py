@@ -38,8 +38,6 @@ class ImageBasedDataset(VolumetricVideoDataset):
                  append_gt_prob: float = 0.1,
                  extra_src_pool: int = 1,
                  closest_using_t: bool = False,  # find the closest view using the temporal dimension
-                 use_object_prior: bool = False,  # human prior for layered enerf or more to come
-                 objects_bounds: List[List[float]] = None,  # manually estimated input objects bounds
                  supply_decoded: bool = False,
                  barebone: bool = False,
 
@@ -75,11 +73,6 @@ class ImageBasedDataset(VolumetricVideoDataset):
         self.extra_src_pool = extra_src_pool
         self.append_gt_prob = append_gt_prob
 
-        # Configuration for loading foreground human prior
-        self.use_object_prior = use_object_prior
-        self.objects_bounds = objects_bounds
-        assert not (self.use_object_prior and self.objects_bounds is None and not self.use_smpls and not self.use_vhulls), 'You must set `use_smpls=True` or `use_vhulls=True` to use object prior'
-
         # src_inps will come in as decoded bytes instead of jpegs
         self.supply_decoded = supply_decoded
         self.barebone = barebone
@@ -91,7 +84,7 @@ class ImageBasedDataset(VolumetricVideoDataset):
         if len(self.src_view_sample) != 3: view_inds = view_inds[self.src_view_sample]  # this is a list of indices
         else: view_inds = view_inds[self.src_view_sample[0]:self.src_view_sample[1]:self.src_view_sample[2]]  # begin, start, end
         self.src_view_inds = view_inds
-        if len(view_inds) == 1: view_inds = [view_inds]  # FIXME: pytorch indexing bug, when length is 1, will reduce a dim
+        if len(view_inds) == 1: view_inds = [view_inds]  # MARK: pytorch indexing bug, when length is 1, will reduce a dim
 
         # Controls whether the interpolation is performed on the frame or view dim
         # self.src_view_inds = self.frame_inds[view_inds] if self.closest_using_t else self.view_inds[view_inds]
@@ -119,52 +112,6 @@ class ImageBasedDataset(VolumetricVideoDataset):
 
         # Source view index and there similarity
         self.src_sims, self.src_inds = sims.sort(dim=1, descending=True)  # similarity to source views # Target, Source, Latent
-
-    def get_objects_bound(self, output: dotdict):
-        # TODO: add smpl/smplx prior for multiple human priors supporting
-        if self.objects_bounds is not None: bounds = torch.as_tensor(self.objects_bounds, dtype=torch.float)
-        # elif self.use_smpls: bounds = self.smpl_wbound[self.virtual_to_physical(output.meta.latent_index)]
-        else: bounds = self.vhull_bounds[self.virtual_to_physical(output.meta.latent_index)]
-        return bounds
-
-    def get_objects_prior(self, output: dotdict):
-        bounds = self.get_objects_bound(output)
-        x, y, w, h = get_bound_2d_bound(bounds, output.K, output.R, output.T, output.H, output.W, pad=0)
-
-        # Make the height and width of the bounding box to multiply of 32
-        # Adjust the x and y coordinates of the bounding box to make it centered and do not exceed the image size
-        H = output.H if isinstance(output.H, int) else output.H.item()
-        W = output.W if isinstance(output.W, int) else output.W.item()
-        x, y, w_orig, h_orig = x.item(), y.item(), w.item(), h.item()
-        # Default use `ceil()`, but this may cause h > H at low-resolution, so we use `floor()` instead
-        w, h = np.ceil(w_orig / 32) * 32, np.ceil(h_orig / 32) * 32
-        if w > W or h > H: w, h = np.floor(w_orig / 32) * 32, np.floor(h_orig / 32) * 32
-        x, y = np.clip([x - (w - w_orig) // 2, y - (h - h_orig) // 2], 0, [W - w, H - h])
-        x, y, w, h = int(x), int(y), int(w), int(h)
-
-        # get the near and far depth of the 3d bounding box
-        near, far = get_bound_3d_near_far(bounds, output.R, output.T)
-
-        objects_bounds, objects_xywh, objects_n, objects_f = [], [], [], []
-        # append the foreground 3d bounding box and its near, far to the list
-        objects_bounds.append(bounds)
-        objects_xywh.append(torch.tensor([x, y, w, h], dtype=torch.int))
-        objects_n.append(near)
-        objects_f.append(far)
-
-        meta = dotdict()
-        meta.objects_bounds = torch.stack(to_tensor(objects_bounds), dim=0)  # (num_fg, 2, 3)
-        meta.objects_xywh = torch.stack(objects_xywh, dim=0)  # (num_fg, 4)
-        meta.objects_n = torch.tensor(objects_n, dtype=torch.float)  # (num_fg,)
-        meta.objects_f = torch.tensor(objects_f, dtype=torch.float)  # (num_fg,)
-
-        # overwrite background bounding box
-        meta.bounds = self.bounds
-
-        # Actually store updated items
-        output.update(meta)
-        output.meta.update(meta)
-        return output
 
     def get_metadata(self, index: dotdict):
         if isinstance(index, dotdict): index, n_srcs = index.index, index.n_srcs
@@ -213,10 +160,6 @@ class ImageBasedDataset(VolumetricVideoDataset):
             view_index = source_index
 
         output = self.get_sources(latent_index, view_index, output)
-
-        # Maybe load foreground object prior
-        if self.use_object_prior:
-            output = self.get_objects_prior(output)
 
         return output
 
@@ -301,8 +244,8 @@ class ImageBasedDataset(VolumetricVideoDataset):
         output = self.get_sources(latent_index, view_index, output)
 
         # Maybe load foreground human prior
-        if self.use_object_prior:
-            output = self.get_objects_prior(output)
+        if self.use_objects_priors:
+            output = self.get_objects_priors(output)
 
         # Load bounds
         output.bounds = self.get_bounds(latent_index).clone()  # before inplace operation

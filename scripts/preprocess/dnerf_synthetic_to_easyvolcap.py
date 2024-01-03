@@ -1,11 +1,3 @@
-# Converts raw dnerf synthetic dataset format to easyvolcap
-# Links images and maybe convert the whole folder
-
-from easyvolcap.utils.data_utils import read_cam_file, read_pfm
-from easyvolcap.utils.parallel_utils import parallel_execution
-from easyvolcap.utils.easy_utils import write_camera
-from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.console_utils import *
 import os
 import cv2
 import json
@@ -17,21 +9,27 @@ from os.path import join, exists
 
 import sys
 sys.path.append('.')
+from easyvolcap.utils.console_utils import *
+from easyvolcap.utils.base_utils import dotdict
+from easyvolcap.utils.easy_utils import write_camera
+from easyvolcap.utils.parallel_utils import parallel_execution
+from easyvolcap.utils.data_utils import read_cam_file, read_pfm
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dnerf_root', type=str, default='')
     parser.add_argument('--easyvolcap_root', type=str, default='data/dnerf')
+    parser.add_argument('--black_bkgds', action='store_true')
     args = parser.parse_args()
 
     dnerf_root = args.dnerf_root
     easyvolcap_root = args.easyvolcap_root
 
-    def process_camera_image(dnerfs_path, easyvv_path, split, frames, camera_angle_x, H, W):
+    def process_camera_image(dnerf_path, easyvolcap_path, split, frames, camera_angle_x, H, W):
         # Define and create output image path and mask path
-        img_out_dir = join(easyvv_path, split, f'images', '00')
-        msk_out_dir = join(easyvv_path, split, f'masks', '00')
+        img_out_dir = join(easyvolcap_path, split, f'images', '00')
+        msk_out_dir = join(easyvolcap_path, split, f'masks', '00')
         os.makedirs(img_out_dir, exist_ok=True)
         os.makedirs(msk_out_dir, exist_ok=True)
 
@@ -39,12 +37,15 @@ def main():
         # Remove frames with the same timestamp
         for cnt, frame in enumerate(frames):
             # Create soft link for image
-            img_dnerfs_path = join(dnerfs_path, frame['file_path'][2:] + '.png')
-            img_easyvv_path = join(img_out_dir, f'{cnt:03d}.png')
-            os.system(f'ln -s {img_dnerfs_path} {img_easyvv_path}')
+            img_dnerf_path = join(dnerf_path, frame['file_path'][2:] + '.png')
+            img_easyvolcap_path = join(img_out_dir, f'{cnt:03d}.png')
+            img = imageio.imread(img_dnerf_path) / 255.0
+            if args.black_bkgds: img = img[..., :3]
+            else: img = img[..., :3] * img[..., -1:] + (1 - img[..., -1:])
+            imageio.imwrite(img_easyvolcap_path, (img * 255.0).astype(np.uint8))
 
             # Create mask for the image
-            msk = imageio.imread(img_dnerfs_path).sum(axis=-1) > 0
+            msk = imageio.imread(img_dnerf_path).sum(axis=-1) > 0
             msk = msk.astype(np.uint8) * 255
             cv2.imwrite(join(msk_out_dir, f'{cnt:03d}.png'), msk)
 
@@ -68,24 +69,24 @@ def main():
 
     def process_scene(scene):
         # Create soft link for scene
-        dnerfs_path = join(dnerf_root, scene)
-        easyvv_path = join(easyvolcap_root, scene)
+        dnerf_path = join(dnerf_root, scene)
+        easyvolcap_path = join(easyvolcap_root, scene)
 
-        sh = imageio.imread(join(dnerfs_path, 'train', sorted(os.listdir(join(dnerfs_path, 'train')))[1])).shape
+        sh = imageio.imread(join(dnerf_path, 'train', sorted(os.listdir(join(dnerf_path, 'train')))[1])).shape
         H, W = int(sh[0]), int(sh[1])
 
         # Load frames information of all splits
         splits = ['train', 'val', 'test']
         for split in splits:
             # Load all frames information
-            frames = json.load(open(join(dnerfs_path, f'transforms_{split}.json')))['frames']
+            frames = json.load(open(join(dnerf_path, f'transforms_{split}.json')))['frames']
             frames = sorted(frames, key=operator.itemgetter('time'))
-            camera_angle_x = json.load(open(join(dnerfs_path, f'transforms_{split}.json')))['camera_angle_x']
+            camera_angle_x = json.load(open(join(dnerf_path, f'transforms_{split}.json')))['camera_angle_x']
             # Process camera parameters
-            cameras = process_camera_image(dnerfs_path, easyvv_path, split, frames, camera_angle_x, H, W)
+            cameras = process_camera_image(dnerf_path, easyvolcap_path, split, frames, camera_angle_x, H, W)
             # Write camera parameters, treat dnerf dataset as one camera monocular video dataset
-            write_camera(cameras, join(easyvv_path, split, 'cameras', '00'))
-            log(yellow(f'Converted cameras saved to {blue(join(easyvv_path, split, "cameras", "00", "{intri.yml,extri.yml}"))}'))
+            write_camera(cameras, join(easyvolcap_path, split, 'cameras', '00'))
+            log(yellow(f'Converted cameras saved to {blue(join(easyvolcap_path, split, "cameras", "00", "{intri.yml,extri.yml}"))}'))
 
     # Clean and restart
     os.system(f'rm -rf {easyvolcap_root}')

@@ -6,7 +6,7 @@ from typing import Literal
 
 from easyvolcap.engine import REGRESSORS
 from easyvolcap.utils.console_utils import *
-from easyvolcap.utils.net_utils import MLP
+from easyvolcap.utils.net_utils import MLP, get_function
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.models.networks.regressors.tcnn_mlp_regressor import TcnnMlpRegressor
 
@@ -35,8 +35,8 @@ class MlpRegressor(nn.Module):
         self.depth = depth
         self.backend = backend
         dtype = getattr(torch, dtype) if isinstance(dtype, str) else dtype
-        actvn = getattr(F, actvn) if isinstance(actvn, str) else actvn
-        out_actvn = getattr(F, out_actvn) if isinstance(out_actvn, str) else out_actvn
+        actvn = get_function(actvn) if isinstance(actvn, str) else actvn
+        out_actvn = get_function(out_actvn) if isinstance(out_actvn, str) else out_actvn
 
         if backend == 'torch':
             self.mlp = MLP(in_dim, width, depth, out_dim, actvn=actvn, out_actvn=out_actvn, dtype=dtype)
