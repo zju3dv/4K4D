@@ -100,6 +100,10 @@ class VolumetricVideoDataset(Dataset):
                  bodymodel_file: str = 'output-smpl-3d/cfg_model.yml',
                  canonical_smpl_file: str = None,
 
+                 # Object priors
+                 use_objects_priors: bool = False,  # use foreground prior
+                 objects_bounds: List[List[float]] = None,  # manually estimated input objects bounds if there's no masks or smpls
+
                  # Background priors # TODO: maybe move these to a different dataset?
                  bkgds_dir: str = 'bkgd',  # for those methods who use background images
                  use_bkgds: bool = False,  # use background images
@@ -128,20 +132,6 @@ class VolumetricVideoDataset(Dataset):
                  remove_outlier: bool = True,
                  reload_vhulls: bool = False,  # reload visual hulls to vhulls_dir
                  vhull_only: bool = False,
-
-                 # Human priors # TODO: maybe move these to a different dataset?
-                 use_smpls: bool = False,  # use smpls as prior
-                 motion_file: str = 'motion.npz',
-                 bodymodel_file: str = 'output-smpl-3d/cfg_model.yml',
-                 canonical_smpl_file: str = None,
-
-                 # Object priors
-                 use_objects_priors: bool = False,  # use foreground prior
-                 objects_bounds: List[List[float]] = None,  # manually estimated input objects bounds if there's no masks or smpls
-
-                 # Background priors # TODO: maybe move these to a different dataset?
-                 bkgds_dir: str = 'bkgd',  # for those methods who use background images
-                 use_bkgds: bool = False,  # use background images
 
                  # Volume based config
                  bounds: List[List[float]] = [[-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]],
@@ -664,7 +654,7 @@ class VolumetricVideoDataset(Dataset):
             })
             # TODO: Handle avg export and loading for such monocular dataset
         else:
-            raise NotImplementedError(f'Could not find [intri.yml, extri.yml] or [cameras] folder in {self.data_root}, check your dataset configuration')
+            raise NotImplementedError(f'Could not find {{{self.intri_file},{self.extri_file}}} or {self.camera_dir} directory in {self.data_root}, check your dataset configuration')
 
         # Expectation:
         # self.camera_names: a list containing all camera names
