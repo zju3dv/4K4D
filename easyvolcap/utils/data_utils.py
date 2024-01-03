@@ -259,8 +259,8 @@ class Visualization(Enum):
     SEMANTIC = auto()  # semantic nerf related
     SRCINPS = auto()  # Souce input images for image based rendering
 
-    # Nerfies related
-    JACOBIAN = auto()  # semantic nerf related
+    # jacobian related
+    JACOBIAN = auto()
 
     # Relighting related
     ENVMAP = auto()
