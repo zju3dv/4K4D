@@ -45,7 +45,7 @@ from easyvolcap.utils.easy_utils import read_camera
 from easyvolcap.utils.parallel_utils import parallel_execution
 from easyvolcap.utils.cam_utils import average_c2ws, align_c2ws, average_w2cs
 from easyvolcap.utils.dist_utils import get_rank, get_world_size, get_distributed
-from easyvolcap.utils.net_utils import weighted_sample_rays, affine_inverse, affine_padding, torch_inverse_3x3, hierarchically_carve_vhull, get_bound_2d_bound, crop_using_xywh, get_bounds, fill_nhwc_image, point_padding, monotonic_near_far, get_rays
+from easyvolcap.utils.net_utils import weighted_sample_rays, affine_inverse, affine_padding, torch_inverse_3x3, hierarchically_carve_vhull, get_bound_2d_bound, crop_using_xywh, get_bounds, fill_nhwc_image, point_padding, monotonic_near_far, get_rays, get_bound_3d_near_far
 from easyvolcap.utils.data_utils import DataSplit, UnstructuredTensors, load_resize_undist_ims_bytes, load_image_from_bytes, as_torch_func, to_cuda, to_cpu, to_tensor, export_pts, load_pts, decode_crop_fill_ims_bytes, decode_fill_ims_bytes
 
 cv2.setNumThreads(1)  # MARK: only 1 thread for opencv undistortion, high cpu, not faster
@@ -129,6 +129,19 @@ class VolumetricVideoDataset(Dataset):
                  reload_vhulls: bool = False,  # reload visual hulls to vhulls_dir
                  vhull_only: bool = False,
 
+                 # Human priors # TODO: maybe move these to a different dataset?
+                 use_smpls: bool = False,  # use smpls as prior
+                 motion_file: str = 'motion.npz',
+                 bodymodel_file: str = 'output-smpl-3d/cfg_model.yml',
+                 canonical_smpl_file: str = None,
+
+                 # Object priors
+                 use_objects_priors: bool = False,  # use foreground prior
+                 objects_bounds: List[List[float]] = None,  # manually estimated input objects bounds if there's no masks or smpls
+
+                 # Background priors # TODO: maybe move these to a different dataset?
+                 bkgds_dir: str = 'bkgd',  # for those methods who use background images
+                 use_bkgds: bool = False,  # use background images
 
                  # Volume based config
                  bounds: List[List[float]] = [[-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]],
@@ -249,6 +262,10 @@ class VolumetricVideoDataset(Dataset):
         self.print_vhull_bounds = print_vhull_bounds
         self.remove_outlier = remove_outlier
         self.vhull_only = vhull_only
+
+        # Foreground objects prior configuration
+        self.use_objects_priors = use_objects_priors
+        self.objects_bounds = objects_bounds
 
         self.load_paths()  # load image files into self.ims
         try:
@@ -840,6 +857,54 @@ class VolumetricVideoDataset(Dataset):
         smpl_Th = self.smpl_motions.Th[latent_index]
         return smpl_poses, smpl_shapes, smpl_Rh, smpl_Th
 
+    def get_objects_bounds(self, latent_index):
+        latent_index = self.virtual_to_physical(latent_index)
+        if self.use_vhulls: bounds = self.vhull_bounds[latent_index]  # 2, 3
+        # TODO: check the current SMPL prior implementation, it seems there's no SMPL bounds for now
+        elif self.use_smpls: raise NotImplementedError(f'No SMPL bounds for now')
+        elif self.objects_bounds is not None: bounds = torch.as_tensor(self.objects_bounds, dtype=torch.float)  # 2, 3
+        else: raise NotImplementedError(f'You must provide either vhulls or smpls or objects_bounds')
+        return bounds
+
+    def get_objects_priors(self, output: dotdict):
+        latent_index = output.meta.latent_index
+        H, W, K, R, T = output.H, output.W, output.K, output.R, output.T
+
+        # TODO: add vhulls or SMPL prior for multiple object priors supporting
+        bounds = self.get_objects_bounds(latent_index)
+        x, y, w, h = get_bound_2d_bound(bounds, K, R, T, H, W, pad=0)
+
+        # Make the height and width of the bounding box to multiply of 32
+        # Adjust the x and y coordinates of the bounding box to make it centered and do not exceed the image size
+        H, W = H if isinstance(H, int) else H.item(), W if isinstance(W, int) else W.item()
+        x, y, w_orig, h_orig = x.item(), y.item(), w.item(), h.item()
+        # Default use `ceil()`, but this may cause h > H at low-resolution, so we use `floor()` instead
+        w, h = np.ceil(w_orig / 32) * 32, np.ceil(h_orig / 32) * 32
+        if w > W or h > H: w, h = np.floor(w_orig / 32) * 32, np.floor(h_orig / 32) * 32
+        x, y = np.clip([x - (w - w_orig) // 2, y - (h - h_orig) // 2], 0, [W - w, H - h])
+        x, y, w, h = int(x), int(y), int(w), int(h)
+
+        # Get the near and far depth of the 3d bounding box
+        near, far = get_bound_3d_near_far(bounds, R, T)
+        objects_bounds, objects_xywh, objects_n, objects_f = [], [], [], []
+        objects_bounds.append(bounds)
+        objects_xywh.append(torch.tensor([x, y, w, h], dtype=torch.int))
+        objects_n.append(near)
+        objects_f.append(far)
+
+        meta = dotdict()
+        meta.objects_bounds = torch.stack(to_tensor(objects_bounds), dim=0)  # (Nf, 2, 3)
+        meta.objects_xywh = torch.stack(objects_xywh, dim=0)  # (Nf, 4)
+        meta.objects_n = torch.tensor(objects_n, dtype=torch.float)  # (Nf,)
+        meta.objects_f = torch.tensor(objects_f, dtype=torch.float)  # (Nf,)
+        # Overwrite background bounding box to the default large one
+        meta.bounds = self.bounds
+
+        # Actually store updated items
+        output.update(meta)
+        output.meta.update(meta)
+        return output
+
     @property
     def n_views(self): return len(self.cameras)
 
@@ -931,6 +996,10 @@ class VolumetricVideoDataset(Dataset):
         # Maybe crop intrinsics
         if self.imbound_crop:
             self.crop_ixts_bounds(output)  # only crop target ixts
+
+        # Maybe load foreground object priors
+        if self.use_objects_priors:
+            self.get_objects_priors(output)
 
         return output
 
@@ -1225,4 +1294,8 @@ class VolumetricVideoDataset(Dataset):
 
         if self.imbound_crop:
             output = self.crop_ixts_bounds(output)
+
+        if self.use_objects_priors:
+            output = self.get_objects_priors(output)
+
         return output  # how about just passing through

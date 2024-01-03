@@ -18,8 +18,6 @@ class ImageBasedInferenceDataset(VolumetricVideoInferenceDataset):
                  n_srcs_prob: List[int] = [1.0],  # MARK: repeated global configuration
                  append_gt_prob: float = 1.0,
                  extra_src_pool: int = 1,
-                 use_object_prior: bool = False,  # human prior for layered enerf or more to come
-                 objects_bounds: List[List[float]] = None,  # manually estimated input objects bounds
                  supply_decoded: bool = False,
                  barebone: bool = False,
 
@@ -42,14 +40,9 @@ class ImageBasedInferenceDataset(VolumetricVideoInferenceDataset):
         self.extra_src_pool = extra_src_pool
         self.append_gt_prob = append_gt_prob  # manually assign values
 
-        # Configuration for loading foreground human prior
-        self.barebone = barebone
-        self.use_object_prior = use_object_prior
-        self.objects_bounds = objects_bounds
-        assert not (self.use_object_prior and self.objects_bounds is None and not self.use_smpls and not self.use_vhulls), 'You must set `use_smpls=True` or `use_vhulls=True` to use object prior'
-
         # src_inps will come in as decoded bytes instead of jpegs
         self.supply_decoded = supply_decoded
+        self.barebone = barebone
 
     def load_interpolations(self):
         ImageBasedDataset.load_source_params(self)  # remember things
@@ -82,14 +75,14 @@ class ImageBasedInferenceDataset(VolumetricVideoInferenceDataset):
     def physical_to_virtual(self, latent_index: int):
         return VolumetricVideoDataset.physical_to_virtual(self, latent_index)
 
+    def get_objects_bounds(self, latent_index: int):
+        return VolumetricVideoDataset.get_objects_bounds(self, latent_index)
+
+    def get_objects_priors(self, output: dotdict):
+        return VolumetricVideoDataset.get_objects_priors(self, output)
+
     def load_source_params(self):
         return ImageBasedDataset.load_source_params(self)
-
-    def get_objects_bound(self, output: dotdict):
-        return ImageBasedDataset.get_objects_bound(self, output)
-
-    def get_objects_prior(self, output: dotdict):
-        return ImageBasedDataset.get_objects_prior(self, output)
 
     def __getitem__(self, index: dotdict):
         return ImageBasedDataset.get_metadata(self, index)
