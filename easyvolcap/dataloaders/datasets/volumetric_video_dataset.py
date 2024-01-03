@@ -135,6 +135,7 @@ class VolumetricVideoDataset(Dataset):
 
                  # Dynamically tunable variables
                  render_ratio: float = 1.0,  # might need to resize just before sampling
+                 render_center_crop_ratio: float = 1.0,  # might need to center crop just before sampling
                  dist_mask: List[bool] = [1] * 5,
                  skip_loading_images: bool = False,  # for debugging and visualization
 
@@ -186,6 +187,7 @@ class VolumetricVideoDataset(Dataset):
         self.patch_size_shared = torch.as_tensor(patch_size, dtype=torch.long).share_memory_()
         self.render_ratio_shared = torch.as_tensor(render_ratio, dtype=torch.float).share_memory_()
         self.random_crop_size_shared = torch.as_tensor(random_crop_size, dtype=torch.float).share_memory_()
+        self.render_center_crop_ratio_shared = torch.as_tensor(render_center_crop_ratio, dtype=torch.float).share_memory_()
 
         # Camera and image selection
         self.frame_sample = frame_sample
@@ -299,6 +301,14 @@ class VolumetricVideoDataset(Dataset):
     @render_ratio.setter
     def render_ratio(self, value: torch.Tensor):
         self.render_ratio_shared.copy_(torch.as_tensor(value, dtype=self.render_ratio_shared.dtype))  # all values will be changed to this
+
+    @property
+    def render_center_crop_ratio(self):
+        return self.render_center_crop_ratio_shared
+    
+    @render_center_crop_ratio.setter
+    def render_center_crop_ratio(self, value: torch.Tensor):
+        self.render_center_crop_ratio_shared.copy_(torch.as_tensor(value, dtype=self.render_center_crop_ratio_shared.dtype))  # all values will be changed to this
 
     @property
     def n_rays(self):
@@ -995,6 +1005,7 @@ class VolumetricVideoDataset(Dataset):
         patch_size = self.patch_size
         render_ratio = self.render_ratio
         random_crop_size = self.random_crop_size
+        render_center_crop_ratio = self.render_center_crop_ratio
 
         # Prepare for a different rendering ratio
         if (len(render_ratio.shape) and  # avoid length of 0-d tensor error, check length of shape
@@ -1015,6 +1026,30 @@ class VolumetricVideoDataset(Dataset):
             output.rgb = rgb.reshape(-1, 3)  # full image in case you need it
             output.msk = msk.reshape(-1, 1)  # full mask (weights)
             output.wet = wet.reshape(-1, 1)  # full mask (weights)
+
+        # Prepare for a different rendering center crop ratio
+        if (len(render_center_crop_ratio.shape) and  # avoid length of 0-d tensor error, check length of shape
+                render_center_crop_ratio[output.view_index] != 1.0) or \
+                render_center_crop_ratio != 1.0:
+            render_center_crop_ratio = self.render_center_crop_ratio[output.view_index] if len(self.render_center_crop_ratio.shape) else self.render_center_crop_ratio
+            H, W = output.H.item(), output.W.item()
+            rgb = output.rgb.view(H, W, 3)
+            msk = output.msk.view(H, W, 1)
+            wet = output.wet.view(H, W, 1)
+
+            w, h = int(W * render_center_crop_ratio), int(H * render_center_crop_ratio)
+            x, y = w // 2, h // 2
+
+            # Center crop the target image
+            rgb = rgb[y: y + h, x: x + w, :]
+            msk = msk[y: y + h, x: x + w, :]
+            wet = wet[y: y + h, x: x + w, :]
+            output.rgb = rgb.reshape(-1, 3)  # full image in case you need it
+            output.msk = msk.reshape(-1, 1)  # full mask
+            output.wet = wet.reshape(-1, 1)  # full weights
+
+            # Crop the intrinsics
+            self.crop_ixts(output, x, y, w, h)
 
         should_sample_patch = False
         should_crop_ixt = False
