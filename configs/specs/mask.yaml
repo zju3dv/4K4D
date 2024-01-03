@@ -6,7 +6,6 @@ dataloader_cfg: &dataloader_cfg
         use_vhulls: True
         immask_crop: True
         imbound_crop: True
-        # mask_bkgd: 0.0 # fill bkgd pixels with pure blackness
 
 val_dataloader_cfg:
     <<: *dataloader_cfg

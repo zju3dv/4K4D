@@ -121,7 +121,7 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
                                bg_color: torch.Tensor, msk_gt: torch.Tensor,
                                H=batch.meta.H[0].item(), W=batch.meta.W[0].item(),
                                type=self.img_loss_type):
-            rgb_gt = rgb_gt * msk_gt + bg_color * (1 - msk_gt)  # MARK: modifying gt for supervision
+            rgb_gt = rgb_gt + bg_color * (1 - msk_gt)  # MARK: modifying gt for supervision
 
             # https://stackoverflow.com/questions/181530/styling-multi-line-conditions-in-if-statements
             resd_sq = (rgb_map - rgb_gt)**2

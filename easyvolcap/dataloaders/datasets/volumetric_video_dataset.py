@@ -70,7 +70,6 @@ class VolumetricVideoDataset(Dataset):
                  # Other default configurations
                  intri_file: str = 'intri.yml',
                  extri_file: str = 'extri.yml',
-                 masks_dir: str = 'masks',
                  images_dir: str = 'images',
                  camera_dir: str = 'cameras',  # only when the camera is moving through time
                  ims_pattern: str = '{frame:06d}.jpg',
@@ -83,13 +82,29 @@ class VolumetricVideoDataset(Dataset):
                  init_viewer_index: int = 0,
                  use_avg_init_viewer: bool = False,  # use average camera as initial viewer
 
-                 # Image preprocessing & formatting
+                 # Mask related configs
+                 masks_dir: str = 'masks',
                  use_masks: bool = False,
-                 mask_bkgd: float = 0.0,  # fill bkgd with this value, None means no fill # FIXME: different behavior for training and validation
                  bkgd_weight: float = 1.0,  # fill bkgd weight with 1.0s
                  imbound_crop: bool = False,
                  immask_crop: bool = False,
                  immask_fill: bool = False,
+
+                 # Depth related configs
+                 depths_dir: str = 'depths',
+                 use_depths: bool = False,
+
+                 # Human priors # TODO: maybe move these to a different dataset?
+                 use_smpls: bool = False,  # use smpls as prior
+                 motion_file: str = 'motion.npz',
+                 bodymodel_file: str = 'output-smpl-3d/cfg_model.yml',
+                 canonical_smpl_file: str = None,
+
+                 # Background priors # TODO: maybe move these to a different dataset?
+                 bkgds_dir: str = 'bkgd',  # for those methods who use background images
+                 use_bkgds: bool = False,  # use background images
+
+                 # Image preprocessing & formatting
                  use_z_depth: bool = False,
                  dist_opt_K: bool = True,  # use optimized K for undistortion (will crop out black edges), mostly useful for large number of images
                  encode_ext: str = '.jpg',
@@ -114,15 +129,6 @@ class VolumetricVideoDataset(Dataset):
                  reload_vhulls: bool = False,  # reload visual hulls to vhulls_dir
                  vhull_only: bool = False,
 
-                 # Human priors # TODO: maybe move these to a different dataset?
-                 use_smpls: bool = False,  # use smpls as prior
-                 motion_file: str = 'motion.npz',
-                 bodymodel_file: str = 'output-smpl-3d/cfg_model.yml',
-                 canonical_smpl_file: str = None,
-
-                 # Background priors # TODO: maybe move these to a different dataset?
-                 bkgds_dir: str = 'bkgd',  # for those methods who use background images
-                 use_bkgds: bool = False,  # use background images
 
                  # Volume based config
                  bounds: List[List[float]] = [[-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]],
@@ -178,6 +184,7 @@ class VolumetricVideoDataset(Dataset):
         self.camera_dir = camera_dir
         self.images_dir = images_dir
         self.masks_dir = masks_dir
+        self.depths_dir = depths_dir
         self.vhulls_dir = vhulls_dir
         self.bkgds_dir = bkgds_dir
         self.ims_pattern = ims_pattern
@@ -212,6 +219,7 @@ class VolumetricVideoDataset(Dataset):
         self.ratio = ratio  # could be a float (shared ratio) or a list of floats (should match images)
         self.encode_ext = encode_ext
         self.cache_raw = cache_raw  # use raw pixels to further accelerate training
+        self.use_depths = use_depths  # use visual hulls as a prior
         self.use_vhulls = use_vhulls  # use visual hulls as a prior
         self.use_masks = use_masks  # always load mask if using vhulls
         self.use_smpls = use_smpls  # use smpls as a prior
@@ -265,7 +273,6 @@ class VolumetricVideoDataset(Dataset):
         self.correct_pix = correct_pix
         self.use_z_depth = use_z_depth
         self.bkgd_weight = bkgd_weight
-        self.mask_bkgd = mask_bkgd
 
         # Cache related config
         self.image_cache_maxsize = image_cache_maxsize  # make this smaller to avoid oom
@@ -305,7 +312,7 @@ class VolumetricVideoDataset(Dataset):
     @property
     def render_center_crop_ratio(self):
         return self.render_center_crop_ratio_shared
-    
+
     @render_center_crop_ratio.setter
     def render_center_crop_ratio(self, value: torch.Tensor):
         self.render_center_crop_ratio_shared.copy_(torch.as_tensor(value, dtype=self.render_center_crop_ratio_shared.dtype))  # all values will be changed to this
@@ -346,7 +353,7 @@ class VolumetricVideoDataset(Dataset):
             ims = [sorted(glob(join(self.data_root, self.images_dir, cam, '*')))[:self.n_frame_total] for cam in self.camera_names]
         ims = [np.asarray(ims[i])[:min([len(i) for i in ims])] for i in range(len(ims))]  # deal with the fact that some weird dataset has different number of images
         self.ims = np.asarray(ims)  # V, N
-        self.ims_dir = join(*split(dirname(self.ims[0, 0]))[:-1])
+        self.ims_dir = join(*split(dirname(self.ims[0, 0]))[:-1])  # logging only
 
         # TypeError: can't convert np.ndarray of type numpy.str_. The only supported types are: float64, float32, float16, complex64, complex128, int64, int32, int16, int8, uint8, and bool.
         # MARK: Names stored as np.ndarray
@@ -370,7 +377,7 @@ class VolumetricVideoDataset(Dataset):
             self.Rs = self.Rs[:, self.rank::self.num_replicas]
             self.Ts = self.Ts[:, self.rank::self.num_replicas]
             self.Ds = self.Ds[:, self.rank::self.num_replicas]
-            self.ts = self.ts[:, self.rank::self.num_replicas]  # UNUSED: time index from camera, not used for now
+            self.ts = self.ts[:, self.rank::self.num_replicas]  # controlled by use_loaded_time, default false, using computed t from frame_sample
             self.Cs = self.Cs[:, self.rank::self.num_replicas]
             self.w2cs = self.w2cs[:, self.rank::self.num_replicas]
             self.c2ws = self.c2ws[:, self.rank::self.num_replicas]
@@ -395,7 +402,14 @@ class VolumetricVideoDataset(Dataset):
             self.bgs = np.asarray([join(self.data_root, self.bkgds_dir, f'{cam}.jpg') for cam in self.camera_names])  # V,
             if not os.path.exists(self.bgs[0]):
                 self.bgs = np.asarray([bg.replace('.jpg', '.png') for bg in self.bgs])
-            self.bgs_dir = join(*split(dirname(self.bgs[0]))[:-1])
+            self.bgs_dir = join(*split(dirname(self.bgs[0]))[:-1])  # logging only
+
+        # Depth image path preparation
+        if self.use_depths:
+            self.dps = np.asarray([im.replace(self.images_dir, self.depths_dir).replace('.jpg', '.hdr').replace('.png', '.hdr') for im in self.ims.ravel()]).reshape(self.ims.shape)
+            if not exists(self.dps[0, 0]):
+                self.dps = np.asarray([dp.replace('.hdr', 'exr') for dp in self.dps.ravel()]).reshape(self.dps.shape)
+            self.dps_dir = join(*split(dirname(self.dps[0, 0]))[:-1])  # logging only
 
     def load_bytes(self):
         # Camera distortions are only applied on the ground truth image, the rendering model does not include these
@@ -416,11 +430,13 @@ class VolumetricVideoDataset(Dataset):
             self.Hs = torch.as_tensor(self.Hs)
             self.Ws = torch.as_tensor(self.Ws)
 
+        # Maybe compute visual hulls after loading the dataset
         if self.use_vhulls and not hasattr(self, 'vhulls'):
             self.load_vhulls()  # before cropping the mask (we need all the information we can get for visual hulls)
             if self.vhull_only:
                 exit(0)
 
+        # Maybe load background images here
         if self.use_bkgds:
             self.bgs_bytes, _, _, _ = \
                 load_resize_undist_ims_bytes(self.bgs, ori_Ks[:, 0].numpy(), ori_Ds[:, 0].numpy(), ratio, self.center_crop_size,
@@ -450,19 +466,23 @@ class VolumetricVideoDataset(Dataset):
             self.Hs = torch.as_tensor(self.Hs)
             self.Ws = torch.as_tensor(self.Ws)
 
+        # Only fill the background regions
         if not self.immask_crop and self.immask_fill:  # a little bit wasteful but acceptable for now
             self.ims_bytes, self.mks_bytes = \
                 decode_fill_ims_bytes(self.ims_bytes, self.mks_bytes, f'Masking msks imgs for {blue(self.data_root)} {magenta(self.split.name)}')
 
+        # To make memory access faster, store raw floats in memory
         if self.cache_raw:
             self.ims_bytes = to_tensor([load_image_from_bytes(x, normalize=True) for x in tqdm(self.ims_bytes, desc=f'Caching imgs for {blue(self.data_root)} {magenta(self.split.name)}')])  # High mem usage
-            if hasattr(self, 'mks_bytes'): self.mks_bytes = to_tensor([load_image_from_bytes(x, normalize=True) for x in tqdm(self.mks_bytes, desc=f'Caching msks for {blue(self.data_root)} {magenta(self.split.name)}')])
-            if hasattr(self, 'bg_bytes'): self.bg_bytes = to_tensor([load_image_from_bytes(x, normalize=True) for x in tqdm(self.bg_bytes, desc=f'Caching bgs for {blue(self.data_root)} {magenta(self.split.name)}')])
+            if hasattr(self, 'mks_bytes'): self.mks_bytes = to_tensor([load_image_from_bytes(x, normalize=True) for x in tqdm(self.mks_bytes, desc=f'Caching mks for {blue(self.data_root)} {magenta(self.split.name)}')])
+            if hasattr(self, 'bgs_bytes'): self.bgs_bytes = to_tensor([load_image_from_bytes(x, normalize=True) for x in tqdm(self.bgs_bytes, desc=f'Caching bgs for {blue(self.data_root)} {magenta(self.split.name)}')])
+            if hasattr(self, 'dps_bytes'): self.bgs_bytes = to_tensor([load_image_from_bytes(x, normalize=True) for x in tqdm(self.dps_bytes, desc=f'Caching dps for {blue(self.data_root)} {magenta(self.split.name)}')])
         else:
             # Avoid splitting memory for bytes objects
             self.ims_bytes = UnstructuredTensors(self.ims_bytes)
             if hasattr(self, 'mks_bytes'): self.mks_bytes = UnstructuredTensors(self.mks_bytes)
-            if hasattr(self, 'bg_bytes'): self.bg_bytes = UnstructuredTensors(self.bg_bytes)
+            if hasattr(self, 'bgs_bytes'): self.bgs_bytes = UnstructuredTensors(self.bgs_bytes)
+            if hasattr(self, 'dps_bytes'): self.dps_bytes = UnstructuredTensors(self.dps_bytes)
 
     def load_vhulls(self):
 
@@ -746,15 +766,15 @@ class VolumetricVideoDataset(Dataset):
             mk_bytes, wt_bytes = None, None
 
         if self.use_bkgds:
-            bg_bytes = self.bgs_bytes[view_index]
+            bgs_bytes = self.bgs_bytes[view_index]
         else:
-            bg_bytes = None
+            bgs_bytes = None
 
-        return im_bytes, mk_bytes, wt_bytes, bg_bytes  # TODO: Refactor this
+        return im_bytes, mk_bytes, wt_bytes, bgs_bytes  # TODO: Refactor this
 
     def get_image(self, view_index: int, latent_index: int):
         # Load bytes (rgb, msk, wet, bg)
-        im_bytes, mk_bytes, wt_bytes, bg_bytes = self.get_image_bytes(view_index, latent_index)
+        im_bytes, mk_bytes, wt_bytes, bgs_bytes = self.get_image_bytes(view_index, latent_index)
         rgb, msk, wet, bg = None, None, None, None
 
         # Load image from bytes
@@ -769,11 +789,6 @@ class VolumetricVideoDataset(Dataset):
                 msk = torch.as_tensor(mk_bytes)
             else:
                 msk = torch.as_tensor(load_image_from_bytes(mk_bytes, normalize=True))
-            # During training, the loss computation of image will apply the mask separatedly
-            # Thus there's no need for masking the background here -> alpha mask -> black output
-            # During validation, no such process, thus we mask the background manually during loading
-            if self.split == DataSplit.VAL and self.mask_bkgd is not None:  # could be zero though
-                rgb = rgb * msk + (1 - msk) * self.mask_bkgd  # fill bkgd pixels
         else:
             msk = torch.ones_like(rgb[..., -1:])
 
@@ -788,12 +803,12 @@ class VolumetricVideoDataset(Dataset):
         wet[msk < self.bkgd_weight] = self.bkgd_weight
 
         # Load background image from bytes
-        if bg_bytes is not None:
-            bg_bytes = self.bgs_bytes[view_index]
+        if bgs_bytes is not None:
+            bgs_bytes = self.bgs_bytes[view_index]
             if self.cache_raw:
-                bg = torch.as_tensor(bg_bytes)
+                bg = torch.as_tensor(bgs_bytes)
             else:
-                bg = torch.as_tensor(load_image_from_bytes(bg_bytes, normalize=True))
+                bg = torch.as_tensor(load_image_from_bytes(bgs_bytes, normalize=True))
         else:
             bg = None
         return rgb, msk, wet, bg

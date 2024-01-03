@@ -369,7 +369,7 @@ def generate_spiral_path(c2ws: np.ndarray,
 def generate_hemispherical_orbit(c2ws: np.ndarray,
                                  n_render_views=50,
                                  orbit_height=0.,
-                                 orbit_radius=None,
+                                 orbit_radius=-1,
                                  radius_ratio=1.0,
                                  **kwargs):
     """Calculates a render path which orbits around the z-axis.
@@ -381,7 +381,7 @@ def generate_hemispherical_orbit(c2ws: np.ndarray,
 
     # Find the origin and radius for the orbit
     origins = c2ws[:, :3, 3]
-    radius = (np.sqrt(np.mean(np.sum(origins ** 2, axis=-1))) * radius_ratio) if orbit_radius is None else orbit_radius
+    radius = (np.sqrt(np.mean(np.sum(origins ** 2, axis=-1))) * radius_ratio) if orbit_radius <= 0 else orbit_radius
 
     # Get average pose
     v_up = -normalize(c2ws[:, :3, 1].sum(0))

@@ -1710,7 +1710,7 @@ def decode_fill_im_bytes(im_bytes: BytesIO,
 
 def decode_fill_ims_bytes(ims_bytes: np.ndarray,
                           mks_bytes: np.ndarray,
-                          desc="Cropping images using mask",
+                          desc="Filling images using mask",
                           **kwargs):
     sh = ims_bytes.shape  # V, N
     ims_bytes = ims_bytes.reshape((np.prod(sh)))

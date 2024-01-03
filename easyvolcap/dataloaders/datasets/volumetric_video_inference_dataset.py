@@ -30,7 +30,7 @@ class VolumetricVideoInferenceDataset(VolumetricVideoDataset):
                  # Hemisphere or custom camera path
                  interp_type: str = Interpolation.ORBIT.name,  # Interpolation.CUBIC or Interpolation.LINEAR
                  interp_cfg: dotdict = dotdict(
-                     orbit_radius=None,  # if None, will use the avearge radius
+                     orbit_radius=-1,  # if < 0, will use the avearge radius
                      orbit_height=0.,  # sphere_height shift
                      smoothing_term=-1.0,  # negativa values -> compute spiral path, otherwise just interpolate
                  ),
