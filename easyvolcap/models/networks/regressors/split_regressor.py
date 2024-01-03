@@ -3,7 +3,7 @@ import torch
 from torch import nn
 
 from easyvolcap.engine import REGRESSORS
-from easyvolcap.utils.net_utils import MLP, raw2alpha, Modulized
+from easyvolcap.utils.net_utils import MLP, raw2alpha, Modulized, get_function
 from easyvolcap.utils.base_utils import dotdict
 
 
@@ -40,7 +40,7 @@ class SplitRegressor(nn.Module):
 
         self.mlp = MLP(in_dim, width, depth, mlp_out_dim, dtype=dtype)
         self.splits = splits
-        self.activs = activs  # will this register as module?
+        self.activs = nn.ModuleList([get_function(activ) for activ in activs])
 
     def forward(self, feat: torch.Tensor, batch: dotdict = None):
         if not self.sequential_split:

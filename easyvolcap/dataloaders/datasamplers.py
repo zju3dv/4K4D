@@ -92,13 +92,13 @@ def get_inds(dataset: VolumetricVideoDataset,
     view_inds = torch.arange(nv)
     if len(view_sample) != 3 or force_manual_view_selection: view_inds = view_inds[view_sample]  # this is a list of indices
     else: view_inds = view_inds[view_sample[0]:view_sample[1]:view_sample[2]]  # begin, start, end
-    if len(view_inds) == 1: view_inds = [view_inds]  # FIXME: pytorch indexing bug, when length is 1, will reduce a dim
+    if len(view_inds) == 1: view_inds = [view_inds]  # MARK: pytorch indexing bug, when length is 1, will reduce a dim
 
     # Perform frame selection
     frame_inds = torch.arange(nl)
     if len(frame_sample) != 3 or force_manual_frame_selection: frame_inds = frame_inds[frame_sample]
     else: frame_inds = frame_inds[frame_sample[0]:frame_sample[1]:frame_sample[2]]
-    if len(frame_inds) == 1: frame_inds = [frame_inds]  # FIXME: pytorch indexing bug, when length is 1, will reduce a dim
+    if len(frame_inds) == 1: frame_inds = [frame_inds]  # MARK: pytorch indexing bug, when length is 1, will reduce a dim
 
     # Actual sampler selection
     inds = inds.reshape(nv, nl)[view_inds][:, frame_inds][:, ith_latent:]

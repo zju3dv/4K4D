@@ -91,7 +91,7 @@ class ImageBasedDataset(VolumetricVideoDataset):
         if len(self.src_view_sample) != 3: view_inds = view_inds[self.src_view_sample]  # this is a list of indices
         else: view_inds = view_inds[self.src_view_sample[0]:self.src_view_sample[1]:self.src_view_sample[2]]  # begin, start, end
         self.src_view_inds = view_inds
-        if len(view_inds) == 1: view_inds = [view_inds]  # FIXME: pytorch indexing bug, when length is 1, will reduce a dim
+        if len(view_inds) == 1: view_inds = [view_inds]  # MARK: pytorch indexing bug, when length is 1, will reduce a dim
 
         # Controls whether the interpolation is performed on the frame or view dim
         # self.src_view_inds = self.frame_inds[view_inds] if self.closest_using_t else self.view_inds[view_inds]

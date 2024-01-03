@@ -11,7 +11,7 @@ from easyvolcap.engine import REGRESSORS
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.data_utils import export_pts, export_pcd, export_mesh
-from easyvolcap.utils.net_utils import create_meshgrid, affine_inverse, normalize, interpolate_image, linear_sampling, s_vals_to_z_vals, ray2xyz, volume_rendering, weighted_percentile, raw2alpha, compute_dist, render_weights
+from easyvolcap.utils.net_utils import create_meshgrid, affine_inverse, normalize, interpolate_image, linear_sampling, s_vals_to_z_vals, ray2xyz, volume_rendering, weighted_percentile, raw2alpha, compute_dist, render_weights, get_function
 
 
 class TruncatedExponential(Function):  # pylint: disable=abstract-method
@@ -481,7 +481,8 @@ class CostRegNet(nn.Module):
             self.feat_conv = nn.Sequential(nn.Conv3d(8, 8, 3, padding=1, bias=False))
 
         self.size_pad = 8  # input size should be divisible by 4
-        self.out_actvn = getattr(F, out_actvn) if isinstance(out_actvn, str) else out_actvn
+        self.out_dim = 8
+        self.out_actvn = get_function(out_actvn) if isinstance(out_actvn, str) else out_actvn
 
     def forward(self, x: torch.Tensor):
         conv0 = self.conv0(x)

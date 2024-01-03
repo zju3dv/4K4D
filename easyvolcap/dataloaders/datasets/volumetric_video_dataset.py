@@ -70,9 +70,9 @@ class VolumetricVideoDataset(Dataset):
                  # Other default configurations
                  intri_file: str = 'intri.yml',
                  extri_file: str = 'extri.yml',
-                 masks_dir: str = 'masks',  # TODO: for new datasets, rename this to masks
-                 images_dir: str = 'images',  # why an s?
-                 camera_dir: str = 'cameras',  # only for monocular dataset
+                 masks_dir: str = 'masks',
+                 images_dir: str = 'images',
+                 camera_dir: str = 'cameras',  # only when the camera is moving through time
                  ims_pattern: str = '{frame:06d}.jpg',
                  imsize_overwrite: List[int] = [-1, -1],  # overwrite the image size
 
@@ -253,7 +253,8 @@ class VolumetricVideoDataset(Dataset):
             pass  # silently error out if no visual hull is found here
         if not skip_loading_images:
             self.load_bytes()  # load image bytes (also load vhulls)
-        self.load_smpls()  # load smpls (if needed, branch inside)
+        if self.use_smpls:
+            self.load_smpls()  # load smpls (if needed, branch inside)
         # https://github.com/pytorch/pytorch/issues/13246#issuecomment-905703662
         # https://ppwwyyxx.com/blog/2022/Demystify-RAM-Usage-in-Multiprocess-DataLoader/
 
@@ -556,44 +557,44 @@ class VolumetricVideoDataset(Dataset):
 
     def load_smpls(self):
         # Need to add or complete __getitem__ utils function if smpl paramaters other than bound are needed
-        if self.use_smpls:
-            # Import easymocap body model for type annotation
-            from easymocap.bodymodel.smplx import SMPLHModel
-            from easyvolcap.utils.data_utils import get_rigid_transform, load_dotdict
-            from easyvolcap.utils.easy_utils import load_bodymodel
 
-            # Load smpl body model
-            # self.bodymodel: SMPLHModel = load_bodymodel(self.data_root, self.bodymodel_file)
+        # Import easymocap body model for type annotation
+        from easymocap.bodymodel.smplx import SMPLHModel
+        from easyvolcap.utils.data_utils import get_rigid_transform, load_dotdict
+        from easyvolcap.utils.easy_utils import load_bodymodel
 
-            # Load smpl parameters, assume only one person now, TODO: support multiple people
-            self.motion = to_tensor(load_dotdict(join(self.data_root, self.motion_file)))
+        # Load smpl body model
+        # self.bodymodel: SMPLHModel = load_bodymodel(self.data_root, self.bodymodel_file)
 
-            def get_lbs_params(i):
-                poses = self.motion.poses[i][None]  # 1, J * 3
-                shapes = self.motion.shapes[i][None]  # 1, S
-                Rh = self.motion.Rh[i][None]  # 1, 3,
-                Th = self.motion.Th[i][None]  # 1, 3,
+        # Load smpl parameters, assume only one person now, TODO: support multiple people
+        self.motion = to_tensor(load_dotdict(join(self.data_root, self.motion_file)))
 
-                # adjust the smpl pose according to the aligned camera
-                if self.use_aligned_cameras:
-                    R = torch.from_numpy(cv2.Rodrigues(Rh[0].numpy())[0])  # 3, 3
-                    Rt = torch.cat([R, Th[0].view(3, 1)], dim=1)  # 3, 4
-                    Rt = (affine_inverse(affine_padding(self.c2w_avg)) @ affine_padding(Rt))[:3, :]  # 3, 4
-                    Rh = torch.from_numpy(cv2.Rodrigues(Rt[:, :-1].numpy())[0]).view(1, 3)  # 1, 3
-                    Th = Rt[:, -1].view(1, 3)  # 1, 3
+        def get_lbs_params(i):
+            poses = self.motion.poses[i][None]  # 1, J * 3
+            shapes = self.motion.shapes[i][None]  # 1, S
+            Rh = self.motion.Rh[i][None]  # 1, 3,
+            Th = self.motion.Th[i][None]  # 1, 3,
 
-                return poses, shapes, Rh, Th
+            # adjust the smpl pose according to the aligned camera
+            if self.use_aligned_cameras:
+                R = torch.from_numpy(cv2.Rodrigues(Rh[0].numpy())[0])  # 3, 3
+                Rt = torch.cat([R, Th[0].view(3, 1)], dim=1)  # 3, 4
+                Rt = (affine_inverse(affine_padding(self.c2w_avg)) @ affine_padding(Rt))[:3, :]  # 3, 4
+                Rh = torch.from_numpy(cv2.Rodrigues(Rt[:, :-1].numpy())[0]).view(1, 3)  # 1, 3
+                Th = Rt[:, -1].view(1, 3)  # 1, 3
 
-            smpl_lbs = []
-            for i in tqdm(self.frame_inds, desc=f'Loading smpl parameters'):
-                poses, shapes, Rh, Th = get_lbs_params(i)
-                smpl_lbs.append([poses, shapes, Rh, Th])
-            poses, shapes, Rh, Th = zip(*smpl_lbs)
-            self.smpl_motions = dotdict()
-            self.smpl_motions.poses = torch.cat(poses)
-            self.smpl_motions.shapes = torch.cat(shapes)
-            self.smpl_motions.Rh = torch.cat(Rh)
-            self.smpl_motions.Th = torch.cat(Th)
+            return poses, shapes, Rh, Th
+
+        smpl_lbs = []
+        for i in tqdm(self.frame_inds, desc=f'Loading smpl parameters'):
+            poses, shapes, Rh, Th = get_lbs_params(i)
+            smpl_lbs.append([poses, shapes, Rh, Th])
+        poses, shapes, Rh, Th = zip(*smpl_lbs)
+        self.smpl_motions = dotdict()
+        self.smpl_motions.poses = torch.cat(poses)
+        self.smpl_motions.shapes = torch.cat(shapes)
+        self.smpl_motions.Rh = torch.cat(Rh)
+        self.smpl_motions.Th = torch.cat(Th)
 
     def load_cameras(self):
         # Load camera related stuff like image list and intri, extri.
@@ -677,14 +678,14 @@ class VolumetricVideoDataset(Dataset):
         if len(self.view_sample) != 3: view_inds = view_inds[self.view_sample]  # this is a list of indices
         else: view_inds = view_inds[self.view_sample[0]:self.view_sample[1]:self.view_sample[2]]  # begin, start, end
         self.view_inds = view_inds
-        if len(view_inds) == 1: view_inds = [view_inds]  # FIXME: pytorch indexing bug, when length is 1, will reduce a dim
+        if len(view_inds) == 1: view_inds = [view_inds]  # MARK: pytorch indexing bug, when length is 1, will reduce a dim
 
         # Perform frame selection next
         frame_inds = torch.arange(self.Ks.shape[1])
         if len(self.frame_sample) != 3: frame_inds = frame_inds[self.frame_sample]
         else: frame_inds = frame_inds[self.frame_sample[0]:self.frame_sample[1]:self.frame_sample[2]]
         self.frame_inds = frame_inds  # used by `load_smpls()`
-        if len(frame_inds) == 1: frame_inds = [frame_inds]  # FIXME: pytorch indexing bug, when length is 1, will reduce a dim
+        if len(frame_inds) == 1: frame_inds = [frame_inds]  # MARK: pytorch indexing bug, when length is 1, will reduce a dim
 
         # NOTE: if view_inds == [0,] in monocular dataset or whatever case, type(`self.camera_names[view_inds]`) == str, not a list of str
         self.camera_names = np.asarray([self.camera_names[view] for view in view_inds])  # this is what the b, e, s means
@@ -758,9 +759,11 @@ class VolumetricVideoDataset(Dataset):
                 msk = torch.as_tensor(mk_bytes)
             else:
                 msk = torch.as_tensor(load_image_from_bytes(mk_bytes, normalize=True))
+            # During training, the loss computation of image will apply the mask separatedly
+            # Thus there's no need for masking the background here -> alpha mask -> black output
+            # During validation, no such process, thus we mask the background manually during loading
             if self.split == DataSplit.VAL and self.mask_bkgd is not None:  # could be zero though
-                # rgb[~(msk > 0.5)[..., 0]] = self.mask_bkgd  # fill bkgd pixels
-                rgb = rgb * msk + (1 - msk) * self.mask_bkgd
+                rgb = rgb * msk + (1 - msk) * self.mask_bkgd  # fill bkgd pixels
         else:
             msk = torch.ones_like(rgb[..., -1:])
 
@@ -986,7 +989,8 @@ class VolumetricVideoDataset(Dataset):
             output.update(meta)
             output.meta.update(meta)
 
-        # FIXME: Should add mutex to protect this
+        # FIXME: Should add mutex to protect this， for now, multi-process and dataloading doesn't work well with each other
+        # If Moderators are used, should set num_workers to 0 for single-process data loading
         n_rays = self.n_rays
         patch_size = self.patch_size
         render_ratio = self.render_ratio

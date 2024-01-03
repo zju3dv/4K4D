@@ -12,7 +12,7 @@ def main():
     parser.add_argument('--data_root', default='data/enerf_outdoor/actor1_4')
     parser.add_argument('--out_root', default='data/enerf_outdoor/actor1_4_subseq')
     parser.add_argument('--frame_sample', default=[0, 150, 5], nargs='*', type=int)
-    parser.add_argument('--dirs', default=['images', 'bgmtv2', 'surfs'])
+    parser.add_argument('--dirs', default=['images', 'bgmtv2', 'surfs'], nargs='*')
     parser.add_argument('--copy', default=['optimized', 'bkgd'], nargs='*')
     args = parser.parse_args()
 

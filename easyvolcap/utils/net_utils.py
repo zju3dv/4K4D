@@ -1728,6 +1728,17 @@ class ResnetBlock(nn.Module):
         return x_s + dx
 
 
+def get_function(f: Union[Callable, nn.Module, str]):
+    if isinstance(f, str):
+        try: return getattr(F, f)  # 'softplus'
+        except AttributeError: pass
+        try: return getattr(nn, f)()  # 'Identity'
+        except AttributeError: pass
+        # Using eval is dangerous, will never support that
+    else:
+        return f
+
+
 def modulize(f: Callable):
     return Modulized(f)
 
@@ -2352,8 +2363,8 @@ class MLP(GradientModule):
                 O = out_ch
             self.linears.append(nn.Linear(I, O, dtype=dtype))
         self.linears = nn.ModuleList(self.linears)
-        self.actvn = getattr(F, actvn) if isinstance(actvn, str) else actvn
-        self.out_actvn = getattr(F, out_actvn) if isinstance(out_actvn, str) else out_actvn
+        self.actvn = get_function(actvn) if isinstance(actvn, str) else actvn
+        self.out_actvn = get_function(out_actvn) if isinstance(out_actvn, str) else out_actvn
 
         for i, l in enumerate(self.linears):
             if i == len(self.linears) - 1: init_out_weight(l.weight.data)
@@ -2502,6 +2513,15 @@ def setup_deterministic(fix_random=True, # all deterministic, same seed, no benc
         torch.backends.cudnn.benchmark = False
         np.random.seed(seed)
         random.seed(seed)
+
+
+def get_state_dict(state_dict: dotdict, prefix: str = ''):
+    if len(prefix) and not prefix.endswith('.'): prefix = prefix + '.'
+    d = dotdict()
+    for k, v in state_dict.items():
+        if k.startswith(prefix):
+            d[k[len(prefix):]] = v
+    return d
 
 
 def load_pretrained(model_dir: str, resume: bool = True, epoch: int = -1, ext: str = '.npz', remove_if_not_resuming: bool = False, warn_if_not_exist: bool = False):
