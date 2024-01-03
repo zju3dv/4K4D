@@ -1544,6 +1544,7 @@ def load_resize_undist_im_bytes(imp: str,
 
     is_success, buffer = cv2.imencode(encode_ext, img, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])
 
+    if 'H' not in locals(): H, W = oH, oW
     return buffer, K, H, W
 
 
