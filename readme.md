@@ -267,7 +267,7 @@ evc -t gui -c configs/exps/enerfi/enerfi_actor1_4_subseq.yaml,configs/specs/fp16
 
 The documentation contained in the [`docs/design`](docs/design) directory contains explanations of design choices and various best practices when developing with ***EasyVolcap***.
 
-[`docs/design/main.md`](docs/design/main.md): Gives an overview of the structure of the ***EasyVolcap*** codebase along with some general usage consensus.
+[`docs/design/main.md`](docs/design/main.md): Gives an overview of the structure of the ***EasyVolcap*** codebase.
 
 [`docs/design/config.md`](docs/design/config.md): Thoroughly explains the commandline and configuration API of ***EasyVolcap***.
 
@@ -293,7 +293,7 @@ We would like to acknowledge the following inspiring prior work:
 - [XRNeRF: OpenXRLab Neural Radiance Field (NeRF) Toolbox and Benchmark](https://github.com/openxrlab/xrnerf)
 - [Nerfstudio: A Modular Framework for Neural Radiance Field Development](https://github.com/nerfstudio-project/nerfstudio)
 - [Dear ImGui: Bloat-free Graphical User interface for C++ with minimal dependencies](https://github.com/ocornut/imgui)
-- [Neural Body: Implicit Neural Representations with Structured Latent Codes for Novel View Synthesis of Dynamic Humans](https://github.com/zju3dv/neuralbody)
+- [Neural Body: Implicit Neural Representations with Structured Latent Codes](https://github.com/zju3dv/neuralbody)
 - [ENeRF: Efficient Neural Radiance Fields for Interactive Free-viewpoint Video](https://github.com/zju3dv/ENeRF)
 - [Instant Neural Graphics Primitives with a Multiresolution Hash Encoding](https://github.com/NVlabs/instant-ngp)
 - [3D Gaussian Splatting for Real-Time Radiance Field Rendering](https://github.com/graphdeco-inria/gaussian-splatting)
