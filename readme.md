@@ -292,9 +292,9 @@ We would like to acknowledge the following inspiring prior work:
 - [EasyMocap: Make Human Motion Capture Easier](https://github.com/zju3dv/EasyMocap)
 - [XRNeRF: OpenXRLab Neural Radiance Field (NeRF) Toolbox and Benchmark](https://github.com/openxrlab/xrnerf)
 - [Nerfstudio: A Modular Framework for Neural Radiance Field Development](https://github.com/nerfstudio-project/nerfstudio)
-- [Dear ImGui: Bloat-free Graphical User interface for C++ with minimal dependencies](https://github.com/ocornut/imgui)
+- [Dear ImGui: Bloat-Free Graphical User Interface for C++ With Minimal Dependencies](https://github.com/ocornut/imgui)
 - [Neural Body: Implicit Neural Representations with Structured Latent Codes](https://github.com/zju3dv/neuralbody)
-- [ENeRF: Efficient Neural Radiance Fields for Interactive Free-viewpoint Video](https://github.com/zju3dv/ENeRF)
+- [ENeRF: Efficient Neural Radiance Fields for Interactive Free-Viewpoint Video](https://github.com/zju3dv/ENeRF)
 - [Instant Neural Graphics Primitives with a Multiresolution Hash Encoding](https://github.com/NVlabs/instant-ngp)
 - [3D Gaussian Splatting for Real-Time Radiance Field Rendering](https://github.com/graphdeco-inria/gaussian-splatting)
 
