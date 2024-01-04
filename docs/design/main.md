@@ -2,8 +2,8 @@
 
 ## Core Modules
 
-Here a directory tree of the core modules of EasyVolcap.
-I commended on the directory structure of the `easyvolcap` folder, which should give you a general sense about our module organization.
+Here's a directory tree of the core modules of EasyVolcap.
+I commended on the directory structure of the `easyvolcap` folder, which should give you a general sense about our codebase's organization.
 
 ```shell
 easyvolcap

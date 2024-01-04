@@ -86,6 +86,8 @@ export CUDA_HOME="/usr/local/cuda"
 export CUDA_DEVICE_ORDER=PCI_BUS_ID # OPTIONAL: defaults to capability order, might be different for GL and CUDA
 ```
 
+Let's go through the compilation process with the `tinycudann` package.
+
 To retain the compiled objects without starting over in case anything fails, we recommend first cloning `tinycudann` then perform the compilation and installation manually:
 
 ```shell
@@ -116,3 +118,13 @@ ln -s /usr/lib/x86_64-linux-gnu/libcuda.so ~/miniconda3/envs/easyvolcap/lib/libc
 ```
 
 and then install `tiny-cuda-nn` with: `pip install git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch`.
+
+Sometimes (`diff-gaussian-rasterization`), on some systems, the import order of CUDA-compiled extension and PyTorch matters.
+On some of our system, if you import PyTorch before the CUDA-compiled extension, it will fail to find some Python symbols.
+Try changing the orders if that happens.
+
+```shell
+python -c "from diff_gaussian_rasterization import _C" # works
+python -c "import torch; from diff_gaussian_rasterization import _C" # might fail
+python -c "from diff_gaussian_rasterization import _C; import torch" # should work
+```
