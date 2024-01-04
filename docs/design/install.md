@@ -128,3 +128,27 @@ python -c "from diff_gaussian_rasterization import _C" # works
 python -c "import torch; from diff_gaussian_rasterization import _C" # might fail
 python -c "from diff_gaussian_rasterization import _C; import torch" # should work
 ```
+
+## Windows
+
+As discussed in [this issue](https://github.com/zju3dv/EasyVolcap/issues/10), the installation commands are tailored for Linux systems but ***EasyVolcap***'s dependency requirements are very loose. Aside from `PyTorch`, which you can install in anyway you like following [their official guide](https://pytorch.org/get-started/locally/) or just reuse your previous environment, also other packages are related to the specific functionality or algorithm you want to run.
+
+During the initialization in the `main.py` script, we will try to recursively import user defined components from the `easyvolcap` folder (also check [`config.py`](../design/config.md#reusing-the-configuration-system)). Some warnings about missing packages might be raised, but as long as you don't use that functionality, it should be fine.
+
+For example, the real-time viewer does not require packages like `pytorch3d` or `open3d` so you could ignore them during import.
+We've also tested the viewer functionality (run `evc-gui` to test) on Windows, which requires the following OpenGL and ImGUI related packages:
+
+```
+glfw
+PyGLM
+pyperclip
+pyopengl
+imgui-bundle
+opencv-python
+cuda-python
+pdbr
+```
+
+These packages should be able to be installed directly from the command-line using `pip`.
+
+Sidenote: on macOS (Mac), there's no NVIDIA gpu. We use the CUDA-GL interface to transfer rendered images (a PyTorch tensor, which is a block of CUDA memory) onto the screen (a textured based framebuffer). Thus the real-time viewer isn't fully supported on Mac yet.

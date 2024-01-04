@@ -271,9 +271,9 @@ The documentation contained in the [`docs/design`](docs/design) directory contai
 
 [`docs/design/config.md`](docs/design/config.md): Thoroughly explains the commandline and configuration API of ***EasyVolcap***.
 
-[`docs/design/dataset.md`](docs/design/dataset.md)
+[`docs/design/logging.md`](docs/design/logging.md): Describes the functionalities of the logging system of ***EasyVolcap***.
 
-[`docs/design/logging.md`](docs/design/logging.md)
+[`docs/design/dataset.md`](docs/design/dataset.md)
 
 [`docs/design/model.md`](docs/design/model.md)
 

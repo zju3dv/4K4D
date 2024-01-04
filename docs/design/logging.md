@@ -41,7 +41,7 @@ display_table(log_stats)  # render dict as a table (live, console, table)
 
 We also provide a progress bar for you to monitor the progress of your training.
 We speicifically modified the progress bar to have similar APIs like `tqdm`, while at the same time print messages with the global `console` object.
-Since all printing actions are managed by the same `console`, the logging, loss table printing and progress bar update will not interfier with each other.
+Since all printing actions are managed by the same `console`, the logging, loss table printing and progress bar update will not interfere with each other.
 
 ```python
 for i in tqdm(range(10), back=2, desc='Progress', disable=False):
