@@ -47,4 +47,7 @@ def prof_entrypoint():
 
 def gui_entrypoint():
     # Directly run GUI without external requirements
-    configurable_entrypoint(EASYVOLCAP='evc -t gui', default_easyvolcap_args=['-c', 'configs/specs/gui.yaml'])
+    if '-c' not in sys.argv:
+        sys.argv.insert(1, '-c')
+        sys.argv.insert(2, 'configs/specs/gui.yaml')
+    configurable_entrypoint(EASYVOLCAP='evc -t gui')

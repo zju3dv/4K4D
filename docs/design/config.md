@@ -156,6 +156,75 @@ The configuration system is built in layers:
 - It's also possible to use multiple parent configs (defined by the `configs` key or separated by `,` in the entrypoint arguments for `-c`)
   - Those parent configs will be parsed layer by layer, the latter overwritting the previous if duplicated keys are found. 
 
-<!-- **Entrypoint for the whole project [`easyvolcap.engine`](easyvolcap/engine/__init__.py)** -->
 
-<!-- - [ ] TODO: Document intricacies of the whole configuration system (magic keywords and `configs` config reusing) -->
+### Reusing the Configuration System
+
+This is [a piece of code](../../easyvolcap/engine/__init__.py) that will be called everytime we import a core module from ***EasyVolcap***:
+
+```python
+parser = get_parser()
+args, argv = parser.parse_known_args()  # commandline arguments
+argv = [v.strip('-') for v in argv]  # arguments starting with -- will not automatically go to the ops dict, need to parse them again
+argv = parser.parse_args(argv)  # the reason for -- arguments is that almost all shell completion requires a prefix for optional arguments
+args.opts.update(argv.opts)
+cfg = parse_cfg(args)
+```
+
+Generally, there are two ways to use the configuration system:
+
+#### Direct Usage
+
+The first way is to directly use our registration and commandline entry point.
+This requires you to `from easyvolcap.engine import cfg`, which performs argument parsing and config loading.
+
+```shell
+# Run this
+evc-gui not_exist.help=ok
+
+# Invoke pdbr and check for the parameter
+(Pdbr) cfg.not_exist
+{'help': 'ok'}
+(Pdbr) cfg.not_exist.help
+'ok'
+(Pdbr)
+```
+
+As long as there are import commands from ***EasyVolcap*** which implicitly calls `from easyvolcap.engine import cfg`, we will parse and store the arguments in the global variable `cfg`.
+Those import commands typically includes network & system modules like `easyvolcap.runners`, `easyvolcap.models`, `easyvolcap.dataloaders`, `easyvolcap.engine`, etc.
+And exclude the `easyvolcap.utils` modules, which is used for utility functions and classes.
+
+
+#### Building on Top
+
+Sometimes you would want to build your own command line argument parser, or you want to use the configuration system in a different way.
+There's only **one** rule-of-thumb: *parse your arguments before importing `__init__.py` from `easyvolcap.engine` as stated in the previous section*
+
+You could even use them in tandem like this:
+```python
+# fmt: off
+import sys
+
+# To use my own parser and EasyVolcap's dict based parser together
+try:
+    sep_ind = sys.argv.index('--')
+    our_args = sys.argv[1:sep_ind]
+    evv_args = sys.argv[sep_ind + 1:]
+    sys.argv = [sys.argv[0]] + evv_args
+except ValueError as e:
+    pass # skip if no -- is present
+
+# My own argument parser
+args = dotdict(
+    test_arg='hello',
+    store_true=False,
+)
+
+args = args.update(vars(build_parser(args).parse_args()))
+
+print(args) # will output {'test_arg': 'hello', 'store_true': False}
+
+# Will implicitly import from easyvolcap.engine, thus parse args
+from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
+
+# fmt: on
+```
