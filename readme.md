@@ -289,7 +289,7 @@ The documentation contained in the [`docs/design`](docs/design) directory contai
 
 We would like to acknowledge the following inspiring prior work:
 
-- [EasyMocap: Make human motion capture easier.](https://github.com/zju3dv/EasyMocap)
+- [EasyMocap: Make Human Motion Capture Easier](https://github.com/zju3dv/EasyMocap)
 - [XRNeRF: OpenXRLab Neural Radiance Field (NeRF) Toolbox and Benchmark](https://github.com/openxrlab/xrnerf)
 - [Nerfstudio: A Modular Framework for Neural Radiance Field Development](https://github.com/nerfstudio-project/nerfstudio)
 - [Dear ImGui: Bloat-free Graphical User interface for C++ with minimal dependencies](https://github.com/ocornut/imgui)
