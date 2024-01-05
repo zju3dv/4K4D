@@ -574,11 +574,11 @@ class PointPlanesSampler(VolumetricVideoModule):
         pcd_t = time[..., None, None].expand(-1, *pcd.shape[1:-1], 1)  # B, N, 1
         return pcd, pcd_t
 
-    def store_output(self, pcd: torch.Tensor, xyz: torch.Tensor, rgb: torch.Tensor, acc: torch.Tensor, depth: torch.Tensor, batch: dotdict):
+    def store_output(self, pcd: torch.Tensor, xyz: torch.Tensor, rgb: torch.Tensor, acc: torch.Tensor, dpt: torch.Tensor, batch: dotdict):
         if pcd is not None: batch.output.resd = xyz - pcd  # for residual loss here
         batch.output.rgb_map = rgb.view(rgb.shape[0], -1, 3)  # B, H * W, 3
         batch.output.acc_map = acc.view(acc.shape[0], -1, 1)  # B, H * W, 1
-        batch.output.dpt_map = depth.view(depth.shape[0], -1, 1)  # B, H * W, 1
+        batch.output.dpt_map = dpt.view(dpt.shape[0], -1, 1)  # B, H * W, 1
 
         # Maybe use random background color
         if self.bg_brightness >= 0:

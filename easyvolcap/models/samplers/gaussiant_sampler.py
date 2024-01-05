@@ -53,6 +53,9 @@ class GaussianTSampler(PointPlanesSampler):
                  percent_dense: float = 0.01,
                  size_threshold: float = None,  # UNUSED:
                  min_opacity: float = 0.005,
+                 
+                 # DEBUG:
+                 debug: bool = False,
 
                  # Housekeepings
                  **kwargs,
@@ -88,6 +91,9 @@ class GaussianTSampler(PointPlanesSampler):
         self.percent_dense = percent_dense
         self.min_opacity = min_opacity
         self.last_output = None  # will only store the updates for one of the points
+        
+        # Debug options
+        self.debug = debug
 
         # Test time controls
         self.post_handle = self.register_load_state_dict_post_hook(self._load_state_dict_post_hook)
@@ -116,7 +122,7 @@ class GaussianTSampler(PointPlanesSampler):
             sh_degree=self.sh_deg,
             campos=gaussian_camera.camera_center,
             prefiltered=False,
-            debug=False,
+            debug=self.debug,
         )
 
         # Rasterize visible Gaussians to image, obtain their radii (on screen).
@@ -132,6 +138,53 @@ class GaussianTSampler(PointPlanesSampler):
             scales=scale3,
             rotations=rot4,
             cov3D_precomp=None,
+        )
+
+        rgb = rendered_image[None].permute(0, 2, 3, 1)
+        acc = rendered_alpha[None].permute(0, 2, 3, 1)
+        dpt = rendered_depth[None].permute(0, 2, 3, 1)
+        batch.output.rad = radii[None]  # Store radii for later use
+        batch.output.scr = scr  # Store screen space points for later use, # !: BATCH
+        return rgb, acc, dpt
+
+    def render_radius(self, xyz: torch.Tensor, sh: torch.Tensor, radius: torch.Tensor, occ1: torch.Tensor, batch: dotdict):
+        # Lazy imports
+        from diff_point_rasterization import rasterize_points, PointRasterizationSettings, PointRasterizer
+        from easyvolcap.utils.gaussian_utils import prepare_gaussian_camera
+
+        # Remove batch dimension
+        xyz, sh, radius, occ1 = remove_batch([xyz, sh, radius, occ1])
+
+        # Prepare the camera transformation for Gaussian
+        gaussian_camera = to_x(prepare_gaussian_camera(batch), torch.float)
+
+        # Prepare rasterization settings for gaussian
+        raster_settings = PointRasterizationSettings(
+            image_height=gaussian_camera.image_height,
+            image_width=gaussian_camera.image_width,
+            tanfovx=gaussian_camera.tanfovx,
+            tanfovy=gaussian_camera.tanfovy,
+            bg=torch.full([3], self.bg_brightness, device=xyz.device),  # GPU
+            scale_modifier=self.scale_mod,
+            viewmatrix=gaussian_camera.world_view_transform,
+            projmatrix=gaussian_camera.full_proj_transform,
+            sh_degree=self.sh_deg,
+            campos=gaussian_camera.camera_center,
+            prefiltered=False,
+            debug=self.debug,
+        )
+
+        # Rasterize visible Gaussians to image, obtain their radii (on screen).
+        scr = torch.zeros_like(xyz, requires_grad=True) + 0  # gradient magic
+        if scr.requires_grad: scr.retain_grad()
+        rasterizer = PointRasterizer(raster_settings=raster_settings)
+        rendered_image, rendered_depth, rendered_alpha, radii = typed(torch.float, torch.float)(rasterizer)(
+            means3D=xyz,
+            means2D=scr,
+            shs=sh.mT,
+            colors_precomp=None,
+            opacities=occ1,
+            radius=radius,
         )
 
         rgb = rendered_image[None].permute(0, 2, 3, 1)
