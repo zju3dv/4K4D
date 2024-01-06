@@ -12,7 +12,7 @@ https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/11325dfc
 
 Please refer to the [installation guide of ***EasyVolcap***](../../readme.md#installation) for basic environment setup.
 
-Note that it's not neccessary for all requirements present in [environment.yml](../../environment.yml) and [requirements.txt](../../requirements.txt) to be installed on your system as they contain dependencies for other parts of ***EasyVolcap***. Thanks to the modular design of ***EasyVolcap***, these missing packages will not hinder the rendering and training of *ENeRF*.
+Note that it's not necessary for all requirements present in [environment.yml](../../environment.yml) and [requirements.txt](../../requirements.txt) to be installed on your system as they contain dependencies for other parts of ***EasyVolcap***. Thanks to the modular design of ***EasyVolcap***, these missing packages will not hinder the rendering and training of *ENeRF*.
 
 After the installation process, we're expecting *PyTorch* to be present in the current system for the rendering of *ENeRF* to work properly. Other packages can be easily installed using `pip` if errors about their import are encountered. Check that this is the case with:
 
