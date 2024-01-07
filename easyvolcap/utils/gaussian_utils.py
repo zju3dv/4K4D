@@ -347,7 +347,7 @@ class GaussianModel(nn.Module):
     @torch.no_grad()
     def _load_state_dict_pre_hook(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
         # Supports loading points and features with different shapes
-        if prefix is not '': prefix = prefix + '.' # special care for when we're loading the model directly
+        if prefix is not '' and not prefix.endswith('.'): prefix = prefix + '.'  # special care for when we're loading the model directly
         for name, params in self.named_parameters():
             params.data = params.data.new_empty(state_dict[f'{prefix}{name}'].shape)
 
