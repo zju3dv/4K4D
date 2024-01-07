@@ -67,8 +67,8 @@ class VolumetricVideoViewer:
                  render_meshes: bool = True,
                  render_alpha: bool = True,
 
-                 update_fps_time: float = 0.5,  # be less stressful
-                 update_mem_time: float = 0.5,  # be less stressful
+                 update_fps_time: float = 0.1,  # be less stressful
+                 update_mem_time: float = 0.1,  # be less stressful
                  use_quad_draw: bool = False,  # different rendering solution
 
                  # This is important for works like K-planes or IBR (or stableenerf), since it's not easy to perform interpolation (slow motion)

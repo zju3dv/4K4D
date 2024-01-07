@@ -427,6 +427,9 @@ class VolumetricVideoDataset(Dataset):
         # Need to convert to a tight data structure for access
         ori_Ks = self.Ks
         ori_Ds = self.Ds
+        # msk_Ds = ori_Ds.clone()  # this is a DNA-Rendering special
+        # msk_Ds[..., -1] = 0.0  # only use the first 4 distortion parameters for mask undistortion
+        # msk_Ds = torch.zeros_like(ori_Ds) # avoid bad distortion params
         ratio = self.imsize_overwrite if self.imsize_overwrite[0] > 0 else self.ratio  # maybe force size, or maybe use ratio to resize
         if self.use_masks:
             self.mks_bytes, self.Ks, self.Hs, self.Ws = \
