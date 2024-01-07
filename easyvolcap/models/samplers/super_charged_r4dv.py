@@ -145,13 +145,13 @@ def average_single_frame(i: int,
     ], dim=-3)  # B, S, C, H, W
 
     # Compute projected color of every image, using the original size image
-    ibrs_rgbs = sample_geometry_feature_image(
+    ibrs_rgbs = torch.cat([sample_geometry_feature_image(
         xyz,
-        src_feat_inps,
-        src_exts,
-        src_ixts,
+        src_feat_inps[:, i:i + 1],
+        src_exts[:, i:i + 1],
+        src_ixts[:, i:i + 1],
         src_inps.new_ones(2, 1),
-    )  # B, S, N, 3
+    ) for i in range(src_feat_inps.shape[1])], dim=1)  # B, S, N, 3
     ibrs, rgbs = ibrs_rgbs[..., :-3], ibrs_rgbs[..., -3:]
     del src_feat, src_inps, src_feat_inps, ibrs_rgbs
     timer.record('sample features')
