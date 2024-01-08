@@ -74,3 +74,5 @@ diff*.html
 
 # *.zip
 # *info.json
+*.dump
+*.dmp

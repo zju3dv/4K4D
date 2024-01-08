@@ -1642,11 +1642,20 @@ def decode_crop_fill_im_bytes(im_bytes: BytesIO,
     H, W, _ = img.shape
     from easyvolcap.utils.net_utils import get_bound_2d_bound
     bx, by, bw, bh = as_numpy_func(get_bound_2d_bound)(bounds, K, R, T, H, W)
-    mx, my, mw, mh = cv2.boundingRect((msk > 128).astype(np.uint8))  # array data type = 0 is not supported
-    x, y, w, h = max(bx, mx), max(by, my), min(bw, mw), min(bh, mh)
+    img = img[by:by + bh, bx:bx + bw]
+    msk = msk[by:by + bh, bx:bx + bw]
 
-    img = img[y:y + h, x:x + w]
-    msk = msk[y:y + h, x:x + w]
+    # Bug here for first frame of renbody 0013_01 for camera 42...
+    # save_image('bbox_cropped_img.png', img[..., [2, 1, 0]])
+    # save_image('bbox_cropped_msk.png', msk)
+    # breakpoint()
+
+    mx, my, mw, mh = cv2.boundingRect((msk > 128).astype(np.uint8))  # array data type = 0 is not supported
+    img = img[my:my + mh, mx:mx + mw]
+    msk = msk[my:my + mh, mx:mx + mw]
+
+    x, y, w, h = bx + mx, by + my, mw, mh  # w and h will always be the smaller one, xy will be accumulated
+
     img = (img * (msk / 255)).clip(0, 255).astype(np.uint8)  # fill with black, indexing starts at the front
     K[0, 2] -= x
     K[1, 2] -= y

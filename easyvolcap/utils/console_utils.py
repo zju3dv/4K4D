@@ -649,7 +649,9 @@ def display_table(states: dotdict,
 
     # MARK: check performance hit of these calls
     start_live()
-    live.update(create_table(keys, rows, styles))  # disabled autorefresh
+    table = create_table(keys, rows, styles)
+    live.update(table)  # disabled autorefresh
+    return table
 
 
 def build_parser(d: dict, parser: argparse.ArgumentParser = None):
