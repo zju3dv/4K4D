@@ -1,7 +1,8 @@
 # Default config for the whole project
 
 # Outermost level configuration switches
-exp_name: nerft
+exp_name: base
+mocking: False
 detect_anomaly: False
 fix_random: False
 allow_tf32: True

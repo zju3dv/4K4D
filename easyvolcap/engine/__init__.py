@@ -111,6 +111,7 @@ def parse_cfg(args):
                 allow_tf32=True,
                 deterministic=False,
                 benchmark=False,
+                mocking=True,
             )
         )  # empty config
 
