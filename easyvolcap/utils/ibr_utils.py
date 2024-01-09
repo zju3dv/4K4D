@@ -90,7 +90,7 @@ def compute_src_inps(batch: dotdict, key: str = 'src_inps'):
     # [Sampler] Decodes stored images (using torchvision api of nvjpeg), stack them together with zero padding -> images might be large
     # [Sampler] Forwards images to interpolation, pass through feature decoder -> feature might be large
 
-    # The `key` may be `src_inps` or `bg_src_inps` for enerf and layer enerf respectively
+    # The `key` may be `src_inps` or `src_bkgs` for enerf and layer enerf respectively
     if key not in batch and key in batch.meta and isinstance(batch.meta[key], list) and batch.meta[key][0].ndim == 2:
         # Perform decoding
         # The input tensor must be on CPU when decoding with nvjpeg

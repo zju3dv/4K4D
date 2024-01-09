@@ -17,27 +17,28 @@ from easyvolcap.models.networks.volumetric_video_network import VolumetricVideoN
 class VolumetricVideoSupervisor(VolumetricVideoModule):
     def __init__(self,
                  network: nn.Module,
-                 img_loss_weight: float = 1.0,
-                 msk_loss_weight: float = 0.0,
+                 img_loss_weight: float = 1.0,  # main reconstruction loss
+                 msk_loss_weight: float = 0.0,  # mask mIoU loss
                  prop_loss_weight: float = 1.0,
                  zip_prop_loss_weight: float = 0.0,
-                 dist_loss_weight: float = 0.0,
+                 dist_loss_weight: float = 0.0,  # mipnerf360 distorsion loss
                  elas_loss_weight: float = 0.0,
                  perc_loss_weight: float = 0.0,  # smaller loss on perc
-                 ssim_loss_weight: float = 0.0,
-                 resd_loss_weight: float = 0.0,
+                 ssim_loss_weight: float = 0.0,  # 3dgs ssim loss
+                 resd_loss_weight: float = 0.0,  # make resd smaller
                  msk_mse_weight: float = 0.0,  # mask mse weight
                  vq_loss_weight: float = 0.0,
+                 dpt_loss_weight: float = 0.0,  # depth supervison
 
-                 tv_loss_weight: float = 0.0,  # total variation loss for kplanes # FIXME: only for kplanes
-                 time_smooth_weight: float = 0.0,  # time smooth weight # FIXME: only for kplanes
-                 time_smooth_prop_weight: float = 0.0,  # time smooth propasal weight # FIXME: only for kplanes
+                 tv_loss_weight: float = 0.0,  # total variation loss for kplanes
+                 time_smooth_weight: float = 0.0,  # time smooth weight
+                 time_smooth_prop_weight: float = 0.0,  # time smooth propasal weight
+
                  pvdiff_loss_weight: float = 0.0,  # point cloud and volume density loss for volumetric video
                  pcd_sparse_loss_weight: float = 0.0,  # point cloud sparsity (distances)
                  pcd_sparse_K: int = 5,
 
-                 conf_sparse_loss_weight: float = 0.0,
-
+                 conf_sparse_loss_weight: float = 0.0,  # pnerf confidence sparsity loss
                  sparse_loss_weight: float = 0.0,  # sparsity loss (plenoctree)
                  n_sparse_points: int = 65536,  # number of points to sample for sparsity loss
                  sparse_dist: float = 0.005,
@@ -76,7 +77,7 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
         if self.perc_loss_weight > 0: self.perc_loss_reference = [VGGPerceptualLoss().cuda().to(self.dtype)]  # move to specific location
 
         self.ssim_loss_weight = ssim_loss_weight
-
+        self.dpt_loss_weight = dpt_loss_weight
         self.msk_loss_weight = msk_loss_weight
         self.msk_mse_weight = msk_mse_weight
         self.vq_loss_weight = vq_loss_weight
@@ -114,6 +115,7 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
     def supervise(self, output: dotdict, batch: dotdict):
 
         loss = 0  # accumulated final loss
+        loss_stats = output.get('loss_stats', dotdict())  # give modules ability to record something
         image_stats = output.get('image_stats', dotdict())  # give modules ability to record something
         scalar_stats = output.get('scalar_stats', dotdict())  # give modules ability to record something
 
@@ -354,8 +356,6 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
             scalar_stats.vq_loss = vq_loss
             loss += self.vq_loss_weight * vq_loss  # already premultiplied by the loss weight
 
-        # log(batch.meta.n_rays)
-
         if 'rgb_map' in output and \
            self.perc_loss_weight > 0 and \
            batch.meta.n_rays[0].item() == -1:
@@ -385,6 +385,14 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
             scalar_stats.psnr = psnr
             scalar_stats.img_loss = img_loss
             loss += self.img_loss_weight * img_loss
+
+        if 'dpt_map' in output and \
+           self.dpt_loss_weight > 0:
+            # TODO: Implement depth loss here (scale-variant)
+            # TODO: Implement scale invariant depth loss here
+            # TODO: Implement depth continuity loss (scale-invariant)
+            # TODO: Implement depth ranking loss (scale-invariant)
+            pass
 
         if self.eikonal_loss_weight > 0.0 and 'gradients' in output:
             gradients = output.gradients
@@ -428,5 +436,18 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
         if 'beta' in output:
             scalar_stats.beta = output.beta.mean()
 
-        scalar_stats.loss = loss  # also record the total loss
+        for k, v in loss_stats.items():
+            loss += v.mean()  # network computed loss
+
+        loss_stats.loss = loss  # these are the things to accumulated for loss
+        scalar_stats.loss = loss  # these are the things to record and log
         return loss, scalar_stats, image_stats
+
+    # If we want to split the supervisor to include more sets of losses?
+    # def supervise(self, output: dotdict, batch: dotdict):
+    #     loss, scalar_stats, image_stats = super().supervise(output, batch)
+
+    #     if ...:
+    #         ...
+
+    #     return loss, scalar_stats, image_stats

@@ -1626,7 +1626,7 @@ def decode_crop_fill_im_bytes(im_bytes: BytesIO,
                               R: np.ndarray,
                               T: np.ndarray,
                               bounds: np.ndarray,
-                              encode_ext='.jpg',
+                              encode_ext=['.jpg', '.jpg'],
                               decode_flag=cv2.IMREAD_UNCHANGED,
                               jpeg_quality: int = 100,
                               png_compression: int = 6,
@@ -1639,29 +1639,30 @@ def decode_crop_fill_im_bytes(im_bytes: BytesIO,
     img = load_image_from_bytes(im_bytes, decode_flag=decode_flag)  # H, W, 3
     msk = load_image_from_bytes(mk_bytes, decode_flag=decode_flag)  # H, W, 3
 
+    # Crop both mask and the image using bbox's 2D projection
     H, W, _ = img.shape
     from easyvolcap.utils.net_utils import get_bound_2d_bound
     bx, by, bw, bh = as_numpy_func(get_bound_2d_bound)(bounds, K, R, T, H, W)
     img = img[by:by + bh, bx:bx + bw]
     msk = msk[by:by + bh, bx:bx + bw]
 
-    # Bug here for first frame of renbody 0013_01 for camera 42...
-    # save_image('bbox_cropped_img.png', img[..., [2, 1, 0]])
-    # save_image('bbox_cropped_msk.png', msk)
-    # breakpoint()
-
+    # Crop the image using the bounding rect of the mask
     mx, my, mw, mh = cv2.boundingRect((msk > 128).astype(np.uint8))  # array data type = 0 is not supported
     img = img[my:my + mh, mx:mx + mw]
     msk = msk[my:my + mh, mx:mx + mw]
 
+    # Update the final size and intrinsics
     x, y, w, h = bx + mx, by + my, mw, mh  # w and h will always be the smaller one, xy will be accumulated
-
-    img = (img * (msk / 255)).clip(0, 255).astype(np.uint8)  # fill with black, indexing starts at the front
     K[0, 2] -= x
     K[1, 2] -= y
 
-    im_bytes = cv2.imencode(encode_ext, img, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])[1]  # is_sucess, bytes_array
-    mk_bytes = cv2.imencode(encode_ext, msk, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])[1]  # is_sucess, bytes_array
+    # Fill the image with black (premultiply by mask)
+    img = (img * (msk / 255)).clip(0, 255).astype(np.uint8)  # fill with black, indexing starts at the front
+
+    # Reencode the videos and masks
+    if isinstance(encode_ext, str): encode_ext = [encode_ext] * 2  # '.jpg' -> ['.jpg', '.jpg']
+    im_bytes = cv2.imencode(encode_ext[0], img, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])[1]  # is_sucess, bytes_array
+    mk_bytes = cv2.imencode(encode_ext[1], msk, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])[1]  # is_sucess, bytes_array
     return im_bytes, mk_bytes, K, h, w, x, y
 
 
@@ -1713,8 +1714,7 @@ def decode_fill_im_bytes(im_bytes: BytesIO,
     img = (img * (msk / 255)).clip(0, 255).astype(np.uint8)  # fill with black, indexing starts at the front
 
     im_bytes = cv2.imencode(encode_ext, img, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])[1]  # is_sucess, bytes_array
-    mk_bytes = cv2.imencode(encode_ext, msk, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])[1]  # is_sucess, bytes_array
-    return im_bytes, mk_bytes
+    return im_bytes
 
 
 def decode_fill_ims_bytes(ims_bytes: np.ndarray,
@@ -1726,17 +1726,15 @@ def decode_fill_ims_bytes(ims_bytes: np.ndarray,
     mks_bytes = mks_bytes.reshape((np.prod(sh)))
 
     # Should we batch these instead of loading?
-    out = parallel_execution(list(ims_bytes), list(mks_bytes),
-                             action=decode_fill_im_bytes,
-                             desc=desc, print_progress=True,
-                             **kwargs,
-                             )
+    ims_bytes = parallel_execution(list(ims_bytes), list(mks_bytes),
+                                   action=decode_fill_im_bytes,
+                                   desc=desc, print_progress=True,
+                                   **kwargs,
+                                   )
 
-    ims_bytes, mks_bytes = zip(*out)  # is this OK?
-    ims_bytes, mks_bytes = np.asarray(ims_bytes, dtype=object), np.asarray(mks_bytes, dtype=object)
+    ims_bytes = np.asarray(ims_bytes, dtype=object)
     ims_bytes = ims_bytes.reshape(sh)
-    mks_bytes = mks_bytes.reshape(sh)
-    return ims_bytes, mks_bytes
+    return ims_bytes
 
 
 def build_rays(rgb: np.ndarray,

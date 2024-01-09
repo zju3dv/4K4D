@@ -2950,9 +2950,7 @@ def get_rays_from_ij(i: torch.Tensor, j: torch.Tensor,
     else: return ray_o, ray_d, torch.stack([i, j], dim=-1).long()  # B, P, 2
 
 
-def weighted_sample_rays(rgb: torch.Tensor,  # rgb image
-                         msk: torch.Tensor,  # mask value (not same as weight)
-                         wet: torch.Tensor,  # weight of every pixel (high weights -> sample more)
+def weighted_sample_rays(wet: torch.Tensor,  # weight of every pixel (high weights -> sample more)
                          K: torch.Tensor,  # intrinsic
                          R: torch.Tensor,  # extrinsic
                          T: torch.Tensor,  # extrinsic
@@ -2966,14 +2964,11 @@ def weighted_sample_rays(rgb: torch.Tensor,  # rgb image
     # with timeit(weighted_sample_coords.__name__):
     coords = weighted_sample_coords(wet, n_rays)  # B, P, 2
     i, j = coords.unbind(-1)
-    rgb = rgb[i, j]  # this is unavoidable (need to read from data)
-    msk = msk[i, j]  # just whatever for now
-    wet = wet[i, j]  # just whatever for now
 
     # Maybe refactor these? Built rays directly
     # with timeit(get_rays_from_ij.__name__):
     ray_o, ray_d = get_rays_from_ij(i, j, K, R, T, use_z_depth=use_z_depth, correct_pix=correct_pix)  # MARK: 0.xms
-    return rgb, msk, wet, ray_o, ray_d, coords  # gt, input, input, others
+    return ray_o, ray_d, coords  # gt, input, input, others
 
 
 def weighted_sample_coords(wet: torch.Tensor, n_rays: int = -1) -> torch.Tensor:

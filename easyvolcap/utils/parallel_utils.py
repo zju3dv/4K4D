@@ -27,10 +27,7 @@ def parallel_execution(*args, action: Callable, num_workers=32, print_progress=F
 
     # https://superfastpython.com/threadpool-python/
     # Python threads are well suited for use with IO-bound tasks
-    # MARK: DO NOT USE THIS FOR CPU BOUND TASK. THIS IS A CHEAP "THREAD" POOL WHICH SUCCUMBS TO PYTHON GIL
-    # MARK: USE POOL INTEAD OF THREAD POOL IF THAT IS THE CASE
     # NOTE: we expect first arg / or kwargs to be distributed
-    # NOTE: print_progress arg is reserved
 
     def get_length(args: List, kwargs: Dict):
         for a in args:
