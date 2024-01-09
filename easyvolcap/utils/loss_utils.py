@@ -9,7 +9,6 @@ from easyvolcap.utils.net_utils import searchsorted, matchup_channels
 
 from enum import Enum, auto
 
-
 class ElasticLossReduceType(Enum):
     WEIGHT = auto()
     MEDIAN = auto()

@@ -67,7 +67,7 @@ model_cfg:
     renderer_cfg:
         type: VolumeRenderer
     supervisor_cfg:
-        type: VolumetricVideoSupervisor
+        type: SequentialSupervisor
 
 dataloader_cfg: &dataloader_cfg # we see the term "dataloader" a one word?
     type: VolumetricVideoDataloader
