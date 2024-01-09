@@ -1737,22 +1737,6 @@ def decode_fill_ims_bytes(ims_bytes: np.ndarray,
     return ims_bytes
 
 
-def build_rays(rgb: np.ndarray,
-               msk: np.ndarray,
-               wet: np.ndarray,
-               K: np.ndarray,
-               R: np.ndarray,
-               T: np.ndarray,
-               n_rays: int = -1) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    # This is the exposed API for easyvolcap
-    # Sometime in the future we need to overhaul this implementation
-    from easyvolcap.utils.net_utils import weighted_sample_rays  # use pytorch backend for faster computation
-    rgb, msk, wet, K, R, T = to_tensor([rgb, msk, wet, K, R, T])
-    rgb, msk, wet, ray_o, ray_d, coords = weighted_sample_rays(rgb, msk, wet, K, R, T, n_rays)
-    rgb, msk, wet, ray_o, ray_d, coords = to_numpy([rgb, msk, wet, ray_o, ray_d, coords])
-    return rgb, msk, wet, ray_o, ray_d, coords
-
-
 def torch_sample_rays(img, msk, K, R, T, bounds, n_rays, random):
     from easyvolcap.utils.net_utils import fast_sample_rays, get_rays, get_near_far_aabb
     img = torch.from_numpy(img)

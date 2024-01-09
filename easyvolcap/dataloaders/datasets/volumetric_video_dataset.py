@@ -1274,7 +1274,7 @@ class VolumetricVideoDataset(Dataset):
                                                     self.correct_pix)  # N, 3; N, 3; N, 3; N, 2 (100ms)
 
         # Access and fetch data
-        i, j = coords.unbind[-1]
+        i, j = coords.unbind(-1)
         rgb = rgb[i, j]
         msk = msk[i, j]
         wet = wet[i, j]
