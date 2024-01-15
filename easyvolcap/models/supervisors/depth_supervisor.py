@@ -34,6 +34,7 @@ class DepthSupervisor(VolumetricVideoSupervisor):
 
             mask = dpt_gt != 0
             dpt_loss = F.smooth_l1_loss(dpt_map[mask], dpt_gt[mask])  # MARK: SYNC
+
             scalar_stats.dpt_loss = dpt_loss
             loss += self.dpt_loss_weight * dpt_loss
 

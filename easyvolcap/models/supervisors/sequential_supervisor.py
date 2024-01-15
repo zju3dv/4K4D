@@ -23,14 +23,15 @@ from easyvolcap.models.supervisors.volumetric_video_supervisor import Volumetric
 class SequentialSupervisor(VolumetricVideoSupervisor):
     def __init__(self,
                  network: nn.Module,
-                 supervisor_cfgs: List[dotdict] = [dotdict(type=VolumetricVideoSupervisor.__name__),
-                                                   dotdict(type=MaskSupervisor.__name__),
-                                                   dotdict(type=DepthSupervisor.__name__),
-                                                   dotdict(type=ProposalSupervisor.__name__),
-                                                   dotdict(type=GeometrySupervisor.__name__),
-                                                   dotdict(type=TemporalSupervisor.__name__),
-                                                   dotdict(type=DisplacementSupervisor.__name__),
-                                                   ],
+                 supervisor_cfgs: List[dotdict] = [
+                     dotdict(type=MaskSupervisor.__name__),
+                     dotdict(type=DepthSupervisor.__name__),
+                     dotdict(type=ProposalSupervisor.__name__),
+                     dotdict(type=GeometrySupervisor.__name__),
+                     dotdict(type=TemporalSupervisor.__name__),
+                     dotdict(type=DisplacementSupervisor.__name__),
+                     dotdict(type=VolumetricVideoSupervisor.__name__),
+                 ],
                  **kwargs,
                  ):
         kwargs = dotdict(kwargs)  # for recursive update

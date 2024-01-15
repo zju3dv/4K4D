@@ -458,7 +458,7 @@ class VolumetricVideoDataset(Dataset):
             self.dps_bytes, self.Ks, self.Hs, self.Ws = \
                 load_resize_undist_ims_bytes(self.dps, ori_Ks.numpy(), ori_Ds.numpy(), ratio, self.center_crop_size,
                                              f'Loading dpts bytes for {blue(self.dps_dir)} {magenta(self.split.name)}',
-                                             decode_flag=cv2.IMREAD_GRAYSCALE, dist_opt_K=self.dist_opt_K, encode_ext='.hdr')  # will for a grayscale read from bytes
+                                             decode_flag=cv2.IMREAD_UNCHANGED, dist_opt_K=self.dist_opt_K, encode_ext='.hdr')  # will for a grayscale read from bytes
 
         # Image pre cacheing (from disk to memory)
         self.ims_bytes, self.Ks, self.Hs, self.Ws = \
