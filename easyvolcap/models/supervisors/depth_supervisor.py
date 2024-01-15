@@ -23,12 +23,18 @@ class DepthSupervisor(VolumetricVideoSupervisor):
     def compute_loss(self, output: dotdict, batch: dotdict, loss: torch.Tensor, scalar_stats: dotdict, image_stats: dotdict):
         # Compute the actual loss here
 
-        if 'dpt_map' in output and \
+        if 'dpt_map' in output and 'dpt' in batch and \
            self.dpt_loss_weight > 0:
             # TODO: Implement depth loss here (scale-variant)
             # TODO: Implement scale invariant depth loss here
             # TODO: Implement depth continuity loss (scale-invariant)
             # TODO: Implement depth ranking loss (scale-invariant)
-            pass
+            dpt_map = output.dpt_map
+            dpt_gt = batch.dpt
+
+            mask = dpt_gt != 0
+            dpt_loss = F.smooth_l1_loss(dpt_map[mask], dpt_gt[mask])  # MARK: SYNC
+            scalar_stats.dpt_loss = dpt_loss
+            loss += self.dpt_loss_weight * dpt_loss
 
         return loss

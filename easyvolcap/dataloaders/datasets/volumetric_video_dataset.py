@@ -458,7 +458,7 @@ class VolumetricVideoDataset(Dataset):
             self.dps_bytes, self.Ks, self.Hs, self.Ws = \
                 load_resize_undist_ims_bytes(self.dps, ori_Ks.numpy(), ori_Ds.numpy(), ratio, self.center_crop_size,
                                              f'Loading dpts bytes for {blue(self.dps_dir)} {magenta(self.split.name)}',
-                                             decode_flag=cv2.IMREAD_GRAYSCALE, dist_opt_K=self.dist_opt_K, encode_ext=self.encode_ext)  # will for a grayscale read from bytes
+                                             decode_flag=cv2.IMREAD_GRAYSCALE, dist_opt_K=self.dist_opt_K, encode_ext='.hdr')  # will for a grayscale read from bytes
 
         # Image pre cacheing (from disk to memory)
         self.ims_bytes, self.Ks, self.Hs, self.Ws = \
@@ -488,7 +488,7 @@ class VolumetricVideoDataset(Dataset):
         # Only fill the background regions
         if not self.immask_crop and self.immask_fill:  # a little bit wasteful but acceptable for now
             self.ims_bytes = decode_fill_ims_bytes(self.ims_bytes, self.mks_bytes, f'Filling msks imgs for {blue(self.data_root)} {magenta(self.split.name)}', encode_ext=self.encode_ext)
-            if hasattr(self, 'dps_bytes'): self.dps_bytes = decode_fill_ims_bytes(self.dps_bytes, self.mks_bytes, f'Filling dpts imgs for {blue(self.data_root)} {magenta(self.split.name)}', encode_ext=self.encode_ext)
+            if hasattr(self, 'dps_bytes'): self.dps_bytes = decode_fill_ims_bytes(self.dps_bytes, self.mks_bytes, f'Filling dpts imgs for {blue(self.data_root)} {magenta(self.split.name)}', encode_ext='.hdr')
 
         # To make memory access faster, store raw floats in memory
         if self.cache_raw:
@@ -812,7 +812,7 @@ class VolumetricVideoDataset(Dataset):
             if self.cache_raw:
                 msk = torch.as_tensor(mk_bytes)
             else:
-                msk = torch.as_tensor(load_image_from_bytes(mk_bytes, normalize=True))
+                msk = torch.as_tensor(load_image_from_bytes(mk_bytes, normalize=True)[..., :1])
         else:
             msk = torch.ones_like(rgb[..., -1:])
 
@@ -821,7 +821,7 @@ class VolumetricVideoDataset(Dataset):
             if self.cache_raw:
                 wet = torch.as_tensor(wt_bytes)
             else:
-                wet = torch.as_tensor(load_image_from_bytes(wt_bytes, normalize=True))
+                wet = torch.as_tensor(load_image_from_bytes(wt_bytes, normalize=True)[..., :1])
         else:
             wet = msk.clone()
         wet[msk < self.bkgd_weight] = self.bkgd_weight
@@ -831,7 +831,7 @@ class VolumetricVideoDataset(Dataset):
             if self.cache_raw:
                 dpt = torch.as_tensor(dp_bytes)
             else:
-                dpt = torch.as_tensor(load_image_from_bytes(dp_bytes, normalize=False))  # readin as is
+                dpt = torch.as_tensor(load_image_from_bytes(dp_bytes, normalize=False)[..., :1])  # readin as is
 
         # Load background image from bytes
         if bg_bytes is not None:
@@ -1114,8 +1114,8 @@ class VolumetricVideoDataset(Dataset):
             rgb = output.rgb.view(H, W, 3)
             msk = output.msk.view(H, W, 1)
             wet = output.wet.view(H, W, 1)
-            if dpt is not None: output.dpt.view(H, W, 1)
-            if bkg is not None: output.bkg.view(H, W, 3)
+            if dpt is not None: dpt = output.dpt.view(H, W, 1)
+            if bkg is not None: bkg = output.bkg.view(H, W, 3)
 
             output = self.scale_ixts(output, render_ratio)
             H, W = output.H.item(), output.W.item()
@@ -1129,8 +1129,8 @@ class VolumetricVideoDataset(Dataset):
             output.rgb = rgb.reshape(-1, 3)  # full image in case you need it
             output.msk = msk.reshape(-1, 1)  # full mask (weights)
             output.wet = wet.reshape(-1, 1)  # full mask (weights)
-            if dpt is not None: output.dpt.reshape(-1, 1)
-            if bkg is not None: output.bkg.reshape(-1, 1)
+            if dpt is not None: output.dpt = dpt.reshape(-1, 1)
+            if bkg is not None: output.bkg = bkg.reshape(-1, 1)
 
         # Prepare for a different rendering center crop ratio
         if (len(render_center_crop_ratio.shape) and  # avoid length of 0-d tensor error, check length of shape
@@ -1141,8 +1141,8 @@ class VolumetricVideoDataset(Dataset):
             rgb = output.rgb.view(H, W, 3)
             msk = output.msk.view(H, W, 1)
             wet = output.wet.view(H, W, 1)
-            if dpt is not None: output.dpt.view(H, W, 1)
-            if bkg is not None: output.bkg.view(H, W, 3)
+            if dpt is not None: dpt = output.dpt.view(H, W, 1)
+            if bkg is not None: bkg = output.bkg.view(H, W, 3)
 
             w, h = int(W * render_center_crop_ratio), int(H * render_center_crop_ratio)
             x, y = w // 2, h // 2
@@ -1157,8 +1157,8 @@ class VolumetricVideoDataset(Dataset):
             output.rgb = rgb.reshape(-1, 3)  # full image in case you need it
             output.msk = msk.reshape(-1, 1)  # full mask
             output.wet = wet.reshape(-1, 1)  # full weights
-            if dpt is not None: output.dpt.reshape(-1, 1)
-            if bkg is not None: output.bkg.reshape(-1, 1)
+            if dpt is not None: output.dpt = dpt.reshape(-1, 1)
+            if bkg is not None: output.bkg = bkg.reshape(-1, 1)
 
             # Crop the intrinsics
             self.crop_ixts(output, x, y, w, h)
@@ -1188,8 +1188,8 @@ class VolumetricVideoDataset(Dataset):
             rgb = output.rgb.view(H, W, 3)
             msk = output.msk.view(H, W, 1)
             wet = output.wet.view(H, W, 1)
-            if dpt is not None: output.dpt.view(H, W, 1)
-            if bkg is not None: output.bkg.view(H, W, 3)
+            if dpt is not None: dpt = output.dpt.view(H, W, 1)
+            if bkg is not None: bkg = output.bkg.view(H, W, 3)
 
             # Find the Xp Yp Wp Hp to be used for random patch sampling
             # x = 0 if W - Wp <= 0 else np.random.randint(0, W - Wp + 1)
@@ -1216,8 +1216,8 @@ class VolumetricVideoDataset(Dataset):
             output.rgb = rgb.reshape(-1, 3)  # full image in case you need it
             output.msk = msk.reshape(-1, 1)  # full mask
             output.wet = wet.reshape(-1, 1)  # full weights
-            if dpt is not None: output.dpt.reshape(-1, 1)
-            if bkg is not None: output.bkg.reshape(-1, 1)
+            if dpt is not None: output.dpt = dpt.reshape(-1, 1)
+            if bkg is not None: output.bkg = bkg.reshape(-1, 1)
 
         if should_crop_ixt:
             # Prepare the resized ixts
@@ -1286,6 +1286,8 @@ class VolumetricVideoDataset(Dataset):
         output.rgb = rgb  # ground truth
         output.msk = msk
         output.wet = wet
+        output.dpt = dpt
+        output.bkg = bkg
         output.ray_o = ray_o
         output.ray_d = ray_d
         output.coords = coords
