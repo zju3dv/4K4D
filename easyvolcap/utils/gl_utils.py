@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from easyvolcap.utils.egl_utils import create_opengl_context, eglContextManager  # must be imported before OpenGL.GL
+    from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
 
 import os
 import glm
@@ -412,8 +413,51 @@ class Mesh:
             gl.glBufferData(gl.GL_ELEMENT_ARRAY_BUFFER, n_faces_bytes, ctypes.c_void_p(0), gl.GL_DYNAMIC_DRAW)
             gl.glBindVertexArray(0)
 
-    def render_imgui(self):
-        pass
+    def render_imgui(mesh, viewer: 'VolumetricVideoViewer', batch: dotdict):
+        from imgui_bundle import imgui
+        from easyvolcap.utils.imgui_utils import push_button_color, pop_button_color
+
+        i = batch.i
+        will_delete = batch.will_delete
+        slider_width = batch.slider_width
+
+        imgui.push_item_width(slider_width * 0.5)
+        mesh.name = imgui.input_text(f'Mesh name##{i}', mesh.name)[1]
+
+        if imgui.begin_combo(f'Mesh type##{i}', mesh.render_type.name):
+            for t in Mesh.RenderType:
+                if imgui.selectable(t.name, mesh.render_type == t)[1]:
+                    mesh.render_type = t  # construct enum from name
+                if mesh.render_type == t:
+                    imgui.set_item_default_focus()
+            imgui.end_combo()
+        imgui.pop_item_width()
+        mesh.point_radius = imgui.slider_float(f'Point radius##{i}', mesh.point_radius, 0.0005, 3.0)[1]  # 0.1mm
+        if hasattr(mesh, 'pts_per_pix'): mesh.pts_per_pix = imgui.slider_int('Point per pixel', mesh.pts_per_pix, 0, 60)[1]  # 0.1mm
+
+        push_button_color(0xff33cc55 if not mesh.shade_flat else 0xffaa5588)  # 0x55cc33ff
+        if imgui.button(f'Smooth##{i}' if not mesh.shade_flat else f' Flat ##{i}'):
+            mesh.shade_flat = not mesh.shade_flat
+        pop_button_color()
+
+        imgui.same_line()
+        push_button_color(0xff33cc55 if not mesh.render_normal else 0xffaa5588)  # 0x55cc33ff
+        if imgui.button(f'Color ##{i}' if not mesh.render_normal else f'Normal##{i}'):
+            mesh.render_normal = not mesh.render_normal
+        pop_button_color()
+
+        imgui.same_line()
+        push_button_color(0xff33cc55 if not mesh.visible else 0xffaa5588)  # 0x55cc33ff
+        if imgui.button(f'Show##{i}' if not mesh.visible else f'Hide##{i}'):
+            mesh.visible = not mesh.visible
+        pop_button_color()
+
+        # Render the delete button
+        imgui.same_line()
+        push_button_color(0xff3355ff)  # 0xff5533ff
+        if imgui.button(f'Delete##{i}'):
+            will_delete.append(i)
+        pop_button_color()
 
 
 class Quad(Mesh):

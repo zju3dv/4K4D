@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from imgui_bundle import imgui
+    from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
 
 import glm
 import torch
@@ -37,11 +38,12 @@ def add_debug_line(proj: mat4, a: vec3, b: vec3, col: np.uint32 = 0xffffffff, th
     # a: 3,
     # b: 3,
     from imgui_bundle import imgui
+    from easyvolcap.utils.imgui_utils import col2imu32
 
     draw_list: imgui.ImDrawList = imgui.get_background_draw_list()
     aa, bb = imgui.ImVec2(), imgui.ImVec2()
     if debug_project(proj, a, aa) and debug_project(proj, b, bb):
-        draw_list.add_line(aa, bb, col, thickness)
+        draw_list.add_line(aa, bb, col2imu32(col), thickness)
 
 
 def add_debug_text(proj: mat4, a: vec3, text: str, col: np.uint32 = 0xffffffff):
@@ -49,18 +51,20 @@ def add_debug_text(proj: mat4, a: vec3, text: str, col: np.uint32 = 0xffffffff):
     # a: 3,
     # text: str
     from imgui_bundle import imgui
+    from easyvolcap.utils.imgui_utils import col2imu32
 
     draw_list: imgui.ImDrawList = imgui.get_background_draw_list()
     aa = imgui.ImVec2()
     if debug_project(proj, a, aa):
-        draw_list.add_text(aa, col, text)
+        draw_list.add_text(aa, col2imu32(col), text)
 
 
 def add_debug_text_2d(aa: "imgui.ImVec2", text: str, col: np.uint32 = 0xff4040ff):  # X 0xff4040ff
     from imgui_bundle import imgui
+    from easyvolcap.utils.imgui_utils import col2imu32
 
     draw_list: imgui.ImDrawList = imgui.get_background_draw_list()
-    draw_list.add_text(aa, col, text)
+    draw_list.add_text(aa, col2imu32(col), text)
 
 
 def visualize_axes(proj: mat4, a: vec3, b: vec3, thickness=3.0, name: str = None):  # bounds in world coordinates
@@ -122,8 +126,8 @@ def visualize_cameras(proj: mat4, ixt: mat3, c2w: mat4x3, axis_size: float = 0.1
     if name is not None: add_debug_text(proj, p, str(name), 0xffcccccc)  # maybe mark the cameras
 
 
-class CameraPaths:
-    # This is the Model in the MVC gui designs
+class CameraPath:
+    # This is the Model in the EVC gui designs
 
     # Basic a list of cameras with interpolations
     # Use the underlying Camera class as backbone
@@ -143,6 +147,17 @@ class CameraPaths:
 
                  n_render_views: int = 100,
                  render_plots: bool = True,
+
+                 # Visualization related
+                 visible: bool = True,
+                 name: str = 'camera_path',
+                 filename: str = '',
+                 plot_thickness: float = 8.0,
+                 camera_thickness: float = 6.0,
+                 plot_color: int = 0x80ff80ff,
+                 camera_color: int = 0x80ffffff,
+
+                 **kwargs,
                  ) -> None:
         self.keyframes: List[Camera] = []  # orders matter
         self.playing_time = playing_time  # range: 0-1
@@ -155,6 +170,16 @@ class CameraPaths:
         # Private
         self.cursor_index = -1  # the camera to edit
         self.periodic = True
+
+        # Visualization
+        self.name = name
+        self.visible = visible
+        self.plot_thickness = plot_thickness
+        self.camera_thickness = camera_thickness
+        self.plot_color = plot_color
+        self.camera_color = camera_color
+        if filename:
+            self.load_keyframes(filename)
 
     def __len__(self):
         return len(self.keyframes)
@@ -258,6 +283,7 @@ class CameraPaths:
         cameras = read_camera(join(path, 'intri.yml'), join(path, 'extri.yml'))
         cameras = dotdict({k: cameras[k] for k in sorted(cameras.keys())})  # assuming dict is ordered (python 3.7+)
         self.keyframes = [Camera().from_easymocap(cam) for cam in cameras.values()]
+        self.name = path
         self.update()
 
     def export_interps(self, path: str):
@@ -269,6 +295,76 @@ class CameraPaths:
             cameras[f'{i:06d}'] = self.interp(u).to_easymocap()
         write_camera(cameras, path)  # without extri.yml, only dirname
         log(yellow(f'Interpolated cameras saved to: {blue(path)}'))
+
+    def render_imgui(self, viewer: 'VolumetricVideoViewer', batch: dotdict):
+        # from easyvolcap.utils.gl_utils import Mesh
+        # Mesh.render_imgui(self, viewer, batch)
+        from imgui_bundle import imgui
+        from easyvolcap.utils.imgui_utils import push_button_color, pop_button_color, col2rgba, col2vec4, vec42col, list2col, col2imu32
+
+        i = batch.i
+        will_delete = batch.will_delete
+        slider_width = batch.slider_width
+
+        imgui.push_item_width(slider_width * 0.5)
+        self.name = imgui.input_text(f'Mesh name##{i}', self.name)[1]
+        self.n_render_views = imgui.slider_int('Plot samples', self.n_render_views, 0, 3000)[1]
+        self.plot_thickness = imgui.slider_float('Plot thickness', self.plot_thickness, 0.01, 10.0)[1]
+        self.camera_thickness = imgui.slider_float('Camera thickness', self.camera_thickness, 0.01, 10.0)[1]
+
+        self.plot_color = list2col(imgui.color_edit4("Plot color", col2vec4(self.plot_color), flags=imgui.ColorEditFlags_.no_inputs.value)[1])
+        self.camera_color = list2col(imgui.color_edit4("Camera color", col2vec4(self.camera_color), flags=imgui.ColorEditFlags_.no_inputs.value)[1])
+
+        push_button_color(0x55cc33ff if not self.render_plots else 0x8855aaff)
+        if imgui.button(f'No Plot##{i}' if not self.render_plots else f' Plot ##{i}'):
+            self.render_plots = not self.render_plots
+        pop_button_color()
+
+        imgui.same_line()
+        push_button_color(0x55cc33ff if not self.visible else 0x8855aaff)
+        if imgui.button(f'Show##{i}' if not self.visible else f'Hide##{i}'):
+            self.visible = not self.visible
+        pop_button_color()
+
+        # Render the delete button
+        imgui.same_line()
+        push_button_color(0xff5533ff)
+        if imgui.button(f'Delete##{i}'):
+            will_delete.append(i)
+        pop_button_color()
+
+        # The actual rendering
+        self.draw(viewer.camera)
+
+    def draw(self, camera: Camera):
+
+        # The actual rendering starts here, the camera paths are considered GUI elements for eaiser management
+        # This rendering pattern is extremly slow and hard on the CPU, but whatever for now, just visualization
+        if not self.visible: return
+        proj = camera.w2p  # 3, 4
+
+        # Render cameras
+        for i, cam in enumerate(self.keyframes):
+            ixt = cam.ixt
+            c2w = cam.c2w
+            c2w = mat4x3(c2w)  # vis cam only supports this
+
+            # Add to imgui rendering list
+            visualize_cameras(proj, ixt, c2w, col=self.camera_color, thickness=self.camera_thickness, name=str(i))
+
+        if self.render_plots:
+            us = np.linspace(0, 1, self.n_render_views, dtype=np.float32)
+            c2ws = self.c2w_func(us)
+            cs = c2ws[..., :3, 3]  # N, 3
+            for i, c in enumerate(cs):
+                if i == 0:
+                    p = c  # previous
+                    continue
+                add_debug_line(proj, vec3(*p), vec3(*c), col=self.plot_color, thickness=self.plot_thickness)
+                p = c
+
+    def render(self, camera: Camera):
+        pass
 
 
 class Camera:
@@ -291,7 +387,7 @@ class Camera:
                  movement_speed: float = 1.0,  # gui movement speed
 
                  batch: dotdict = None,  # will ignore all other inputs
-                 string: str = None, # will ignore all other inputs
+                 string: str = None,  # will ignore all other inputs
                  **kwargs,
                  ) -> None:
 
@@ -301,7 +397,7 @@ class Camera:
                 batch = dotdict()
                 batch.H, batch.W, batch.K, batch.R, batch.T, batch.n, batch.f, batch.t, batch.v, batch.bounds = H, W, K, R, T, n, f, t, v, bounds
             self.from_batch(batch)
-            
+
             # Other configurables
             self.origin = vec3(*origin)
             self.world_up = vec3(*world_up)
