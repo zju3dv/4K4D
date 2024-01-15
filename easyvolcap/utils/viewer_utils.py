@@ -59,7 +59,7 @@ def add_debug_text(proj: mat4, a: vec3, text: str, col: np.uint32 = 0xffffffff):
         draw_list.add_text(aa, col2imu32(col), text)
 
 
-def add_debug_text_2d(aa: "imgui.ImVec2", text: str, col: np.uint32 = 0xff4040ff):  # X 0xff4040ff
+def add_debug_text_2d(aa: "imgui.ImVec2", text: str, col: np.uint32 = 0xff4040ff):
     from imgui_bundle import imgui
     from easyvolcap.utils.imgui_utils import col2imu32
 
@@ -68,14 +68,14 @@ def add_debug_text_2d(aa: "imgui.ImVec2", text: str, col: np.uint32 = 0xff4040ff
 
 
 def visualize_axes(proj: mat4, a: vec3, b: vec3, thickness=3.0, name: str = None):  # bounds in world coordinates
-    add_debug_text(proj, vec3(b.x + 0.025, a.y, a.z + 0.045), 'x', 0xffcccccc)  # maybe mark the cameras
-    add_debug_text(proj, vec3(a.x, b.y + 0.025, a.z + 0.045), 'y', 0xffcccccc)  # maybe mark the cameras
-    add_debug_text(proj, vec3(a.x, a.y, b.z + 0.025 + 0.045), 'z', 0xffcccccc)  # maybe mark the cameras
-    add_debug_line(proj, vec3(a.x, a.y, a.z), vec3(b.x, a.y, a.z), 0xff4040ff, thickness=thickness)  # X 0xff4040ff
-    add_debug_line(proj, vec3(a.x, a.y, a.z), vec3(a.x, b.y, a.z), 0xff40ff40, thickness=thickness)  # Y 0x40ff40ff
-    add_debug_line(proj, vec3(a.x, a.y, a.z), vec3(a.x, a.y, b.z), 0xffff4040, thickness=thickness)  # Z 0x4040ffff
+    add_debug_text(proj, vec3(b.x + 0.025, a.y, a.z + 0.045), 'x', 0xccccccff)
+    add_debug_text(proj, vec3(a.x, b.y + 0.025, a.z + 0.045), 'y', 0xccccccff)
+    add_debug_text(proj, vec3(a.x, a.y, b.z + 0.025 + 0.045), 'z', 0xccccccff)
+    add_debug_line(proj, vec3(a.x, a.y, a.z), vec3(b.x, a.y, a.z), 0xff4040ff, thickness=thickness)
+    add_debug_line(proj, vec3(a.x, a.y, a.z), vec3(a.x, b.y, a.z), 0x40ff40ff, thickness=thickness)
+    add_debug_line(proj, vec3(a.x, a.y, a.z), vec3(a.x, a.y, b.z), 0x4040ffff, thickness=thickness)
 
-    if name is not None: add_debug_text(proj, a + vec3(0.045), str(name), 0xffcccccc)  # maybe mark the cameras
+    if name is not None: add_debug_text(proj, a + vec3(0.045), str(name), 0xccccccff)  # maybe mark the cameras
 
 
 def visualize_cube(proj: mat4, a: vec3, b: vec3, thickness=3.0, name: str = None):  # bounds in world coordinates
@@ -83,11 +83,11 @@ def visualize_cube(proj: mat4, a: vec3, b: vec3, thickness=3.0, name: str = None
     add_debug_line(proj, vec3(a.x, b.y, a.z), vec3(b.x, b.y, a.z), 0xffffffff, thickness=thickness)
     add_debug_line(proj, vec3(a.x, a.y, b.z), vec3(b.x, a.y, b.z), 0xffffffff, thickness=thickness)
     add_debug_line(proj, vec3(a.x, b.y, b.z), vec3(b.x, b.y, b.z), 0xffffffff, thickness=thickness)
-    add_debug_line(proj, vec3(a.x, a.y, a.z), vec3(a.x, b.y, a.z), 0xff40ff40, thickness=thickness)  # Y
+    add_debug_line(proj, vec3(a.x, a.y, a.z), vec3(a.x, b.y, a.z), 0x40ff40ff, thickness=thickness)  # Y
     add_debug_line(proj, vec3(b.x, a.y, a.z), vec3(b.x, b.y, a.z), 0xffffffff, thickness=thickness)
     add_debug_line(proj, vec3(a.x, a.y, b.z), vec3(a.x, b.y, b.z), 0xffffffff, thickness=thickness)
     add_debug_line(proj, vec3(b.x, a.y, b.z), vec3(b.x, b.y, b.z), 0xffffffff, thickness=thickness)
-    add_debug_line(proj, vec3(a.x, a.y, a.z), vec3(a.x, a.y, b.z), 0xffff4040, thickness=thickness)  # Z
+    add_debug_line(proj, vec3(a.x, a.y, a.z), vec3(a.x, a.y, b.z), 0x4040ffff, thickness=thickness)  # Z
     add_debug_line(proj, vec3(b.x, a.y, a.z), vec3(b.x, a.y, b.z), 0xffffffff, thickness=thickness)
     add_debug_line(proj, vec3(a.x, b.y, a.z), vec3(a.x, b.y, b.z), 0xffffffff, thickness=thickness)
     add_debug_line(proj, vec3(b.x, b.y, a.z), vec3(b.x, b.y, b.z), 0xffffffff, thickness=thickness)
@@ -100,9 +100,9 @@ def visualize_cameras(proj: mat4, ixt: mat3, c2w: mat4x3, axis_size: float = 0.1
     focal = (ixt[0, 0] + ixt[1, 1]) / 2
     axis_size = focal * axis_size / 1000
 
-    add_debug_line(proj, p, p + axis_size * c2w[0], 0xff4040ff, thickness)  # 0xff4040ff rgba
-    add_debug_line(proj, p, p + axis_size * c2w[1], 0xff40ff40, thickness)  # 0x40ff40ff
-    add_debug_line(proj, p, p + axis_size * c2w[2], 0xffff4040, thickness)  # 0x4040ffff
+    add_debug_line(proj, p, p + axis_size * c2w[0], 0xff4040ff, thickness)
+    add_debug_line(proj, p, p + axis_size * c2w[1], 0x40ff40ff, thickness)
+    add_debug_line(proj, p, p + axis_size * c2w[2], 0x4040ffff, thickness)
 
     aspect = ixt[0, 0] / ixt[1, 1]
     xs = axis_size * aspect
@@ -123,7 +123,7 @@ def visualize_cameras(proj: mat4, ixt: mat3, c2w: mat4x3, axis_size: float = 0.1
     add_debug_line(proj, c, d, col, thickness)
     add_debug_line(proj, d, a, col, thickness)
 
-    if name is not None: add_debug_text(proj, p, str(name), 0xffcccccc)  # maybe mark the cameras
+    if name is not None: add_debug_text(proj, p, str(name), 0xccccccff)  # maybe mark the cameras
 
 
 class CameraPath:
@@ -156,6 +156,7 @@ class CameraPath:
                  camera_thickness: float = 6.0,
                  plot_color: int = 0x80ff80ff,
                  camera_color: int = 0x80ffffff,
+                 camera_axis_size: float = 0.10,
 
                  **kwargs,
                  ) -> None:
@@ -178,6 +179,7 @@ class CameraPath:
         self.camera_thickness = camera_thickness
         self.plot_color = plot_color
         self.camera_color = camera_color
+        self.camera_axis_size = camera_axis_size
         if filename:
             self.load_keyframes(filename)
 
@@ -308,12 +310,13 @@ class CameraPath:
 
         imgui.push_item_width(slider_width * 0.5)
         self.name = imgui.input_text(f'Mesh name##{i}', self.name)[1]
-        self.n_render_views = imgui.slider_int('Plot samples', self.n_render_views, 0, 3000)[1]
-        self.plot_thickness = imgui.slider_float('Plot thickness', self.plot_thickness, 0.01, 10.0)[1]
-        self.camera_thickness = imgui.slider_float('Camera thickness', self.camera_thickness, 0.01, 10.0)[1]
+        self.n_render_views = imgui.slider_int(f'Plot samples##{i}', self.n_render_views, 0, 3000)[1]
+        self.plot_thickness = imgui.slider_float(f'Plot thickness##{i}', self.plot_thickness, 0.01, 10.0)[1]
+        self.camera_thickness = imgui.slider_float(f'Camera thickness##{i}', self.camera_thickness, 0.01, 10.0)[1]
+        self.camera_axis_size = imgui.slider_float(f'Camera axis size##{i}', self.camera_axis_size, 0.01, 1.0)[1]
 
-        self.plot_color = list2col(imgui.color_edit4("Plot color", col2vec4(self.plot_color), flags=imgui.ColorEditFlags_.no_inputs.value)[1])
-        self.camera_color = list2col(imgui.color_edit4("Camera color", col2vec4(self.camera_color), flags=imgui.ColorEditFlags_.no_inputs.value)[1])
+        self.plot_color = list2col(imgui.color_edit4(f'Plot color##{i}', col2vec4(self.plot_color), flags=imgui.ColorEditFlags_.no_inputs.value)[1])
+        self.camera_color = list2col(imgui.color_edit4(f'Camera color##{i}', col2vec4(self.camera_color), flags=imgui.ColorEditFlags_.no_inputs.value)[1])
 
         push_button_color(0x55cc33ff if not self.render_plots else 0x8855aaff)
         if imgui.button(f'No Plot##{i}' if not self.render_plots else f' Plot ##{i}'):
@@ -350,7 +353,7 @@ class CameraPath:
             c2w = mat4x3(c2w)  # vis cam only supports this
 
             # Add to imgui rendering list
-            visualize_cameras(proj, ixt, c2w, col=self.camera_color, thickness=self.camera_thickness, name=str(i))
+            visualize_cameras(proj, ixt, c2w, col=self.camera_color, thickness=self.camera_thickness, name=str(i), axis_size=self.camera_axis_size)
 
         if self.render_plots:
             us = np.linspace(0, 1, self.n_render_views, dtype=np.float32)
