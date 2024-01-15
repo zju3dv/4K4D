@@ -6,6 +6,13 @@ from easyvolcap.utils.console_utils import *
 from os.path import dirname, basename, join
 
 
+def import_class(path: str):
+    items = path.split('.')
+    name = '.'.join(items[:-1])
+    module = items[-1]
+    return getattr(__import__(name, fromlist=[module]), module)
+
+
 def import_submodules(__file__):  # note that here __file__ is passed in as an argument instead of being used as a global variable
     modules = glob.glob(join(dirname(__file__), "*"))
     __all__ = [basename(f)[:-3] if basename(f).endswith('.py') else basename(f)

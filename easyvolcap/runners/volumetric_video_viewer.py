@@ -547,6 +547,14 @@ class VolumetricVideoViewer:
                     import OpenGL.GL as gl
                     bg_brightness = np.clip(bg_brightness, 0.0, 1.0)
                     gl.glClearColor(bg_brightness, bg_brightness, bg_brightness, 1.)
+            else:
+                if 'bg_brightness' not in self.static: self.static.bg_brightness = 0.0
+                self.static.bg_brightness = imgui.slider_float('Bkgd brightness', self.static.bg_brightness, 0.0, 1.0)[1]  # not always clamp
+
+                # Set bg color for the whole window
+                import OpenGL.GL as gl
+                bg_brightness = np.clip(self.static.bg_brightness, 0.0, 1.0)
+                gl.glClearColor(bg_brightness, bg_brightness, bg_brightness, 1.)
 
             # Custome GUI elements will be rendered here
             if hasattr(self.model, 'render_imgui'):
@@ -667,7 +675,7 @@ class VolumetricVideoViewer:
                         imgui.same_line(0, 1)
                     sel = i == self.camera_paths.selected  # might get updated during this
                     if sel:
-                        push_button_color(0x8855aaff)  # 
+                        push_button_color(0x8855aaff)  #
                     if imgui.button(f'###{i}', ImVec2(width, 0)):
                         self.camera_paths.selected = i  # will not change playing_time after inserting the first keyframe
                         playing_time = self.camera_paths.playing_time  # Do not change playing time, instead load the stored camera, this variable controls wherther to interp

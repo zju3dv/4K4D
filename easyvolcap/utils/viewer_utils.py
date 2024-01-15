@@ -100,9 +100,6 @@ def visualize_cameras(proj: mat4, ixt: mat3, c2w: mat4x3, axis_size: float = 0.1
     focal = (ixt[0, 0] + ixt[1, 1]) / 2
     axis_size = focal * axis_size / 1000
 
-    add_debug_line(proj, p, p + axis_size * c2w[0], 0xff4040ff, thickness)
-    add_debug_line(proj, p, p + axis_size * c2w[1], 0x40ff40ff, thickness)
-    add_debug_line(proj, p, p + axis_size * c2w[2], 0x4040ffff, thickness)
 
     aspect = ixt[0, 0] / ixt[1, 1]
     xs = axis_size * aspect
@@ -122,6 +119,10 @@ def visualize_cameras(proj: mat4, ixt: mat3, c2w: mat4x3, axis_size: float = 0.1
     add_debug_line(proj, b, c, col, thickness)
     add_debug_line(proj, c, d, col, thickness)
     add_debug_line(proj, d, a, col, thickness)
+
+    add_debug_line(proj, p, p + axis_size * c2w[0], 0xff4040ff, thickness)
+    add_debug_line(proj, p, p + axis_size * c2w[1], 0x40ff40ff, thickness)
+    add_debug_line(proj, p, p + axis_size * c2w[2], 0x4040ffff, thickness)
 
     if name is not None: add_debug_text(proj, p, str(name), 0xccccccff)  # maybe mark the cameras
 
@@ -353,7 +354,7 @@ class CameraPath:
             c2w = mat4x3(c2w)  # vis cam only supports this
 
             # Add to imgui rendering list
-            visualize_cameras(proj, ixt, c2w, col=self.camera_color, thickness=self.camera_thickness, name=str(i), axis_size=self.camera_axis_size)
+            visualize_cameras(proj, ixt, c2w, col=self.camera_color, thickness=self.camera_thickness, axis_size=self.camera_axis_size)
 
         if self.render_plots:
             us = np.linspace(0, 1, self.n_render_views, dtype=np.float32)

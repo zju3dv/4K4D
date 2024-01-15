@@ -1054,17 +1054,23 @@ def get_bounds(xyz, padding=0.05):
 def load_image_file(img_path: str, ratio=1.0):
     if img_path.endswith('.jpg') or img_path.endswith('.JPG') or img_path.endswith('.jpeg') or img_path.endswith('.JPEG'):
         im = Image.open(img_path)
-        draft = im.draft('RGB', (int(im.width * ratio), int(im.height * ratio)))
+        w, h = im.width, im.height
+        draft = im.draft('RGB', (int(w * ratio), int(h * ratio)))
         img = np.asarray(im).astype(np.float32) / 255
-        if ratio != 1.0 and draft is None:
-            height, width = img.shape[:2]
-            img = cv2.resize(img, (int(width * ratio), int(height * ratio)), interpolation=cv2.INTER_AREA)
+        if img.ndim == 2:
+            img = img[..., None]
+        if ratio != 1.0 and \
+            draft is None or \
+                draft is not None and \
+                    (draft[1][2] != int(w * ratio) or
+                        draft[1][3] != int(h * ratio)):
+            img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         return img
     else:
         img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
         if img.ndim >= 3 and img.shape[-1] >= 3:
             img[..., :3] = img[..., [2, 1, 0]]  # BGR to RGB
-        elif img.ndim == 2:
+        if img.ndim == 2:
             img = img[..., None]
         img = img.astype(np.float32) / np.iinfo(img.dtype).max  # normalize
         if ratio != 1.0:
@@ -1085,11 +1091,15 @@ def load_image(path: Union[str, np.ndarray], ratio: int = 1.0):
 def load_unchanged(img_path: str, ratio=1.0):
     if img_path.endswith('.jpg') or img_path.endswith('.JPG') or img_path.endswith('.jpeg') or img_path.endswith('.JPEG'):
         im = Image.open(img_path)
-        draft = im.draft('RGB', (int(im.width * ratio), int(im.height * ratio)))
+        w, h = im.width, im.height
+        draft = im.draft('RGB', (int(w * ratio), int(h * ratio)))
         img = np.asarray(im).copy()  # avoid writing error and already in RGB instead of BGR
-        if ratio != 1.0 and draft is None:
-            height, width = img.shape[:2]
-            img = cv2.resize(img, (int(width * ratio), int(height * ratio)), interpolation=cv2.INTER_AREA)
+        if ratio != 1.0 and \
+            draft is None or \
+                draft is not None and \
+                    (draft[1][2] != int(w * ratio) or
+                        draft[1][3] != int(h * ratio)):
+            img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         return img
     else:
         img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
@@ -1104,19 +1114,23 @@ def load_unchanged(img_path: str, ratio=1.0):
 def load_mask(msk_path: str, ratio=1.0):
     if msk_path.endswith('.jpg') or msk_path.endswith('.JPG') or msk_path.endswith('.jpeg') or msk_path.endswith('.JPEG'):
         msk = Image.open(msk_path)
-        draft = msk.draft('L', (int(msk.width * ratio), int(msk.height * ratio)))
+        w, h = msk.width, msk.height
+        draft = msk.draft('L', (int(w * ratio), int(h * ratio)))
         msk = np.asarray(msk).astype(int)  # read the actual file content from drafted disk
         msk = msk * 255 / msk.max()  # if max already 255, do nothing
-        msk = msk[..., None] > 128
+        # msk = msk[..., None] > 128
         msk = msk.astype(np.uint8)
-        if ratio != 1.0 and draft is None:
-            height, width = msk.shape[:2]
-            msk = cv2.resize(msk.astype(np.uint8), (int(width * ratio), int(height * ratio)), interpolation=cv2.INTER_NEAREST)[..., None]
+        if ratio != 1.0 and \
+            draft is None or \
+                draft is not None and \
+                    (draft[1][2] != int(w * ratio) or
+                        draft[1][3] != int(h * ratio)):
+            msk = cv2.resize(msk.astype(np.uint8), (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_NEAREST)[..., None]
         return msk
     else:
         msk = cv2.imread(msk_path, cv2.IMREAD_GRAYSCALE).astype(int)  # BGR to GRAY
         msk = msk * 255 / msk.max()  # if max already 255, do nothing
-        msk = msk[..., None] > 128  # make it binary
+        # msk = msk[..., None] > 128  # make it binary
         msk = msk.astype(np.uint8)
         if ratio != 1.0:
             height, width = msk.shape[:2]
