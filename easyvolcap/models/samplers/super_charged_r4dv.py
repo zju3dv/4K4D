@@ -17,11 +17,16 @@ from easyvolcap.engine import SAMPLERS, EMBEDDERS, REGRESSORS
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.timer_utils import timer
 from easyvolcap.utils.sh_utils import eval_sh
+from easyvolcap.utils.bound_utils import get_bounds
 from easyvolcap.utils.parallel_utils import parallel_execution
+from easyvolcap.utils.math_utils import affine_inverse, normalize
+from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
+from easyvolcap.utils.data_utils import to_cuda, to_tensor, add_batch
 from easyvolcap.utils.enerf_utils import sample_geometry_feature_image
 from easyvolcap.utils.ibr_utils import compute_src_feats, compute_src_inps
-from easyvolcap.utils.net_utils import unfreeze_module, freeze_module, normalize, typed, make_params, make_buffer, interpolate_image, affine_inverse, multi_gather, register_memory, unregister_memory, fill_nchw_image, get_bounds
-from easyvolcap.utils.data_utils import to_cuda, to_tensor, add_batch
+from easyvolcap.utils.cuda_utils import register_memory, unregister_memory
+from easyvolcap.utils.image_utils import interpolate_image, fill_nchw_image
+from easyvolcap.utils.net_utils import unfreeze_module, freeze_module, typed, make_params, make_buffer
 
 from easyvolcap.models.networks.embedders.kplanes_embedder import KPlanesEmbedder
 from easyvolcap.models.samplers.point_planes_sampler import PointPlanesSampler
@@ -118,8 +123,8 @@ def average_single_frame(i: int,
     timer.record('load cameras')
 
     # Load source images from the dataset
-    if dataset.closest_using_t: src_inps, _, _, _ = zip(*parallel_execution([i] * kwargs.n_srcs, src_inds, action=dataset.get_image))  # S: H, W, 3 # MARK: SYNC
-    else: src_inps, _, _, _ = zip(*parallel_execution(src_inds, [i] * kwargs.n_srcs, action=dataset.get_image))  # S: H, W, 3 # MARK: SYNC
+    if dataset.closest_using_t: src_inps = list(zip(*parallel_execution([i] * kwargs.n_srcs, src_inds, action=dataset.get_image)))[0]  # S: H, W, 3 # MARK: SYNC
+    else: src_inps = list(zip(*parallel_execution(src_inds, [i] * kwargs.n_srcs, action=dataset.get_image)))[0]  # S: H, W, 3 # MARK: SYNC
 
     # Move the source images to GPU and concatenate them (with black scaling)
     src_inps = [inp[None].permute(0, 3, 1, 2).to(xyz) for inp in src_inps]  # S: B, 3, H, W  # move to the same device
