@@ -23,9 +23,13 @@ from easyvolcap.utils.math_utils import affine_inverse, normalize
 from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
 from easyvolcap.utils.data_utils import to_cuda, to_tensor, add_batch
 from easyvolcap.utils.enerf_utils import sample_geometry_feature_image
+from easyvolcap.utils.image_utils import interpolate_image, image_to_size
 from easyvolcap.utils.ibr_utils import compute_src_feats, compute_src_inps
 from easyvolcap.utils.cuda_utils import register_memory, unregister_memory
+<<<<<<< HEAD
 from easyvolcap.utils.image_utils import interpolate_image, pad_image
+=======
+>>>>>>> f21b76d0 (4k4d: update to F.pad backend)
 from easyvolcap.utils.net_utils import unfreeze_module, freeze_module, typed, make_params, make_buffer
 
 from easyvolcap.models.networks.embedders.kplanes_embedder import KPlanesEmbedder
