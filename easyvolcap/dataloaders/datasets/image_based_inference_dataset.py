@@ -5,7 +5,6 @@ from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.console_utils import *
 from easyvolcap.engine.registry import call_from_cfg
 from easyvolcap.utils.parallel_utils import parallel_execution
-from easyvolcap.utils.net_utils import affine_padding, affine_inverse, torch_inverse_3x3
 from easyvolcap.dataloaders.datasets.image_based_dataset import ImageBasedDataset
 from easyvolcap.dataloaders.datasets.volumetric_video_dataset import VolumetricVideoDataset
 from easyvolcap.dataloaders.datasets.volumetric_video_inference_dataset import VolumetricVideoInferenceDataset

@@ -14,11 +14,9 @@ import os
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
 import cv2
 
-import sys
-sys.path.append('.')
 from easyvolcap.utils.console_utils import log
 from easyvolcap.utils.relight_utils import linear2srgb, cart2sph, srgb2linear
-from easyvolcap.utils.net_utils import normalize
+from easyvolcap.utils.math_utils import normalize
 # fmt: on
 
 lpips_model = lpips.LPIPS(verbose=False, net='vgg').to('cuda', non_blocking=True)

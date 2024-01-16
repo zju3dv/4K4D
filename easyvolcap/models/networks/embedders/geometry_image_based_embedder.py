@@ -7,7 +7,7 @@ from easyvolcap.engine import EMBEDDERS, REGRESSORS
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.enerf_utils import sample_feature_volume, sample_geometry_feature_image, FeatureAgg, FeatureNet
 from easyvolcap.utils.ibr_utils import get_src_inps, get_src_feats, prepare_caches, compute_src_inps, compute_src_feats
-from easyvolcap.utils.net_utils import normalize, linear_sampling, s_vals_to_z_vals, z_vals_to_s_vals, ray2xyz, volume_rendering, interpolate_image, resize_image, create_meshgrid, multi_scatter, multi_gather, fill_nhwc_image, fill_nchw_image
+from easyvolcap.utils.image_utils import interpolate_image, fill_nchw_image
 from easyvolcap.utils.data_utils import to_x
 
 

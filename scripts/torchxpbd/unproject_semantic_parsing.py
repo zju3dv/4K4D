@@ -9,16 +9,12 @@ import nvdiffrast.torch as dr
 from termcolor import cprint
 from torch_scatter import scatter
 
-# fmt: off
-import sys
-sys.path.append('.')
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import linear_gather
+from easyvolcap.utils.chunk_utils import linear_gather
 from easyvolcap.utils.parallel_utils import parallel_execution
 from easyvolcap.utils.raster_utils import get_ndc_perspective_matrix
 from easyvolcap.utils.sem_utils import color_to_semantic, semantics_to_color, semantic_list, semantic_dim, get_schp_palette
 from easyvolcap.utils.data_utils import load_image, list_to_tensor, export_mesh, to_cuda, export_dotdict
-# fmt: on
 
 """
 Task: unproject the values of the schp semantic parsing onto the mesh vertices to get a general result

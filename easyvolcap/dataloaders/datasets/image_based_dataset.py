@@ -12,7 +12,7 @@ from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.parallel_utils import parallel_execution
 from easyvolcap.utils.data_utils import DataSplit, pin_memory, to_tensor, as_torch_func
-from easyvolcap.utils.net_utils import affine_padding, affine_inverse, crop_using_mask, get_bound_2d_bound, get_bound_3d_near_far
+from easyvolcap.utils.math_utils import affine_padding, affine_inverse
 from easyvolcap.dataloaders.datasets.volumetric_video_dataset import VolumetricVideoDataset
 
 
@@ -165,17 +165,19 @@ class ImageBasedDataset(VolumetricVideoDataset):
 
     def get_sources(self, latent_index: Union[List[int], int], view_index: Union[List[int], int], output: dotdict):
         if self.split == DataSplit.TRAIN or self.supply_decoded:  # most of the time we asynchronously load images for training, thus no need to decode them using nvjpeg
-            rgb, msk, wet, bg = zip(*parallel_execution(view_index, latent_index, action=self.get_image, sequential=True))
+            rgb, msk, wet, dpt, bkg = zip(*parallel_execution(view_index, latent_index, action=self.get_image, sequential=True))
             output.src_inps = [i.permute(2, 0, 1) for i in rgb]  # for data locality # S, H, W, 3 -> S, 3, H, W
             if msk[0] is not None: output.src_msks = [i.permute(2, 0, 1) for i in msk]  # for data locality # S, H, W, 3 -> S, 3, H, W
             if wet[0] is not None: output.src_wets = [i.permute(2, 0, 1) for i in wet]  # for data locality # S, H, W, 3 -> S, 3, H, W
-            if bg[0] is not None: output.bg_src_inps = [i.permute(2, 0, 1) for i in bg]  # for data locality # S, H, W, 3 -> S, 3, H, W
+            if dpt[0] is not None: output.src_dpts = [i.permute(2, 0, 1) for i in dpt]  # for data locality # S, H, W, 3 -> S, 3, H, W
+            if bkg[0] is not None: output.src_bkgs = [i.permute(2, 0, 1) for i in bkg]  # for data locality # S, H, W, 3 -> S, 3, H, W
         else:
-            rgb_bytes, msk_bytes, wet_bytes, bg_bytes = zip(*parallel_execution(view_index, latent_index, action=self.get_image_bytes, sequential=True))
-            output.meta.src_inps = rgb_bytes
-            if msk_bytes[0] is not None: output.meta.src_msks = msk_bytes
-            if wet_bytes[0] is not None: output.meta.src_msks = wet_bytes
-            if bg_bytes[0] is not None: output.meta.bg_src_inps = bg_bytes
+            im_bytes, mk_bytes, wt_bytes, dp_bytes, bg_bytes = zip(*parallel_execution(view_index, latent_index, action=self.get_image_bytes, sequential=True))
+            output.meta.src_inps = im_bytes
+            if mk_bytes[0] is not None: output.meta.src_msks = mk_bytes
+            if wt_bytes[0] is not None: output.meta.src_wets = wt_bytes
+            if dp_bytes[0] is not None: output.meta.src_dpts = dp_bytes
+            if bg_bytes[0] is not None: output.meta.src_bkgs = bg_bytes
         return output
 
     def get_viewer_batch(self, output: dotdict):

@@ -34,10 +34,10 @@ from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.timer_utils import timer
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.color_utils import cm_cpu_store
-from easyvolcap.utils.net_utils import interpolate_image, resize_image
+from easyvolcap.utils.image_utils import interpolate_image, resize_image
 from easyvolcap.utils.prof_utils import setup_profiler, profiler_step, profiler_start, profiler_stop
 from easyvolcap.utils.imgui_utils import push_button_color, pop_button_color, tooltip, colored_wrapped_text
-from easyvolcap.utils.viewer_utils import Camera, CameraPaths, visualize_cameras, visualize_cube, add_debug_line, add_debug_text, visualize_axes, add_debug_text_2d
+from easyvolcap.utils.viewer_utils import Camera, CameraPath, visualize_cameras, visualize_cube, add_debug_line, add_debug_text, visualize_axes, add_debug_text_2d
 from easyvolcap.utils.data_utils import add_batch, add_iter, to_cpu, to_cuda, to_tensor, to_x, default_convert, default_collate, save_image, load_image, Visualization
 
 
@@ -125,7 +125,7 @@ class VolumetricVideoViewer:
         self.bind_callbacks()
 
         # Initialize animation related stuff
-        self.camera_paths = CameraPaths()
+        self.camera_paths = CameraPath()
         if load_keyframes_at_init:
             try:
                 self.camera_paths.load_keyframes(self.dataset.data_root)
@@ -315,7 +315,7 @@ class VolumetricVideoViewer:
                      Rs: torch.Tensor,
                      Ts: torch.Tensor,
                      proj: mat4,
-                     default_color: int = 0x8080c0ff,
+                     default_color: int = 0xffc08080,
                      bold_color: int = 0xff8080ff,
                      src_inds: torch.Tensor = None):
         # Add to imgui rendering list
@@ -325,10 +325,10 @@ class VolumetricVideoViewer:
         for i, (K, R, T) in enumerate(zip(Ks, Rs, Ts)):  # render cameras of this frame
 
             # Prepare for colors (vscode displays rgba while python uses abgr (little endian -> big endian))
-            col = default_color  # 0xffc08080
+            col = default_color
             thickness = 6.0
             if src_inds is not None and i in src_inds.ravel():
-                col = bold_color  # 0xff8080ff
+                col = bold_color
                 thickness = 12.0
 
             # Prepare for rendering params
@@ -503,7 +503,7 @@ class VolumetricVideoViewer:
             if network_available: self.use_quad_draw = imgui_toggle.toggle('Drawing quad', self.use_quad_draw, config=toggle_ios_style)[1]  # 1-2ms faster on wsl
 
             # unsafe_message = f'Unsafe uploading will trade latency with frame rates -> and might lead to crash if the deque size is too small, currently {len(self.frame_buffer_deque)} frames'
-            # colored_wrapped_text(0xff5533ff, unsafe_message)
+            # colored_wrapped_text(0xff3355ff, unsafe_message)
             # self.enable_unsafe_upload = imgui_toggle.toggle('Blit with quad', self.enable_unsafe_upload, config=toggle_ios_style)[1]  # -3ms
             # tooltip(unsafe_message)
 
@@ -547,6 +547,14 @@ class VolumetricVideoViewer:
                     import OpenGL.GL as gl
                     bg_brightness = np.clip(bg_brightness, 0.0, 1.0)
                     gl.glClearColor(bg_brightness, bg_brightness, bg_brightness, 1.)
+            else:
+                if 'bg_brightness' not in self.static: self.static.bg_brightness = 0.0
+                self.static.bg_brightness = imgui.slider_float('Bkgd brightness', self.static.bg_brightness, 0.0, 1.0)[1]  # not always clamp
+
+                # Set bg color for the whole window
+                import OpenGL.GL as gl
+                bg_brightness = np.clip(self.static.bg_brightness, 0.0, 1.0)
+                gl.glClearColor(bg_brightness, bg_brightness, bg_brightness, 1.)
 
             # Custome GUI elements will be rendered here
             if hasattr(self.model, 'render_imgui'):
@@ -582,7 +590,7 @@ class VolumetricVideoViewer:
                 except: pass  # sometimes the training process is still saving data
 
             imgui.same_line()
-            push_button_color(0xff5533ff)  # 0xff3355ff
+            push_button_color(0xff3355ff)
             if (imgui.button('Reset viewer')): self.reset()
             pop_button_color()
 
@@ -593,7 +601,7 @@ class VolumetricVideoViewer:
         # imgui.set_next_item_open(True)
         if imgui.collapsing_header(f'Animation (keyframes: {len(self.camera_paths)})###animation', ):
 
-            push_button_color(0xff33cc55)  # 0x55cc33ff
+            push_button_color(0x55cc33ff)
             if imgui.button('Insert'):
                 self.camera_paths.insert(self.camera)
             pop_button_color()
@@ -601,23 +609,23 @@ class VolumetricVideoViewer:
             if len(self.camera_paths):  # if exists, can delete or replace
                 # Update the keyframes
                 imgui.same_line()
-                push_button_color(0xff3355ff)  # 0xff5533ff
+                push_button_color(0xff5533ff)
                 if imgui.button('Replace'): self.camera_paths.replace(self.camera)
                 pop_button_color()
 
                 # Update the keyframes
                 imgui.same_line()
-                push_button_color(0xff5533ff)  # 0xff3355ff
+                push_button_color(0xff3355ff)
                 if imgui.button('Delete'): self.camera_paths.delete(self.camera_paths.selected)
                 pop_button_color()
 
                 # Update the keyframes
                 imgui.same_line()
-                push_button_color(0xff5533ff)  # 0xff3355ff
+                push_button_color(0xff3355ff)
                 if imgui.button('Clear'): self.camera_paths.clear()
                 pop_button_color()
 
-            # push_button_color(0xff3355ff)  # 0xff5533ff
+            # push_button_color(0xff5533ff)
             if imgui.button('Load'):
                 self.static.load_keyframes_dialog = pfd.select_folder("Select folder")
             # pop_button_color()
@@ -667,7 +675,7 @@ class VolumetricVideoViewer:
                         imgui.same_line(0, 1)
                     sel = i == self.camera_paths.selected  # might get updated during this
                     if sel:
-                        push_button_color(0xffaa5588)  # 0x8855aaff
+                        push_button_color(0x8855aaff)  #
                     if imgui.button(f'###{i}', ImVec2(width, 0)):
                         self.camera_paths.selected = i  # will not change playing_time after inserting the first keyframe
                         playing_time = self.camera_paths.playing_time  # Do not change playing time, instead load the stored camera, this variable controls wherther to interp
@@ -687,7 +695,7 @@ class VolumetricVideoViewer:
                     self.camera_paths.selected = max(0, self.camera_paths.selected - 1)
 
                 imgui.same_line()
-                push_button_color(0xff3355ff if self.camera_paths.playing else 0xff33cc55)  # 0xff5533ff, 0x55cc33ff
+                push_button_color(0xff5533ff if self.camera_paths.playing else 0x55cc33ff)
                 if imgui.button(f'{"Stop": ^4}' if self.camera_paths.playing else f'{"Play": ^4}'):
                     self.camera_paths.playing = not self.camera_paths.playing
                 pop_button_color()
@@ -744,7 +752,7 @@ class VolumetricVideoViewer:
                     if 'offline' in self.static and self.static.offline is not None:  # exists and started
                         if self.static.offline.poll() is None:
                             # Still running
-                            push_button_color(0xff5533ff)  # 0xff3355ff
+                            push_button_color(0xff3355ff)
                             if (imgui.button('Kill offline rendering')):
                                 self.static.offline.kill()
                             pop_button_color()
@@ -772,9 +780,13 @@ class VolumetricVideoViewer:
             if imgui.button('Add gaussian splat from file'):
                 self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['3DGS Files', '*.ply *.npz *.pt *.pth'])
                 self.static.mesh_class = Gaussian
+            if imgui.button('Add camera path visualization'):
+                self.static.add_mesh_dialog = pfd.select_folder('Select folder')
+                self.static.mesh_class = CameraPath
             if 'add_mesh_dialog' in self.static and \
                self.static.add_mesh_dialog is not None and \
                self.static.add_mesh_dialog.ready(timeout=1):  # this is not moved up since it spans frames # MARK: SLOW
+
                 directory = self.static.add_mesh_dialog.result()
                 if directory:
                     # Prepare arguments for mesh creation
@@ -783,51 +795,14 @@ class VolumetricVideoViewer:
                     if 'vert_sizes' in self.static: kwargs.vert_sizes = self.static.vert_sizes
 
                     # Construct and store the mesh
-                    mesh = self.static.mesh_class(filename=directory[0], H=self.H, W=self.W, **kwargs)
+                    filename = directory[0] if isinstance(directory, list) else directory
+                    mesh = self.static.mesh_class(filename=filename, H=self.H, W=self.W, **kwargs)
                     self.meshes.append(mesh)
                 self.static.add_mesh_dialog = None
 
             will_delete = []
             for i, mesh in enumerate(self.meshes):
-                imgui.push_item_width(slider_width * 0.5)
-                mesh.name = imgui.input_text(f'Mesh name##{i}', mesh.name)[1]
-
-                if imgui.begin_combo(f'Mesh type##{i}', mesh.render_type.name):
-                    for t in Mesh.RenderType:
-                        if imgui.selectable(t.name, mesh.render_type == t)[1]:
-                            mesh.render_type = t  # construct enum from name
-                        if mesh.render_type == t:
-                            imgui.set_item_default_focus()
-                    imgui.end_combo()
-                imgui.pop_item_width()
-                mesh.point_radius = imgui.slider_float(f'Point radius##{i}', mesh.point_radius, 0.0005, 3.0)[1]  # 0.1mm
-                if hasattr(mesh, 'pts_per_pix'): mesh.pts_per_pix = imgui.slider_int('Point per pixel', mesh.pts_per_pix, 0, 60)[1]  # 0.1mm
-
-                push_button_color(0xff33cc55 if not mesh.shade_flat else 0xffaa5588)  # 0x55cc33ff
-                if imgui.button(f'Smooth##{i}' if not mesh.shade_flat else f' Flat ##{i}'):
-                    mesh.shade_flat = not mesh.shade_flat
-                pop_button_color()
-
-                imgui.same_line()
-                push_button_color(0xff33cc55 if not mesh.render_normal else 0xffaa5588)  # 0x55cc33ff
-                if imgui.button(f'Color ##{i}' if not mesh.render_normal else f'Normal##{i}'):
-                    mesh.render_normal = not mesh.render_normal
-                pop_button_color()
-
-                imgui.same_line()
-                push_button_color(0xff33cc55 if not mesh.visible else 0xffaa5588)  # 0x55cc33ff
-                if imgui.button(f'Show##{i}' if not mesh.visible else f'Hide##{i}'):
-                    mesh.visible = not mesh.visible
-                pop_button_color()
-
-                imgui.same_line()
-                push_button_color(0xff3355ff)  # 0xff5533ff
-                if imgui.button(f'Delete##{i}'):
-                    will_delete.append(i)
-                pop_button_color()
-
-                # Maybe the meshes defined a custom gui
-                mesh.render_imgui()
+                mesh.render_imgui(viewer=self, batch=dotdict(i=i, will_delete=will_delete, slider_width=slider_width))
 
             for i in will_delete:
                 del self.meshes[i]
@@ -835,7 +810,7 @@ class VolumetricVideoViewer:
         if imgui.collapsing_header('Debugging'):
             imgui.text('The UI will freeze to switch control to pdbr')
             imgui.text('Use "c" in pdbr to continue normal execution')
-            push_button_color(0xff5533ff)  # 0xff3355ff
+            push_button_color(0xff3355ff)
             if imgui.button('Invoke pdbr (go see the terminal)'):
                 breakpoint()  # preserve tqdm (do not use debugger())
             if imgui.button('Enable breakpoint (if defined in code)'):
@@ -871,29 +846,9 @@ class VolumetricVideoViewer:
         if self.visualize_axes or self.visualize_cameras or self.visualize_bounds or self.camera_paths.keyframes:
             proj = self.camera.w2p  # 3, 4
 
-        # Render camera paths out (if exists any)
-        if self.visualize_paths and self.camera_paths.keyframes:
-            # Render cameras
-            for i, cam in enumerate(self.camera_paths.keyframes):
-                ixt = cam.ixt
-                c2w = cam.c2w
-                c2w = mat4x3(c2w)  # vis cam only supports this
-                col = 0xffffff80  # 0x80ffffff
-                thickness = 6.0
-
-                # Add to imgui rendering list
-                visualize_cameras(proj, ixt, c2w, col=col, thickness=thickness, name=str(i))
-
-        if self.visualize_paths and len(self.camera_paths) > 3 and self.camera_paths.render_plots:
-            us = np.linspace(0, 1, self.camera_paths.n_render_views, dtype=np.float32)
-            c2ws = self.camera_paths.c2w_func(us)
-            cs = c2ws[..., :3, 3]  # N, 3
-            for i, c in enumerate(cs):
-                if i == 0:
-                    p = c  # previous
-                    continue
-                add_debug_line(proj, vec3(*p), vec3(*c), col=0xff80ff80, thickness=8.0)  # 0x80ff80ff
-                p = c
+        # Render user added camera path
+        if self.visualize_cameras:
+            self.camera_paths.draw(self.camera)  # do the projection
 
         if self.visualize_cameras:
             # Prepare tensors to render
@@ -954,9 +909,9 @@ class VolumetricVideoViewer:
             visualize_axes(proj, self.camera.origin, self.camera.origin + vec3(0.1, 0.1, 0.1), thickness=6.0, name='Rotation')  # bounding box
 
         # if self.enable_unsafe_upload:
-        #     add_debug_text_2d(ImVec2(0, 0), 'Unsafe torch -> opengl uploading enabled', 0xff5533ff)
-        #     add_debug_text_2d(ImVec2(0, 10), 'Renders faster (pipelined) but might lead to crash', 0xff5533ff)
-        #     add_debug_text_2d(ImVec2(0, 20), 'Modify in `Rendering` tab for high resolution rendering', 0xff5533ff)
+        #     add_debug_text_2d(ImVec2(0, 0), 'Unsafe torch -> opengl uploading enabled', 0xff3355ff)
+        #     add_debug_text_2d(ImVec2(0, 10), 'Renders faster (pipelined) but might lead to crash', 0xff3355ff)
+        #     add_debug_text_2d(ImVec2(0, 20), 'Modify in `Rendering` tab for high resolution rendering', 0xff3355ff)
 
         # End of gui and rendering
         imgui.end()

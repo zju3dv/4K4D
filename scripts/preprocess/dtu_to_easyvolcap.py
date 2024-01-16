@@ -63,6 +63,7 @@ def main():
             dpt = read_pfm(dpt_path)[0].astype(np.float32) / scale
             msk = (dpt > 0.).astype(np.uint8)
             msk = cv2.resize(msk, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_NEAREST)[44:-44, 80:-80]
+            dpt = cv2.resize(dpt, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_LINEAR)[44:-44, 80:-80]
 
             # Writing and linking
             img_out_path = join(img_out_dir, f'{i:06d}.jpg')

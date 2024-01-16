@@ -15,7 +15,7 @@ from pytorch3d.renderer import (
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.fcds_utils import get_pytorch3d_camera_params, get_pulsar_camera_params
 from easyvolcap.utils.data_utils import save_image, to_cuda, add_batch
-from easyvolcap.utils.net_utils import multi_gather
+from easyvolcap.utils.chunk_utils import multi_gather
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.viewer_utils import Camera
 from easyvolcap.utils.test_utils import my_tests

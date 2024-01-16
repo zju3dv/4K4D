@@ -3,7 +3,7 @@ from torch import nn
 from typing import List
 from easyvolcap.engine import RENDERERS
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import volume_rendering, VolumetricVideoModule
+from easyvolcap.utils.net_utils import VolumetricVideoModule
 
 
 @RENDERERS.register_module()

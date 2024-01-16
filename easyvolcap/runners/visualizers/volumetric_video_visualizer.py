@@ -9,7 +9,7 @@ from easyvolcap.engine import cfg, args  # global
 from easyvolcap.engine import VISUALIZERS
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import normalize
+from easyvolcap.utils.math_utils import normalize
 from easyvolcap.utils.color_utils import colormap
 from easyvolcap.utils.depth_utils import depth_curve_fn
 from easyvolcap.utils.parallel_utils import parallel_execution
@@ -39,8 +39,9 @@ class VolumetricVideoVisualizer:  # this should act as a base class for other ty
                  pool_limit: int = 5,  # maximum number of pending tasks in the thread pool, keep this small to avoid using too much resource
                  video_fps: int = 60,
                  verbose: bool = True,
+
+                 dpt_curve: str = 'normalize',  # looks good
                  dpt_cm: str = 'virdis' if args.type != 'gui' else 'linear',  # looks good
-                 #  dpt_cm: str = 'linear',  # looks good
                  ):
         super().__init__()
 
@@ -69,6 +70,7 @@ class VolumetricVideoVisualizer:  # this should act as a base class for other ty
 
         self.video_fps = video_fps
         self.verbose = verbose
+        self.dpt_curve = dpt_curve
         self.dpt_cm = dpt_cm
 
         if self.verbose:
@@ -96,9 +98,15 @@ class VolumetricVideoVisualizer:  # this should act as a base class for other ty
                 img_gt = norm_curve_fn(batch.norm)
 
         elif type == Visualization.DEPTH:
-            img = depth_curve_fn(output.dpt_map, cm=self.dpt_cm)
-            if self.store_ground_truth and 'depth' in batch:
-                img_gt = depth_curve_fn(batch.depth, cm=self.dpt_cm)
+            if self.dpt_curve == 'linear':
+                img = output.dpt_map
+            else:
+                img = depth_curve_fn(output.dpt_map, cm=self.dpt_cm)
+            if self.store_ground_truth and 'dpt' in batch:
+                if self.dpt_curve == 'linear':
+                    img_gt = batch.dpt
+                else:
+                    img_gt = depth_curve_fn(batch.dpt, cm=self.dpt_cm)
 
         elif type == Visualization.FEATURE:
             # This visualizes the xyzt + xyz feature output

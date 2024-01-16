@@ -11,7 +11,8 @@ from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.data_utils import as_torch_func
 from easyvolcap.utils.cam_utils import average_c2ws, average_w2cs
 from easyvolcap.utils.easy_utils import read_camera, write_camera, to_easymocap
-from easyvolcap.utils.net_utils import affine_inverse, monotonic_near_far, affine_padding
+from easyvolcap.utils.math_utils import affine_inverse, affine_padding
+from easyvolcap.utils.bound_utils import monotonic_near_far
 
 
 def load_align_cameras(data_root: str, intri_file: str, extri_file: str, camera_dir: str = 'cameras',

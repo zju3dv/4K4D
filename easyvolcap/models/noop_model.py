@@ -1,11 +1,11 @@
 import torch
 from torch import nn
 from easyvolcap.engine import MODELS
-from easyvolcap.utils.net_utils import DoesNotCareAboutStateDict, make_buffer
+from easyvolcap.utils.net_utils import NoopModule, make_buffer
 
 
 @MODELS.register_module()
-class NoopModel(DoesNotCareAboutStateDict):
+class NoopModel(NoopModule):
     def __init__(self,
                  **kwargs,  # suppress warnings
                  ):

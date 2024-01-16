@@ -5,13 +5,10 @@ from tqdm import tqdm
 from functools import partial
 from termcolor import colored
 
-# fmt: off
-import sys
-from easyvolcap.utils.net_utils import importance_sampling, weighted_percentile, searchsorted, max_dilate_weights, max_dilate, query, anneal_weights
-from easyvolcap.utils.loss_utils import lossfun_outer, inner_outer, lossfun_distortion, interval_distortion
-from easyvolcap.utils.test_utils import my_tests
 from easyvolcap.utils.console_utils import *
-# fmt: on
+from easyvolcap.utils.test_utils import my_tests
+from easyvolcap.utils.loss_utils import lossfun_outer, inner_outer, lossfun_distortion, interval_distortion
+from easyvolcap.utils.prop_utils import importance_sampling, weighted_percentile, searchsorted, max_dilate_weights, max_dilate, query, anneal_weights
 
 
 @catch_throw

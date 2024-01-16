@@ -22,7 +22,9 @@ from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.console_utils import dotdict
 from easyvolcap.utils.gaussian_utils import GaussianModel
 from easyvolcap.utils.data_utils import load_pts, export_pts, to_x, to_cuda, to_cpu, to_tensor, remove_batch
-from easyvolcap.utils.net_utils import normalize, typed, multi_gather, multi_scatter, update_optimizer_state, get_bounds
+from easyvolcap.utils.net_utils import normalize, typed, update_optimizer_state
+from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
+from easyvolcap.utils.bound_utils import get_bounds
 
 from easyvolcap.models.cameras.optimizable_camera import OptimizableCamera
 from easyvolcap.models.samplers.point_planes_sampler import PointPlanesSampler

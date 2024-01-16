@@ -9,10 +9,10 @@ from os.path import join
 from easyvolcap.engine import cfg
 from easyvolcap.engine import CAMERAS
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import DoesNotCareAboutStateDict
+from easyvolcap.utils.net_utils import NoopModule
 
 @CAMERAS.register_module()
-class NoopCamera(DoesNotCareAboutStateDict):  # TODO: Implement intrinsics optimization
+class NoopCamera(NoopModule):  # TODO: Implement intrinsics optimization
     def __init__(self, **kwargs):
         super().__init__()
         pass

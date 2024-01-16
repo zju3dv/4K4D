@@ -66,5 +66,13 @@ evc-gui = "easyvolcap.scripts.wrap:gui_entrypoint"
 evc-dist = "easyvolcap.scripts.wrap:dist_entrypoint"
 evc-prof = "easyvolcap.scripts.wrap:prof_entrypoint"
 
+volcap = "easyvolcap.scripts.main:main_entrypoint"
+volcap-test = "easyvolcap.scripts.main:test_entrypoint"
+volcap-train = "easyvolcap.scripts.main:train_entrypoint"
+
+volcap-gui = "easyvolcap.scripts.wrap:gui_entrypoint"
+volcap-dist = "easyvolcap.scripts.wrap:dist_entrypoint"
+volcap-prof = "easyvolcap.scripts.wrap:prof_entrypoint"
+
 # This should only serve as a commanline registration
 # Dependencies are expected to be installed separatedly

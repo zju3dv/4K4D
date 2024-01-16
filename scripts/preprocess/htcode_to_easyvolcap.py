@@ -8,7 +8,7 @@ import numpy as np
 from os.path import join
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.easy_utils import write_camera
-from easyvolcap.utils.net_utils import affine_inverse
+from easyvolcap.utils.math_utils import affine_inverse
 from easyvolcap.utils.data_utils import as_numpy_func
 
 

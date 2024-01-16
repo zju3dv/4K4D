@@ -2,17 +2,255 @@ import torch
 import torch.nn.functional as F
 
 from typing import List
+from functools import lru_cache
+from easyvolcap.utils.math_utils import torch_inverse_3x3
 
-from smplx.lbs import batch_rodrigues
-from easyvolcap.utils.net_utils import torch_inverse_3x3
+
+def batch_rodrigues(
+    rot_vecs: torch.Tensor,  # B, N, 3
+    eps: float = torch.finfo(torch.float).eps
+) -> torch.Tensor:
+    ''' Calculates the rotation matrices for a batch of rotation vectors
+        Parameters
+        ----------
+        rot_vecs: torch.tensor BxNx3
+            array of N axis-angle vectors
+        Returns
+        -------
+        R: torch.tensor BxNx3x3
+            The rotation matrices for the given axis-angle parameters
+    '''
+
+    batch_size = rot_vecs.shape[:-1]
+    device, dtype = rot_vecs.device, rot_vecs.dtype
+
+    angle = (rot_vecs + eps).norm(p=2, dim=-1, keepdim=True)  # B, N, 3
+    rot_dir = rot_vecs / angle
+
+    cos = angle.cos()[..., None, :]
+    sin = angle.sin()[..., None, :]
+
+    # Bx1 arrays
+    rx, ry, rz = rot_dir.split(1, dim=-1)
+    zeros = torch.zeros(batch_size + (1,), dtype=dtype, device=device)
+    K = torch.cat([zeros, -rz, ry, rz, zeros, -rx, -ry, rx, zeros], dim=-1).view(batch_size + (3, 3))
+
+    ident = torch.eye(3, dtype=dtype, device=device)
+    for i in range(len(batch_size)): ident = ident[None]
+    rot_mat = ident + sin * K + (1 - cos) * K @ K
+    return rot_mat
 
 
-def apply_rt(xyz: torch.Tensor, rt: torch.Tensor):
-    # xyz: B, P, 3
-    # rt: B, P, 6
-    R = batch_rodrigues(rt[..., :3].view(-1, 3)).view(rt.shape[:-1] + (3, 3))  # B, P, 3, 3
-    T = rt[..., 3:]  # B, P, 3
-    return (R @ xyz[..., None])[..., 0] + T
+def transform_mat(R: torch.Tensor, t:torch.Tensor) -> torch.Tensor:
+    ''' Creates a batch of transformation matrices
+        Args:
+            - R: Bx3x3 array of a batch of rotation matrices
+            - t: Bx3x1 array of a batch of translation vectors
+        Returns:
+            - T: Bx4x4 Transformation matrix
+    '''
+    # No padding left or right, only add an extra row
+    return torch.cat([F.pad(R, [0, 0, 0, 1]),
+                      F.pad(t, [0, 0, 0, 1], value=1)], dim=2)
+
+
+def batch_rigid_transform(
+    rot_mats: torch.Tensor,
+    joints: torch.Tensor,
+    parents: torch.Tensor,
+    dtype=torch.float32
+) -> torch.Tensor:
+    """
+    Applies a batch of rigid transformations to the joints
+
+    Parameters
+    ----------
+    rot_mats : torch.tensor BxNx3x3
+        Tensor of rotation matrices
+    joints : torch.tensor BxNx3
+        Locations of joints
+    parents : torch.tensor BxN
+        The kinematic tree of each object
+    dtype : torch.dtype, optional:
+        The data type of the created tensors, the default is torch.float32
+
+    Returns
+    -------
+    posed_joints : torch.tensor BxNx3
+        The locations of the joints after applying the pose rotations
+    rel_transforms : torch.tensor BxNx4x4
+        The relative (with respect to the root joint) rigid transformations
+        for all the joints
+    """
+
+    joints = torch.unsqueeze(joints, dim=-1)
+
+    rel_joints = joints.clone()
+    rel_joints[:, 1:] -= joints[:, parents[1:]]
+
+    transforms_mat = transform_mat(
+        rot_mats.reshape(-1, 3, 3),
+        rel_joints.reshape(-1, 3, 1)).reshape(-1, joints.shape[1], 4, 4)
+
+    transform_chain = [transforms_mat[:, 0]]
+    for i in range(1, parents.shape[0]):
+        # Subtract the joint location at the rest pose
+        # No need for rotation, since it's identity when at rest
+        curr_res = torch.matmul(transform_chain[parents[i]],
+                                transforms_mat[:, i])
+        transform_chain.append(curr_res)
+
+    transforms = torch.stack(transform_chain, dim=1)
+
+    # The last column of the transformations contains the posed joints
+    posed_joints = transforms[:, :, :3, 3]
+
+    joints_homogen = F.pad(joints, [0, 0, 0, 1])
+
+    rel_transforms = transforms - F.pad(
+        torch.matmul(transforms, joints_homogen), [3, 0, 0, 0, 0, 0, 0, 0])
+
+    return posed_joints, rel_transforms
+
+
+def apply_r(vds, se3):
+    # se3: (B, N, 6), pts: (B, N, 3)
+    B, N, _ = se3.shape
+    se3 = se3.view(-1, se3.shape[-1])
+    vds = vds.view(-1, vds.shape[-1])
+    Rs = batch_rodrigues(se3[:, :3])  # get rotation matrix: (N, 3, 3)
+    vds = torch.bmm(Rs, vds[:, :, None])[:, :, 0]  # batch matmul to apply rotation, and get (N, 3) back
+    vds = vds.view(B, N, -1)
+    return vds
+
+
+def apply_rt(pts, se3):
+    # se3: (B, N, 6), pts: (B, N, 3)
+    B, N, _ = se3.shape
+    se3 = se3.view(-1, se3.shape[-1])
+    pts = pts.view(-1, pts.shape[-1])
+    Rs = batch_rodrigues(se3[:, :3])  # get rotation matrix: (N, 3, 3)
+    pts = torch.bmm(Rs, pts[:, :, None])[:, :, 0]  # batch matmul to apply rotation, and get (N, 3) back
+    # TODO: retrain these...
+    pts += se3[:, 3:]  # apply transformation
+    pts = pts.view(B, N, -1)
+    return pts
+
+
+def get_aspect_bounds(bounds) -> torch.Tensor:
+    # bounds: B, 2, 3
+    half_edge = (bounds[:, 1:] - bounds[:, :1]) / 2  # 1, 1, 3
+    half_long_edge = half_edge.max(dim=-1, keepdim=True)[0].expand(-1, -1, 3)
+    middle_point = half_edge + bounds[:, :1]  # 1, 1, 3
+    return torch.cat([middle_point - half_long_edge, middle_point + half_long_edge], dim=-2)
+
+
+@lru_cache
+def get_ndc_transform(bounds: torch.Tensor, preserve_aspect_ratio: bool = False) -> torch.Tensor:
+    if preserve_aspect_ratio:
+        bounds = get_aspect_bounds(bounds)
+    n_batch = bounds.shape[0]
+
+    # move to -1
+    # scale to 1
+    # scale * 2
+    # move - 1
+
+    move0 = torch.eye(4, device=bounds.device)[None].expand(n_batch, -1, -1)
+    move0[:, :3, -1] = -bounds[:, :1]
+
+    scale0 = torch.eye(4, device=bounds.device)[None].expand(n_batch, -1, -1)
+    scale0[:, torch.arange(3), torch.arange(3)] = 1 / (bounds[:, 1:] - bounds[:, :1])
+
+    scale1 = torch.eye(4, device=bounds.device)[None].expand(n_batch, -1, -1)
+    scale1[:, torch.arange(3), torch.arange(3)] = 2
+
+    move1 = torch.eye(4, device=bounds.device)[None].expand(n_batch, -1, -1)
+    move1[:, :3, -1] = -1
+
+    M = move1.matmul(scale1.matmul(scale0.matmul(move0)))
+
+    return M  # only scale and translation has value
+
+
+@lru_cache
+def get_inv_ndc_transform(bounds: torch.Tensor, preserve_aspect_ratio: bool = False) -> torch.Tensor:
+    M = get_ndc_transform(bounds, preserve_aspect_ratio)
+    invM = scale_trans_inverse(M)
+    return invM
+
+
+@lru_cache
+def get_dir_ndc_transform(bounds: torch.Tensor, preserve_aspect_ratio: bool = False) -> torch.Tensor:
+    # https://www.scratchapixel.com/lessons/mathematics-physics-for-computer-graphics/geometry/transforming-normals
+    invM = get_inv_ndc_transform(bounds, preserve_aspect_ratio)
+    return invM.mT
+
+
+@torch.jit.script
+def scale_trans_inverse(M: torch.Tensor) -> torch.Tensor:
+    n_batch = M.shape[0]
+    invS = 1 / M[:, torch.arange(3), torch.arange(3)]
+    invT = -M[:, :3, 3:] * invS[..., None]
+    invM = torch.eye(4, device=M.device)[None].expand(n_batch, -1, -1)
+    invM[:, torch.arange(3), torch.arange(3)] = invS
+    invM[:, :3, 3:] = invT
+
+    return invM
+
+
+def ndc(pts, bounds, preserve_aspect_ratio=False) -> torch.Tensor:
+    # both with batch dimension
+    # pts has no last dimension
+    M = get_ndc_transform(bounds, preserve_aspect_ratio)
+    R = M[:, :3, :3]
+    T = M[:, :3, 3:]
+    pts = pts.matmul(R.mT) + T.mT
+    return pts
+
+
+def inv_ndc(pts, bounds, preserve_aspect_ratio=False) -> torch.Tensor:
+    M = get_inv_ndc_transform(bounds, preserve_aspect_ratio)
+    R = M[:, :3, :3]
+    T = M[:, :3, 3:]
+    pts = pts.matmul(R.mT) + T.mT
+    return pts
+
+
+def dir_ndc(dir, bounds, preserve_aspect_ratio=False) -> torch.Tensor:
+    M = get_dir_ndc_transform(bounds, preserve_aspect_ratio)
+    R = M[:, :3, :3]
+    dir = dir.matmul(R.mT)
+    return dir
+
+
+@lru_cache
+def get_rigid_transform(poses: torch.Tensor, joints: torch.Tensor, parents: torch.Tensor):
+    # pose: B, N, 3
+    # joints: B, N, 3
+    # parents: B, N
+    # B, N, _ = poses.shape
+    R = batch_rodrigues(poses.view(-1, 3))  # N, 3, 3
+    J, A = batch_rigid_transform(R[None], joints, parents.view(-1))  # MARK: doc of this is wrong about parent
+    return J, A
+
+
+def get_rigid_transform_nobatch(poses: torch.Tensor, joints: torch.Tensor, parents: torch.Tensor):
+    # pose: N, 3
+    # joints: N, 3
+    # parents: N
+    R = batch_rodrigues(poses)  # N, 3, 3
+    J, A = batch_rigid_transform(R[None], joints[None], parents)  # MARK: doc of this is wrong about parent
+    J, A = J[0], A[0]  # remove batch dimension
+    return J, A
+
+
+# def apply_rt(xyz: torch.Tensor, rt: torch.Tensor):
+#     # xyz: B, P, 3
+#     # rt: B, P, 6
+#     R = batch_rodrigues(rt[..., :3].view(-1, 3)).view(rt.shape[:-1] + (3, 3))  # B, P, 3, 3
+#     T = rt[..., 3:]  # B, P, 3
+#     return (R @ xyz[..., None])[..., 0] + T
 
 
 def mat2rt(A: torch.Tensor) -> torch.Tensor:

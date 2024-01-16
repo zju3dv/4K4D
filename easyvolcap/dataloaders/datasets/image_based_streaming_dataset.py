@@ -14,7 +14,7 @@ from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.console_utils import dotdict
 from easyvolcap.utils.easy_utils import read_camera
 from easyvolcap.utils.stream_utils import MultiWebcamUSB
-from easyvolcap.utils.net_utils import affine_inverse, torch_inverse_3x3, affine_padding
+from easyvolcap.utils.math_utils import affine_inverse, torch_inverse_3x3, affine_padding
 from easyvolcap.utils.cam_utils import generate_hemispherical_orbit, interpolate_camera_path, interpolate_camera_lins, average_c2ws
 from easyvolcap.utils.data_utils import UnstructuredTensors, DataSplit, get_rays, get_near_far, as_torch_func, to_tensor, load_resize_undist_ims_bytes
 

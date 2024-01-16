@@ -21,7 +21,6 @@ from torch.utils.data._utils.pin_memory import pin_memory
 from torch.utils.data._utils.collate import default_collate, default_convert
 
 from easyvolcap.utils.parallel_utils import parallel_execution
-from easyvolcap.utils.net_utils import get_rigid_transform_nobatch as net_get_rigid_transform
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.console_utils import *
 
@@ -1014,32 +1013,12 @@ def get_rigid_transform(pose: np.ndarray, joints: np.ndarray, parents: np.ndarra
     # pose: N, 3
     # joints: N, 3
     # parents: N
+    from easyvolcap.utils.blend_utils import get_rigid_transform_nobatch as net_get_rigid_transform
     pose, joints, parents = default_convert([pose, joints, parents])
     J, A = net_get_rigid_transform(pose, joints, parents)
     J, A = to_numpy([J, A])
 
     return J, A
-
-
-def logits_to_prob(logits):
-    ''' Returns probabilities for logits
-    Args:
-        logits (tensor): logits
-    '''
-    odds = np.exp(logits)
-    probs = odds / (1 + odds)
-    return probs
-
-
-def prob_to_logits(probs, eps=1e-4):
-    ''' Returns logits for probabilities.
-    Args:
-        probs (tensor): probability tensor
-        eps (float): epsilon value for numerical stability
-    '''
-    probs = np.clip(probs, a_min=eps, a_max=1 - eps)
-    logits = np.log(probs / (1 - probs))
-    return logits
 
 
 def get_bounds(xyz, padding=0.05):
@@ -1054,17 +1033,23 @@ def get_bounds(xyz, padding=0.05):
 def load_image_file(img_path: str, ratio=1.0):
     if img_path.endswith('.jpg') or img_path.endswith('.JPG') or img_path.endswith('.jpeg') or img_path.endswith('.JPEG'):
         im = Image.open(img_path)
-        draft = im.draft('RGB', (int(im.width * ratio), int(im.height * ratio)))
+        w, h = im.width, im.height
+        draft = im.draft('RGB', (int(w * ratio), int(h * ratio)))
         img = np.asarray(im).astype(np.float32) / 255
-        if ratio != 1.0 and draft is None:
-            height, width = img.shape[:2]
-            img = cv2.resize(img, (int(width * ratio), int(height * ratio)), interpolation=cv2.INTER_AREA)
+        if img.ndim == 2:
+            img = img[..., None]
+        if ratio != 1.0 and \
+            draft is None or \
+                draft is not None and \
+            (draft[1][2] != int(w * ratio) or
+         draft[1][3] != int(h * ratio)):
+            img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         return img
     else:
         img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
         if img.ndim >= 3 and img.shape[-1] >= 3:
             img[..., :3] = img[..., [2, 1, 0]]  # BGR to RGB
-        elif img.ndim == 2:
+        if img.ndim == 2:
             img = img[..., None]
         img = img.astype(np.float32) / np.iinfo(img.dtype).max  # normalize
         if ratio != 1.0:
@@ -1085,11 +1070,15 @@ def load_image(path: Union[str, np.ndarray], ratio: int = 1.0):
 def load_unchanged(img_path: str, ratio=1.0):
     if img_path.endswith('.jpg') or img_path.endswith('.JPG') or img_path.endswith('.jpeg') or img_path.endswith('.JPEG'):
         im = Image.open(img_path)
-        draft = im.draft('RGB', (int(im.width * ratio), int(im.height * ratio)))
+        w, h = im.width, im.height
+        draft = im.draft('RGB', (int(w * ratio), int(h * ratio)))
         img = np.asarray(im).copy()  # avoid writing error and already in RGB instead of BGR
-        if ratio != 1.0 and draft is None:
-            height, width = img.shape[:2]
-            img = cv2.resize(img, (int(width * ratio), int(height * ratio)), interpolation=cv2.INTER_AREA)
+        if ratio != 1.0 and \
+            draft is None or \
+                draft is not None and \
+            (draft[1][2] != int(w * ratio) or
+         draft[1][3] != int(h * ratio)):
+            img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         return img
     else:
         img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
@@ -1104,19 +1093,23 @@ def load_unchanged(img_path: str, ratio=1.0):
 def load_mask(msk_path: str, ratio=1.0):
     if msk_path.endswith('.jpg') or msk_path.endswith('.JPG') or msk_path.endswith('.jpeg') or msk_path.endswith('.JPEG'):
         msk = Image.open(msk_path)
-        draft = msk.draft('L', (int(msk.width * ratio), int(msk.height * ratio)))
+        w, h = msk.width, msk.height
+        draft = msk.draft('L', (int(w * ratio), int(h * ratio)))
         msk = np.asarray(msk).astype(int)  # read the actual file content from drafted disk
         msk = msk * 255 / msk.max()  # if max already 255, do nothing
-        msk = msk[..., None] > 128
+        # msk = msk[..., None] > 128
         msk = msk.astype(np.uint8)
-        if ratio != 1.0 and draft is None:
-            height, width = msk.shape[:2]
-            msk = cv2.resize(msk.astype(np.uint8), (int(width * ratio), int(height * ratio)), interpolation=cv2.INTER_NEAREST)[..., None]
+        if ratio != 1.0 and \
+            draft is None or \
+                draft is not None and \
+            (draft[1][2] != int(w * ratio) or
+         draft[1][3] != int(h * ratio)):
+            msk = cv2.resize(msk.astype(np.uint8), (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_NEAREST)[..., None]
         return msk
     else:
         msk = cv2.imread(msk_path, cv2.IMREAD_GRAYSCALE).astype(int)  # BGR to GRAY
         msk = msk * 255 / msk.max()  # if max already 255, do nothing
-        msk = msk[..., None] > 128  # make it binary
+        # msk = msk[..., None] > 128  # make it binary
         msk = msk.astype(np.uint8)
         if ratio != 1.0:
             height, width = msk.shape[:2]
@@ -1302,7 +1295,7 @@ def get_rays(H, W, K, R, T):
     # ray_o = np.broadcast_to(ray_o, ray_d.shape)
     # return ray_o, ray_d
 
-    from easyvolcap.utils.net_utils import get_rays
+    from easyvolcap.utils.ray_utils import get_rays
     K, R, T = to_tensor([K, R, T])
     ray_o, ray_d = get_rays(H, W, K, R, T)
     ray_o, ray_d = to_numpy([ray_o, ray_d])
@@ -1319,7 +1312,7 @@ def get_near_far(bounds, ray_o, ray_d) -> Tuple[np.ndarray, np.ndarray]:
     # near = near[mask_at_box] / norm_d[mask_at_box, 0]
     # far = far[mask_at_box] / norm_d[mask_at_box, 0]
     # return near, far, mask_at_box
-    from easyvolcap.utils.net_utils import get_near_far_aabb
+    from easyvolcap.utils.ray_utils import get_near_far_aabb
     bounds, ray_o, ray_d = to_tensor([bounds, ray_o, ray_d])  # no copy
     near, far = get_near_far_aabb(bounds, ray_o, ray_d)
     near, far = to_numpy([near, far])
@@ -1360,7 +1353,7 @@ def full_sample_ray(img, msk, K, R, T, bounds, split='train', subpixel=False):
 
 def affine_inverse(m: np.ndarray):
     import torch
-    from easyvolcap.utils.net_utils import affine_inverse
+    from easyvolcap.utils.math_utils import affine_inverse
     return affine_inverse(torch.from_numpy(m)).numpy()
 
 
@@ -1626,7 +1619,7 @@ def decode_crop_fill_im_bytes(im_bytes: BytesIO,
                               R: np.ndarray,
                               T: np.ndarray,
                               bounds: np.ndarray,
-                              encode_ext='.jpg',
+                              encode_ext=['.jpg', '.jpg'],
                               decode_flag=cv2.IMREAD_UNCHANGED,
                               jpeg_quality: int = 100,
                               png_compression: int = 6,
@@ -1639,29 +1632,30 @@ def decode_crop_fill_im_bytes(im_bytes: BytesIO,
     img = load_image_from_bytes(im_bytes, decode_flag=decode_flag)  # H, W, 3
     msk = load_image_from_bytes(mk_bytes, decode_flag=decode_flag)  # H, W, 3
 
+    # Crop both mask and the image using bbox's 2D projection
     H, W, _ = img.shape
-    from easyvolcap.utils.net_utils import get_bound_2d_bound
+    from easyvolcap.utils.bound_utils import get_bound_2d_bound
     bx, by, bw, bh = as_numpy_func(get_bound_2d_bound)(bounds, K, R, T, H, W)
     img = img[by:by + bh, bx:bx + bw]
     msk = msk[by:by + bh, bx:bx + bw]
 
-    # Bug here for first frame of renbody 0013_01 for camera 42...
-    # save_image('bbox_cropped_img.png', img[..., [2, 1, 0]])
-    # save_image('bbox_cropped_msk.png', msk)
-    # breakpoint()
-
+    # Crop the image using the bounding rect of the mask
     mx, my, mw, mh = cv2.boundingRect((msk > 128).astype(np.uint8))  # array data type = 0 is not supported
     img = img[my:my + mh, mx:mx + mw]
     msk = msk[my:my + mh, mx:mx + mw]
 
+    # Update the final size and intrinsics
     x, y, w, h = bx + mx, by + my, mw, mh  # w and h will always be the smaller one, xy will be accumulated
-
-    img = (img * (msk / 255)).clip(0, 255).astype(np.uint8)  # fill with black, indexing starts at the front
     K[0, 2] -= x
     K[1, 2] -= y
 
-    im_bytes = cv2.imencode(encode_ext, img, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])[1]  # is_sucess, bytes_array
-    mk_bytes = cv2.imencode(encode_ext, msk, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])[1]  # is_sucess, bytes_array
+    # Fill the image with black (premultiply by mask)
+    img = (img * (msk / 255)).clip(0, 255).astype(np.uint8)  # fill with black, indexing starts at the front
+
+    # Reencode the videos and masks
+    if isinstance(encode_ext, str): encode_ext = [encode_ext] * 2  # '.jpg' -> ['.jpg', '.jpg']
+    im_bytes = cv2.imencode(encode_ext[0], img, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])[1]  # is_sucess, bytes_array
+    mk_bytes = cv2.imencode(encode_ext[1], msk, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])[1]  # is_sucess, bytes_array
     return im_bytes, mk_bytes, K, h, w, x, y
 
 
@@ -1713,8 +1707,7 @@ def decode_fill_im_bytes(im_bytes: BytesIO,
     img = (img * (msk / 255)).clip(0, 255).astype(np.uint8)  # fill with black, indexing starts at the front
 
     im_bytes = cv2.imencode(encode_ext, img, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])[1]  # is_sucess, bytes_array
-    mk_bytes = cv2.imencode(encode_ext, msk, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])[1]  # is_sucess, bytes_array
-    return im_bytes, mk_bytes
+    return im_bytes
 
 
 def decode_fill_ims_bytes(ims_bytes: np.ndarray,
@@ -1726,167 +1719,15 @@ def decode_fill_ims_bytes(ims_bytes: np.ndarray,
     mks_bytes = mks_bytes.reshape((np.prod(sh)))
 
     # Should we batch these instead of loading?
-    out = parallel_execution(list(ims_bytes), list(mks_bytes),
-                             action=decode_fill_im_bytes,
-                             desc=desc, print_progress=True,
-                             **kwargs,
-                             )
+    ims_bytes = parallel_execution(list(ims_bytes), list(mks_bytes),
+                                   action=decode_fill_im_bytes,
+                                   desc=desc, print_progress=True,
+                                   **kwargs,
+                                   )
 
-    ims_bytes, mks_bytes = zip(*out)  # is this OK?
-    ims_bytes, mks_bytes = np.asarray(ims_bytes, dtype=object), np.asarray(mks_bytes, dtype=object)
+    ims_bytes = np.asarray(ims_bytes, dtype=object)
     ims_bytes = ims_bytes.reshape(sh)
-    mks_bytes = mks_bytes.reshape(sh)
-    return ims_bytes, mks_bytes
-
-
-def build_rays(rgb: np.ndarray,
-               msk: np.ndarray,
-               wet: np.ndarray,
-               K: np.ndarray,
-               R: np.ndarray,
-               T: np.ndarray,
-               n_rays: int = -1) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    # This is the exposed API for easyvolcap
-    # Sometime in the future we need to overhaul this implementation
-    from easyvolcap.utils.net_utils import weighted_sample_rays  # use pytorch backend for faster computation
-    rgb, msk, wet, K, R, T = to_tensor([rgb, msk, wet, K, R, T])
-    rgb, msk, wet, ray_o, ray_d, coords = weighted_sample_rays(rgb, msk, wet, K, R, T, n_rays)
-    rgb, msk, wet, ray_o, ray_d, coords = to_numpy([rgb, msk, wet, ray_o, ray_d, coords])
-    return rgb, msk, wet, ray_o, ray_d, coords
-
-
-def torch_sample_rays(img, msk, K, R, T, bounds, n_rays, random):
-    from easyvolcap.utils.net_utils import fast_sample_rays, get_rays, get_near_far_aabb
-    img = torch.from_numpy(img)
-    msk = torch.from_numpy(msk)
-    K = torch.from_numpy(K)
-    R = torch.from_numpy(R)
-    T = torch.from_numpy(T)
-    bounds = torch.from_numpy(bounds)
-    H, W = img.shape[:2]
-    with Timer(get_rays.__name__):
-        ray_o, ray_d = get_rays(H, W, K, R, T)
-    with Timer(get_near_far_aabb.__name__):
-        near, far, mask_at_box = get_near_far_aabb(bounds, ray_o, ray_d, return_raw=True)
-    with Timer(fast_sample_rays.__name__):
-        rgb, ray_o, ray_d, near, far, coords, mask_at_box = \
-            fast_sample_rays(ray_o, ray_d, near, far, img, msk, mask_at_box, n_rays, 'train' if random else 'val', body_ratio=0.0, face_ratio=0.0)
-    rgb = rgb.numpy()
-    ray_o = ray_o.numpy()
-    ray_d = ray_d.numpy()
-    near = near.numpy()
-    far = far.numpy()
-    coords = coords.numpy()
-    mask_at_box = mask_at_box.numpy()
-
-    return rgb, ray_o, ray_d, near, far, coords, mask_at_box
-
-
-def sample_rays(img, msk, K, R, T, bounds, n_rays, split='train', subpixel=False, body_ratio=0.5, face_ratio=0.0):
-    H, W = img.shape[:2]
-    ray_o, ray_d = get_rays(H, W, K, R, T, subpixel)
-    near, far, mask_at_box = get_full_near_far(bounds, ray_o, ray_d)
-    msk = msk * mask_at_box
-    if "train" in split:
-        n_body = int(n_rays * body_ratio)
-        n_face = int(n_rays * face_ratio)
-        n_rays = n_rays - n_body - n_face
-        coord_body = np.argwhere(msk == 1)
-        coord_face = np.argwhere(msk == 13)
-        coord_rand = np.argwhere(mask_at_box == 1)
-        coord_body = coord_body[np.random.randint(len(coord_body), size=[n_body, ])]
-        coord_face = coord_face[np.random.randint(len(coord_face), size=[n_face, ])]
-        coord_rand = coord_rand[np.random.randint(len(coord_rand), size=[n_rays, ])]
-        coords = np.concatenate([coord_body, coord_face, coord_rand], axis=0)
-        mask_at_box = mask_at_box[coords[:, 0], coords[:, 1]]  # always True when training
-    else:
-        coords = np.argwhere(mask_at_box == 1)
-        # will not modify mask at box
-    ray_o = ray_o[coords[:, 0], coords[:, 1]].astype(np.float32)
-    ray_d = ray_d[coords[:, 0], coords[:, 1]].astype(np.float32)
-    near = near[coords[:, 0], coords[:, 1]].astype(np.float32)
-    far = far[coords[:, 0], coords[:, 1]].astype(np.float32)
-    rgb = img[coords[:, 0], coords[:, 1]].astype(np.float32)
-    return rgb, ray_o, ray_d, near, far, coords, mask_at_box
-
-
-def get_rays_within_bounds(H, W, K, R, T, bounds):
-    ray_o, ray_d = get_rays(H, W, K, R, T)
-
-    ray_o = ray_o.reshape(-1, 3).astype(np.float32)
-    ray_d = ray_d.reshape(-1, 3).astype(np.float32)
-    near, far, mask_at_box = get_near_far(bounds, ray_o, ray_d)
-    near = near.astype(np.float32)
-    far = far.astype(np.float32)
-    ray_o = ray_o[mask_at_box]
-    ray_d = ray_d[mask_at_box]
-
-    mask_at_box = mask_at_box.reshape(H, W)
-
-    return ray_o, ray_d, near, far, mask_at_box
-
-
-def get_rays_with_patch(H, W, K, R, T, bounds, patchsize):
-    ray_o, ray_d = get_rays(H, W, K, R, T)
-
-    near, far, mask_at_box = get_near_far(bounds, ray_o, ray_d)
-    mask_at_box = mask_at_box.reshape(H, W)
-
-    box_mask_inds = np.argwhere(mask_at_box)  # 2D -> 2D indexing, list of 2, (N, 2)
-    box_min, box_max = (np.array([box_mask_inds[:, 0].min(),
-                                 box_mask_inds[:, 1].min()]),
-                        np.array([box_mask_inds[:, 0].max(),
-                                  box_mask_inds[:, 1].max()]))
-    # patchsize is the maximum
-    patchsize = min(patchsize, *(box_max - box_min))
-
-    i = np.random.randint(box_min[0], box_max[0] - patchsize)
-    j = np.random.randint(box_min[1], box_max[1] - patchsize)
-    mask = np.zeros_like(mask_at_box, dtype=bool)
-    mask[i:i + patchsize, j:j + patchsize] = True
-
-    full_mask = mask & mask_at_box  # get full mask, including mask_at_box and mask, still (512 * 512)
-    box_mask = mask[mask_at_box]  # get valid indices in mask_at_box (mask_size,)
-    mask_at_box = mask_at_box[mask]  # get valid mask_at_box value in (128, 128)
-    near = near[box_mask].astype(np.float32)
-    far = far[box_mask].astype(np.float32)
-    ray_o = ray_o[full_mask].astype(np.float32)
-    ray_d = ray_d[full_mask].astype(np.float32)
-
-    return ray_o, ray_d, near, far, full_mask, mask_at_box
-
-
-def get_rays_with_downscaling(H, W, K, R, T, bounds, split, downscale: int = 16, samples: int = 2):
-    ray_o, ray_d = get_rays(H, W, K, R, T)
-    if split != 'train':
-        downscale = 1
-        samples = 1
-
-    h, w = H // downscale, W // downscale
-    assert h * downscale == H and w * downscale == W, f"H, W: {H}, {W}, {downscale}, {samples}"
-    assert samples <= downscale**2, f"H, W: {H}, {W}, {downscale}, {samples}"
-
-    mask = np.zeros([H, W], dtype=bool)
-    for i in range(h):
-        for j in range(w):
-            choices = np.random.choice(downscale**2, size=samples, replace=False)
-            for c in choices:
-                l = c // downscale
-                k = c % downscale
-                mask[i * downscale + l, j * downscale + k] = True
-
-    near, far, mask_at_box = get_near_far(bounds, ray_o, ray_d)
-
-    mask_at_box = mask_at_box.reshape(H, W)
-    full_mask = mask & mask_at_box  # get full mask, including mask_at_box and mask, still (512 * 512)
-    box_mask = mask[mask_at_box]  # get valid indices in mask_at_box (mask_size,)
-    mask_at_box = mask_at_box[mask]  # get valid mask_at_box value in (128, 128)
-    near = near[box_mask].astype(np.float32)
-    far = far[box_mask].astype(np.float32)
-    ray_o = ray_o[full_mask].astype(np.float32)
-    ray_d = ray_d[full_mask].astype(np.float32)
-
-    return ray_o, ray_d, near, far, full_mask, mask_at_box
+    return ims_bytes
 
 
 def batch_rodrigues(poses):
@@ -1917,7 +1758,6 @@ def get_rigid_transformation_and_joints(poses, joints, parents):
     joints: n_bones x 3
     parents: n_bones
     """
-    from smplx import lbs
 
     n_bones = len(joints)
     rot_mats = batch_rodrigues(poses)

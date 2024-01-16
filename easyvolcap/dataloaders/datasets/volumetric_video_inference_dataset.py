@@ -11,7 +11,7 @@ from easyvolcap.engine import cfg, args  # global
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.easy_utils import read_camera, to_easymocap, write_camera
-from easyvolcap.utils.net_utils import affine_inverse, torch_inverse_3x3, affine_padding
+from easyvolcap.utils.math_utils import affine_inverse, torch_inverse_3x3, affine_padding
 from easyvolcap.utils.data_utils import get_rays, DataSplit, get_near_far, as_torch_func, export_camera
 from easyvolcap.utils.cam_utils import generate_hemispherical_orbit, interpolate_camera_path, interpolate_camera_lins, generate_spiral_path, Interpolation
 

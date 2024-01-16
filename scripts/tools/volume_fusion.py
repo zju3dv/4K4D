@@ -12,7 +12,8 @@ from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.fcds_utils import voxel_down_sample, remove_outlier
 from easyvolcap.utils.data_utils import add_batch, to_cuda, export_pts, export_mesh, export_pcd, to_x
-from easyvolcap.utils.net_utils import point_padding, affine_padding, affine_inverse, multi_gather, multi_scatter
+from easyvolcap.utils.math_utils import point_padding, affine_padding, affine_inverse
+from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -55,8 +56,6 @@ def main():
 
 def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
     from easyvolcap.dataloaders.datasamplers import get_inds
-    result_dir = args.result_dir
-    occ_thresh = args.occ_thresh
 
     dataset = runner.val_dataloader.dataset
     inds = get_inds(dataset)
@@ -70,41 +69,46 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
 
     pbar = tqdm(total=nl * nv, desc=f'Fusing rendered RGBD')
     for f in range(nl):
-        pts, rgb, prd, occ, dpt, dir = [], [], [], [], [], []
-        # near, far = [], []
+        ptss, rgbs, prds, occs, dpts, dirs = [], [], [], [], [], []
         for v in range(nv):
-            batch = dataset[inds[v, f]]  # get the batch data for this view
             # Handle data movement
+            batch = dataset[inds[v, f]]  # get the batch data for this view
             batch = add_batch(to_cuda(batch))
             meta = batch.meta
             del batch.meta
-            # batch = to_x(batch, runner.model.dtype)
             batch.meta = meta
-            with torch.inference_mode() and torch.no_grad():
+
+            # Running inference
+            with torch.inference_mode(), torch.no_grad():
                 output = runner.model(batch)  # get everything we need from the model, this performs the actual rendering
 
-            rgb.append(batch.rgb.detach().cpu())
-            prd.append(output.rgb_map.detach().cpu())
-            occ.append(output.acc_map.detach().cpu())
-            dpt.append(output.dpt_map.detach().cpu())
-            pts.append((batch.ray_o + output.dpt_map * batch.ray_d).detach().cpu())
-            dir.append(batch.ray_d.detach().cpu())
+            # Get output point clouds
+            pts = (batch.ray_o + output.dpt_map * batch.ray_d).detach().cpu()
+            rgb = batch.rgb.detach().cpu()
+            prd = output.rgb_map.detach().cpu()
+            occ = output.acc_map.detach().cpu()
+            dpt = output.dpt_map.detach().cpu()
+            dir = batch.ray_d.detach().cpu()
 
-            # near.append(batch.near.detach().cpu())
-            # far.append(batch.far.detach().cpu())
+            # Store it into list
+            prds.append(prd)
+            ptss.append(pts)
+            rgbs.append(rgb)
+            occs.append(occ)
+            dpts.append(dpt)
+            dirs.append(dir)
 
             pbar.update()
 
-        prd = torch.cat(prd, dim=-2).float()
-        pts = torch.cat(pts, dim=-2).float()
-        rgb = torch.cat(rgb, dim=-2).float()
-        occ = torch.cat(occ, dim=-2).float()
-        dpt = torch.cat(dpt, dim=-2).float()
-        dir = torch.cat(dir, dim=-2).float()
+        # Concatenate per-view depth map and other information
+        prd = torch.cat(prds, dim=-2).float()
+        pts = torch.cat(ptss, dim=-2).float()
+        rgb = torch.cat(rgbs, dim=-2).float()
+        occ = torch.cat(occs, dim=-2).float()
+        dpt = torch.cat(dpts, dim=-2).float()
+        dir = torch.cat(dirs, dim=-2).float()
 
-        # near = torch.cat(near, dim=-2)
-        # far = torch.cat(far, dim=-2)
-
+        # Remove NaNs in point positions
         ind = (~pts.isnan())[0, ..., 0].nonzero()[..., 0]  # P,
         log(f'Removing NaNs: {pts.shape[1] - len(ind)}')
         prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
@@ -114,9 +118,9 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
         dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
         dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
 
+        # Remove low density points
         if not args.skip_density:
-            # ind = ((occ > occ_thresh) & (dpt > near) & (dpt < far))[0, ..., 0].nonzero()[..., 0]  # P,
-            ind = (occ > occ_thresh)[0, ..., 0].nonzero()[..., 0]  # P,
+            ind = (occ > args.occ_thresh)[0, ..., 0].nonzero()[..., 0]  # P,
             log(f'Removing low density points: {pts.shape[1] - len(ind)}')
             prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
             pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
@@ -125,8 +129,8 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
             dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
             dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
 
+        # Remove statistic outliers (il_ind -> inlier indices)
         if not args.skip_outlier:
-            # Remove statistic outliers (il_ind -> inlier indices)
             ind = remove_outlier(pts, K=50, std_ratio=4.0, return_inds=True)[0]  # P,
             log(f'Removing outliers: {pts.shape[1] - len(ind)}')
             prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
@@ -136,6 +140,7 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
             dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
             dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
 
+        # Remove points outside of the near far bounds
         if not args.skip_near_far:
             near, far = dataset.near, dataset.far  # scalar for controlling camera near far
             near_far_mask = pts.new_ones(pts.shape[1:-1], dtype=torch.bool)
@@ -158,10 +163,12 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
             dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
             dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
 
+        # Align point cloud with the average camera, which is processed in memory, to make sure the stored files are consistent
         if dataset.use_aligned_cameras and not args.skip_align:  # match the visual hull implementation
             pts = (point_padding(pts) @ affine_padding(dataset.c2w_avg).mT)[..., :3]  # homo
 
-        filename = join(result_dir, runner.exp_name, runner.visualizer.save_tag, 'POINT', f'{prefix}{f:04d}.ply')
+        # Save final fused point cloud back onto the disk
+        filename = join(args.result_dir, runner.exp_name, runner.visualizer.save_tag, 'POINT', f'{prefix}{f:04d}.ply')
         export_pts(pts, rgb, filename=filename)
         log(yellow(f'Fused points saved to {blue(filename)}, totally {cyan(pts.numel() // 3)} points'))
     pbar.close()

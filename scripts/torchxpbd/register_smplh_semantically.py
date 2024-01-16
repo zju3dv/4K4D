@@ -23,7 +23,7 @@ from typing import Union, List
 sys.path.append('.')
 from easyvolcap.utils.console_utils import magenta, blue
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import multi_gather, multi_gather_tris
+from easyvolcap.utils.chunk_utils import multi_gather, multi_gather_tris
 from easyvolcap.utils.data_utils import export_mesh, export_dotdict, load_mesh
 from easyvolcap.runners.schedulers import ExponentialLR
 from scripts.torchxpbd.unproject_semantic_parsing import semantic_dim, semantic_list

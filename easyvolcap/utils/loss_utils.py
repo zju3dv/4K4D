@@ -5,10 +5,9 @@ import torch.nn.functional as F
 import torchvision.models.vgg as vgg
 from collections import namedtuple
 
-from easyvolcap.utils.net_utils import searchsorted, matchup_channels
+from easyvolcap.utils.prop_utils import searchsorted, matchup_channels
 
 from enum import Enum, auto
-
 
 class ElasticLossReduceType(Enum):
     WEIGHT = auto()

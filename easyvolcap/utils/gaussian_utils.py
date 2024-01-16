@@ -6,10 +6,11 @@ from torch.nn import functional as F
 
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.sh_utils import eval_sh
-from easyvolcap.utils.timer_utils import timer
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.data_utils import to_x, add_batch
-from easyvolcap.utils.net_utils import make_buffer, make_params, batch_rodrigues, torch_inverse_2x2, typed
+from easyvolcap.utils.blend_utils import  batch_rodrigues
+from easyvolcap.utils.math_utils import torch_inverse_2x2
+from easyvolcap.utils.net_utils import make_buffer, make_params, typed
 
 
 @torch.jit.script
@@ -52,13 +53,13 @@ def gaussian_3d(scale3: torch.Tensor,  # B, P, 3, the scale of the 3d gaussian i
 
 
 @torch.jit.script
-def RGB2SH(rgb):
+def rgb2sh(rgb):
     C0 = 0.28209479177387814
     return (rgb - 0.5) / C0
 
 
 @torch.jit.script
-def SH2RGB(sh):
+def sh2rgb(sh):
     C0 = 0.28209479177387814
     return sh * C0 + 0.5
 
@@ -326,7 +327,7 @@ class GaussianModel(nn.Module):
 
         features = torch.zeros((xyz.shape[0], 3, (self.max_sh_degree + 1) ** 2))
         if colors is not None:
-            SH = RGB2SH(colors)
+            SH = rgb2sh(colors)
             features[:, :3, 0] = SH
         features[:, 3: 1:] = 0
 

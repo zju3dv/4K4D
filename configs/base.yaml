@@ -1,7 +1,8 @@
 # Default config for the whole project
 
 # Outermost level configuration switches
-exp_name: nerft
+exp_name: base
+mocking: False
 detect_anomaly: False
 fix_random: False
 allow_tf32: True
@@ -66,7 +67,7 @@ model_cfg:
     renderer_cfg:
         type: VolumeRenderer
     supervisor_cfg:
-        type: VolumetricVideoSupervisor
+        type: SequentialSupervisor
 
 dataloader_cfg: &dataloader_cfg # we see the term "dataloader" a one word?
     type: VolumetricVideoDataloader

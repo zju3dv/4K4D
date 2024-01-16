@@ -2,8 +2,9 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from easyvolcap.engine import REGRESSORS
+from easyvolcap.utils.net_utils import MLP
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import MLP, chunkify
+from easyvolcap.utils.chunk_utils import chunkify
 
 
 @REGRESSORS.register_module()

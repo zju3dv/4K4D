@@ -9,7 +9,9 @@ from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.data_utils import export_pts, export_pcd, export_mesh
 from easyvolcap.utils.enerf_utils import ConvBnReLU, ConvBnReLU3D, weights_init
-from easyvolcap.utils.net_utils import interpolate_image, render_weights, raw2alpha, normalize, affine_inverse
+from easyvolcap.utils.image_utils import interpolate_image
+from easyvolcap.utils.nerf_utils import render_weights, raw2alpha
+from easyvolcap.utils.math_utils import normalize, affine_inverse
 
 
 def compute_scale(Hc: int, Wc: int,
