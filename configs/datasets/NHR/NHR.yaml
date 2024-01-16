@@ -13,3 +13,6 @@ val_dataloader_cfg:
         <<: *dataset_cfg
     sampler_cfg:
         view_sample: [0, null, 20]
+
+viewer_cfg:
+    use_window_focal: True

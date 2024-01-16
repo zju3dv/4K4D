@@ -14,6 +14,7 @@ from easyvolcap.utils.fcds_utils import voxel_down_sample, remove_outlier
 from easyvolcap.utils.data_utils import add_batch, to_cuda, export_pts, export_mesh, export_pcd, to_x
 from easyvolcap.utils.math_utils import point_padding, affine_padding, affine_inverse
 from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
+from easyvolcap.utils.fusion_utils import filter_global_points
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -74,29 +75,28 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
             # Handle data movement
             batch = dataset[inds[v, f]]  # get the batch data for this view
             batch = add_batch(to_cuda(batch))
-            meta = batch.meta
-            del batch.meta
-            batch.meta = meta
 
             # Running inference
             with torch.inference_mode(), torch.no_grad():
                 output = runner.model(batch)  # get everything we need from the model, this performs the actual rendering
 
             # Get output point clouds
-            pts = (batch.ray_o + output.dpt_map * batch.ray_d).detach().cpu()
-            rgb = batch.rgb.detach().cpu()
-            prd = output.rgb_map.detach().cpu()
-            occ = output.acc_map.detach().cpu()
-            dpt = output.dpt_map.detach().cpu()
-            dir = batch.ray_d.detach().cpu()
+            pts = (batch.ray_o + output.dpt_map * batch.ray_d)[0]
+            rgb = batch.rgb[0]
+            prd = output.rgb_map[0]
+            occ = output.acc_map[0]
+            dpt = output.dpt_map[0]
+            dir = batch.ray_d[0]
+
+            # Filter local points
 
             # Store it into list
-            prds.append(prd)
-            ptss.append(pts)
-            rgbs.append(rgb)
-            occs.append(occ)
-            dpts.append(dpt)
-            dirs.append(dir)
+            prds.append(prd.detach().cpu()[0])  # reduce memory usage
+            ptss.append(pts.detach().cpu()[0])  # reduce memory usage
+            rgbs.append(rgb.detach().cpu()[0])  # reduce memory usage
+            occs.append(occ.detach().cpu()[0])  # reduce memory usage
+            dpts.append(dpt.detach().cpu()[0])  # reduce memory usage
+            dirs.append(dir.detach().cpu()[0])  # reduce memory usage
 
             pbar.update()
 
@@ -108,60 +108,10 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
         dpt = torch.cat(dpts, dim=-2).float()
         dir = torch.cat(dirs, dim=-2).float()
 
-        # Remove NaNs in point positions
-        ind = (~pts.isnan())[0, ..., 0].nonzero()[..., 0]  # P,
-        log(f'Removing NaNs: {pts.shape[1] - len(ind)}')
-        prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
-        pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
-        rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
-        occ = multi_gather(occ, ind[None, ..., None])  # B, P, C
-        dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
-        dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
-
-        # Remove low density points
-        if not args.skip_density:
-            ind = (occ > args.occ_thresh)[0, ..., 0].nonzero()[..., 0]  # P,
-            log(f'Removing low density points: {pts.shape[1] - len(ind)}')
-            prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
-            pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
-            rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
-            occ = multi_gather(occ, ind[None, ..., None])  # B, P, C
-            dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
-            dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
-
-        # Remove statistic outliers (il_ind -> inlier indices)
-        if not args.skip_outlier:
-            ind = remove_outlier(pts, K=50, std_ratio=4.0, return_inds=True)[0]  # P,
-            log(f'Removing outliers: {pts.shape[1] - len(ind)}')
-            prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
-            pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
-            rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
-            occ = multi_gather(occ, ind[None, ..., None])  # B, P, C
-            dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
-            dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
-
-        # Remove points outside of the near far bounds
-        if not args.skip_near_far:
-            near, far = dataset.near, dataset.far  # scalar for controlling camera near far
-            near_far_mask = pts.new_ones(pts.shape[1:-1], dtype=torch.bool)
-            for v in range(nv):
-                batch = dataset[inds[v, f]]  # get the batch data for this view
-                H, W, K, R, T = batch.H, batch.W, batch.K, batch.R, batch.T
-                pts_view = pts @ R.mT + T.mT
-                pts_pix = pts_view @ K.mT  # N, 3
-                pix = pts_pix[..., :2] / pts_pix[..., 2:]
-                pix = pix / pix.new_tensor([W, H]) * 2 - 1  # N, P, 2 to sample the msk (dimensionality normalization for sampling)
-                outside = ((pix[0] < -1) | (pix[0] > 1)).any(dim=-1)  # P,
-                near_far = ((pts_view[0, ..., -1] < far + args.near_far_pad) & (pts_view[0, ..., -1] > near - args.near_far_pad))  # P,
-                near_far_mask &= near_far | outside
-            ind = near_far_mask.nonzero()[..., 0]
-            log(f'Removing out-of-near-far points: {pts.shape[1] - len(ind)}')
-            prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
-            pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
-            rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
-            occ = multi_gather(occ, ind[None, ..., None])  # B, P, C
-            dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
-            dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
+        # Apply some global filtering
+        points = filter_global_points(dotdict(prd=prd, pts=pts, rgb=rgb, occ=occ, dpt=dpt, dir=dir))
+        log(f'Filtered {len(pts)} - {len(points.pts)} = {len(pts) - len(points.pts)} points globally')
+        prd, pts, rgb, occ, dpt, dir = points.prd, points.pts, points.rgb, points.occ, points.dpt, points.dir
 
         # Align point cloud with the average camera, which is processed in memory, to make sure the stored files are consistent
         if dataset.use_aligned_cameras and not args.skip_align:  # match the visual hull implementation

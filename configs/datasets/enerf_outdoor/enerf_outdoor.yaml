@@ -29,3 +29,6 @@ val_dataloader_cfg:
 runner_cfg:
     visualizer_cfg:
         video_fps: 60 # this dataset id built differently
+
+viewer_cfg:
+    use_window_focal: True

@@ -83,6 +83,7 @@ class VolumetricVideoViewer:
                  compose: bool = False,
                  compose_power: float = 1.0,
                  render_ratio: float = 1.0,
+                 use_window_focal: bool = False,
 
                  fullscreen: bool = False,
                  camera_cfg: dotdict = dotdict(type=Camera.__name__),
@@ -100,6 +101,7 @@ class VolumetricVideoViewer:
         self.compose = compose  # composing only works with cudagl for now
         self.compose_power = compose_power
         self.exp_name = exp_name
+        self.use_window_focal = use_window_focal
 
         self.font_default = font_default
         self.font_italic = font_italic
@@ -1177,14 +1179,29 @@ class VolumetricVideoViewer:
         # We load the first camera out of it
         dataset = self.dataset
         H, W = self.window_size  # dimesions
-        M = max(H, W)
-        K = torch.as_tensor([
-            [M * dataset.focal_ratio, 0, W / 2],  # smaller focal, large fov for a bigger picture
-            [0, M * dataset.focal_ratio, H / 2],
-            [0, 0, 1],
-        ], dtype=torch.float)
-        if view_index is None: R, T = dataset.Rv.clone(), dataset.Tv.clone()  # intrinsics and extrinsics
-        else: R, T = dataset.Rs[view_index, 0], dataset.Ts[view_index, 0]
+
+        if self.use_window_focal or not hasattr(dataset, 'Ks'):
+            M = max(H, W)
+            K = torch.as_tensor([
+                [M * dataset.focal_ratio, 0, W / 2],  # smaller focal, large fov for a bigger picture
+                [0, M * dataset.focal_ratio, H / 2],
+                [0, 0, 1],
+            ], dtype=torch.float)
+        else:
+            if view_index is None:
+                K = dataset.Ks[0, 0].clone()
+                K[0:1] *= W / dataset.Ws[0, 0]
+                K[1:2] *= H / dataset.Hs[0, 0]
+            else:
+                K = dataset.Ks[view_index, 0].clone()
+                K[0:1] *= W / dataset.Ws[view_index, 0]
+                K[1:2] *= H / dataset.Hs[view_index, 0]
+
+        if view_index is None:
+            R, T = dataset.Rv.clone(), dataset.Tv.clone()  # intrinsics and extrinsics
+        else:
+            R, T = dataset.Rs[view_index, 0], dataset.Ts[view_index, 0]
+
         n, f, t, v = dataset.near, dataset.far, 0, 0  # use 0 for default t
         bounds = dataset.bounds.clone()  # avoids modification
         self.camera = Camera(H, W, K, R, T, n, f, t, v, bounds, **camera_cfg)

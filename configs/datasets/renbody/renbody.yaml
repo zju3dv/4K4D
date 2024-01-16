@@ -37,3 +37,6 @@ val_dataloader_cfg:
         frame_sample: [0, 150, 30]
     sampler_cfg:
         view_sample: [0, 60, 20]
+
+viewer_cfg:
+    use_window_focal: True

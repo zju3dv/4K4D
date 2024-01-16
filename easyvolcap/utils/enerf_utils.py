@@ -1,7 +1,7 @@
 import torch
 
 from torch import nn
-from typing import Union, List
+from typing import Union, List, Tuple
 from torch.nn import functional as F
 from torch.autograd import Function
 from torch.cuda.amp import custom_bwd, custom_fwd
@@ -186,7 +186,7 @@ def sample_feature_volume(s_vals: torch.Tensor, feat_vol: torch.Tensor, ren_scal
 
 
 @torch.jit.script
-def depth_regression(depth_prob: torch.Tensor, depth_values: torch.Tensor, volume_render_depth: bool = False):
+def depth_regression(depth_prob: torch.Tensor, depth_values: torch.Tensor, volume_render_depth: bool = False, use_dist: bool = False) -> Tuple[torch.Tensor, torch.Tensor]:
     # depth_prob: B, D, H, W
     # depth_values: B, D, H, W
 
@@ -194,8 +194,11 @@ def depth_regression(depth_prob: torch.Tensor, depth_values: torch.Tensor, volum
         B, D, H, W = depth_prob.shape
         raws = depth_prob.permute(0, 2, 3, 1).reshape(B, H * W, D)  # B, H, W, D -> B, HW, D
         z_vals = depth_values.permute(0, 2, 3, 1).reshape(B, H * W, D)  # B, H, W, D -> B, HW, D
-        dists = compute_dist(z_vals)  # B, HW, D
-        occ = 1. - torch.exp(-raws * dists)  # B, HW, D
+        if use_dist:
+            dists = compute_dist(z_vals)  # B, HW, D
+            occ = 1. - torch.exp(-raws * dists)  # B, HW, D
+        else:
+            occ = 1. - torch.exp(-raws)  # B, HW, D
         weights = render_weights(occ)  # B, HW, D
         acc_map = torch.sum(weights, -1, keepdim=True)  # (B, HW, 1)
         depth = weighted_percentile(torch.cat([z_vals, z_vals.max(dim=-1, keepdim=True)[0]], dim=-1),
@@ -220,8 +223,8 @@ def weight_regression(depth_prob: torch.Tensor, depth_values: torch.Tensor = Non
         z_vals = depth_values.permute(0, 2, 3, 1).view(B, H * W, D)  # B, H, W, D -> B, HW, D
         dists = compute_dist(z_vals)  # B, HW, D
         occ = 1. - torch.exp(-raws * dists)  # B, HW, D
-
-    occ = 1. - torch.exp(-raws)  # B, HW, D
+    else:
+        occ = 1. - torch.exp(-raws)  # B, HW, D
     weights = render_weights(occ)  # B, HW, D
     return weights.view(B, H, W, D).permute(0, 3, 1, 2)
 
@@ -449,9 +452,10 @@ class FeatureNet(nn.Module):
 @REGRESSORS.register_module()
 class CostRegNet(nn.Module):
     # TODO: compare the results of nn.BatchNorm3d and nn.InstanceNorm3d
-    def __init__(self, in_channels, norm_actvn=nn.BatchNorm3d, out_actvn=nn.Identity(), use_vox_feat=True):
+    def __init__(self, in_channels, norm_actvn=nn.BatchNorm3d, dpt_actvn=nn.Identity, use_vox_feat=True):
         super(CostRegNet, self).__init__()
         norm_actvn = getattr(nn, norm_actvn) if isinstance(norm_actvn, str) else norm_actvn
+        self.dpt_actvn = get_function(dpt_actvn)
 
         self.conv0 = ConvBnReLU3D(in_channels, 8, norm_actvn=norm_actvn)
 
@@ -486,7 +490,6 @@ class CostRegNet(nn.Module):
 
         self.size_pad = 8  # input size should be divisible by 4
         self.out_dim = 8
-        self.out_actvn = get_function(out_actvn) if isinstance(out_actvn, str) else out_actvn
 
     def forward(self, x: torch.Tensor):
         conv0 = self.conv0(x)
@@ -500,7 +503,7 @@ class CostRegNet(nn.Module):
         x = conv0 + self.conv11(x)
         del conv0
         depth = self.depth_conv(x)
-        depth = self.out_actvn(depth.squeeze(1))  # softplus might change dtype
+        depth = self.dpt_actvn(depth.squeeze(1))  # softplus might change dtype
 
         if self.use_vox_feat:
             feat = self.feat_conv(x)
@@ -511,9 +514,10 @@ class CostRegNet(nn.Module):
 
 @REGRESSORS.register_module()
 class MinCostRegNet(nn.Module):
-    def __init__(self, in_channels, norm_actvn=nn.BatchNorm3d):
+    def __init__(self, in_channels, norm_actvn=nn.BatchNorm3d, dpt_actvn=nn.Identity):
         super(MinCostRegNet, self).__init__()
         norm_actvn = getattr(nn, norm_actvn) if isinstance(norm_actvn, str) else norm_actvn
+        self.dpt_actvn = get_function(dpt_actvn)
 
         self.conv0 = ConvBnReLU3D(in_channels, 8, norm_actvn=norm_actvn)
 
@@ -535,7 +539,7 @@ class MinCostRegNet(nn.Module):
 
         self.depth_conv = nn.Sequential(nn.Conv3d(8, 1, 3, padding=1, bias=False))
         self.feat_conv = nn.Sequential(nn.Conv3d(8, 8, 3, padding=1, bias=False))
-
+        self.out_dim = 8
         self.size_pad = 4  # input should be divisible by 4
 
     def forward(self, x, use_vox_feat=True):
@@ -548,9 +552,11 @@ class MinCostRegNet(nn.Module):
         x = conv0 + self.conv11(x)
         del conv0
         depth = self.depth_conv(x)
+        depth = self.dpt_actvn(depth.squeeze(1))
+
         if not use_vox_feat: feat = None
         else: feat = self.feat_conv(x)
-        return feat, depth.squeeze(1)
+        return feat, depth
 
 
 # ? This could be refactored
