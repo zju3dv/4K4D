@@ -3,10 +3,10 @@ import torch
 from torch import nn
 from easyvolcap.engine import EMBEDDERS
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import DoesNotCareAboutStateDict
+from easyvolcap.utils.net_utils import NoopModule
 
 @EMBEDDERS.register_module()
-class EmptyEmbedder(DoesNotCareAboutStateDict):
+class EmptyEmbedder(NoopModule):
     def __init__(self, out_dim=0, **kwargs):
         super().__init__()
         self.out_dim = 0  # no embedding, no output

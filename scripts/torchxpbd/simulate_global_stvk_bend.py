@@ -4,11 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from torch_scatter import scatter_add, scatter_mean
 
-# fmt: off
 import sys
-
-
-sys.path.append('.')
 
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.mesh_utils import loop_subdivision
@@ -16,7 +12,6 @@ from easyvolcap.utils.net_utils import take_gradient, take_jacobian
 from easyvolcap.utils.data_utils import export_dotdict, load_mesh, export_mesh, to_numpy
 from easyvolcap.utils.prof_utils import setup_profiler, profiler_start, profiler_step, profiler_stop
 from easyvolcap.utils.physx_utils import Garment, StVKMaterial, bending_energy_constraints, stretch_energy_constraints, bending_energy, stretch_energy
-# fmt: on
 
 
 def main(

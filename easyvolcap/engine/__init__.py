@@ -66,7 +66,7 @@ RECORDERS = Registry('recorders')  # (rarely changed)
 
 @catch_throw
 def get_parser():
-    parser = argparse.ArgumentParser(prog='evc', description='EasyVolumetricVideo Codebase Entrypoint')
+    parser = argparse.ArgumentParser(prog='evc', description='EasyVolcap Project')
     parser.add_argument('-c', '--config', type=str, default="", help='config file path')
     parser.add_argument('-t', "--type", type=str, choices=['train', 'test', 'gui'], default="train", help='execution mode, train, test or gui')  # evalute, visualize, network, dataset? (only valid when run)
     parser.add_argument("opts", action=DictAction, nargs=argparse.REMAINDER)
@@ -99,7 +99,7 @@ def parse_cfg(args):
         cfg.merge_from_dict(args.opts)  # load commandline arguments
         cfg = update_cfg(cfg)
         return cfg
-    else:
+    elif not args.config:  # ''
         # Default config object
         return Config(
             dotdict(
@@ -114,6 +114,8 @@ def parse_cfg(args):
                 mocking=True,
             )
         )  # empty config
+    else:
+        raise FileNotFoundError(f"Config file {blue(args.config)} not found")
 
 
 parser = get_parser()

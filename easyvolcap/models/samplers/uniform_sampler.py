@@ -3,7 +3,9 @@ from torch import nn
 from easyvolcap.engine import cfg
 from easyvolcap.engine import SAMPLERS
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import linear_sampling, s_vals_to_z_vals, importance_sampling, ray2xyz, make_buffer, get_near_far_aabb, VolumetricVideoModule
+from easyvolcap.utils.prop_utils import s_vals_to_z_vals
+from easyvolcap.utils.net_utils import VolumetricVideoModule
+from easyvolcap.utils.nerf_utils import linear_sampling,ray2xyz
 
 
 @SAMPLERS.register_module()

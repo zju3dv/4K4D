@@ -5,14 +5,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from copy import copy, deepcopy
+from copy import copy
 from os.path import join
 from easyvolcap.engine import cfg
 from easyvolcap.engine import CAMERAS
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.lie_utils import exp_map_SO3xR3
-from easyvolcap.utils.net_utils import affine_padding, affine_inverse, make_params, vector_padding, point_padding, normalize, freeze_module, load_network
+from easyvolcap.utils.net_utils import make_params, freeze_module, load_network
+from easyvolcap.utils.math_utils import affine_padding, affine_inverse, vector_padding, point_padding
 
 
 @CAMERAS.register_module()

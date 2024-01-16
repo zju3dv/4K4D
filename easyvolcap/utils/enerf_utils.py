@@ -9,9 +9,13 @@ from torch.cuda.amp import custom_bwd, custom_fwd
 # !: IMPORT
 from easyvolcap.engine import REGRESSORS
 from easyvolcap.utils.console_utils import *
-from easyvolcap.utils.base_utils import dotdict
+from easyvolcap.utils.net_utils import get_function
+from easyvolcap.utils.ray_utils import create_meshgrid
+from easyvolcap.utils.image_utils import interpolate_image
+from easyvolcap.utils.math_utils import affine_inverse, normalize
 from easyvolcap.utils.data_utils import export_pts, export_pcd, export_mesh
-from easyvolcap.utils.net_utils import create_meshgrid, affine_inverse, normalize, interpolate_image, linear_sampling, s_vals_to_z_vals, ray2xyz, volume_rendering, weighted_percentile, raw2alpha, compute_dist, render_weights, get_function
+from easyvolcap.utils.prop_utils import s_vals_to_z_vals, weighted_percentile
+from easyvolcap.utils.nerf_utils import linear_sampling, ray2xyz, volume_rendering, raw2alpha, compute_dist, render_weights
 
 
 class TruncatedExponential(Function):  # pylint: disable=abstract-method

@@ -5,6 +5,7 @@ from time import time
 import numpy as np
 # !: IMPORT
 from easyvolcap.engine import REGRESSORS, EMBEDDERS
+from easyvolcap.utils.net_utils import MLP
 
 def timeit(tag, t):
     print("{}: {}s".format(tag, time() - t))
@@ -319,7 +320,7 @@ class PointNetFeaturePropagation(nn.Module):
         return new_points
 
 from easyvolcap.utils.fcds_utils import weight_function
-from easyvolcap.utils.net_utils import multi_gather
+from easyvolcap.utils.chunk_utils import multi_gather
 from pytorch3d.ops import knn_points
 
 @REGRESSORS.register_module()

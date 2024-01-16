@@ -17,8 +17,8 @@ from glm import vec2, vec3, vec4, mat3, mat4, mat4x3, mat2x3  # This is actually
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.easy_utils import read_camera, write_camera
+from easyvolcap.utils.math_utils import normalize, affine_inverse
 from easyvolcap.utils.data_utils import to_numpy, to_tensor, to_cuda, to_list
-from easyvolcap.utils.net_utils import normalize, batch_rodrigues, affine_inverse
 from easyvolcap.utils.cam_utils import gen_cubic_spline_interp_func, gen_linear_interp_func
 
 

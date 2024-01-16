@@ -9,7 +9,8 @@ from os.path import join
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.fcds_utils import voxel_down_sample, remove_outlier
 from easyvolcap.utils.data_utils import to_numpy, to_x, export_pts, export_mesh, to_tensor
-from easyvolcap.utils.net_utils import point_padding, affine_padding, affine_inverse, multi_gather, multi_scatter
+from easyvolcap.utils.math_utils import point_padding, affine_padding, affine_inverse
+from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
 
 
 @catch_throw

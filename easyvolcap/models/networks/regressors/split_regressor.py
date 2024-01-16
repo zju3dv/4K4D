@@ -3,7 +3,7 @@ import torch
 from torch import nn
 
 from easyvolcap.engine import REGRESSORS
-from easyvolcap.utils.net_utils import MLP, raw2alpha, Modulized, get_function
+from easyvolcap.utils.net_utils import MLP, Modulized, get_function
 from easyvolcap.utils.base_utils import dotdict
 
 

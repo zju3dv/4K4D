@@ -3,7 +3,7 @@ import torch
 from torch import nn
 from easyvolcap.engine import REGRESSORS
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import contract, get_bounds
+from easyvolcap.utils.bound_utils import contract, get_bounds
 from easyvolcap.utils.console_utils import *
 
 

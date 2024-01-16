@@ -16,7 +16,7 @@ from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.parallel_utils import parallel_execution
 from easyvolcap.utils.data_utils import Visualization, export_pts, export_mesh
-from easyvolcap.utils.net_utils import multi_gather, multi_scatter_
+from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter_
 
 
 @VISUALIZERS.register_module()

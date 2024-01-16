@@ -41,11 +41,15 @@ from easyvolcap.engine import DATASETS
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.timer_utils import timer
 from easyvolcap.utils.base_utils import dotdict
+from easyvolcap.utils.ray_utils import get_rays
 from easyvolcap.utils.easy_utils import read_camera
+from easyvolcap.utils.ray_utils import weighted_sample_rays
 from easyvolcap.utils.parallel_utils import parallel_execution
+from easyvolcap.utils.vhull_utils import hierarchically_carve_vhull
 from easyvolcap.utils.cam_utils import average_c2ws, align_c2ws, average_w2cs
 from easyvolcap.utils.dist_utils import get_rank, get_world_size, get_distributed
-from easyvolcap.utils.net_utils import weighted_sample_rays, affine_inverse, affine_padding, torch_inverse_3x3, hierarchically_carve_vhull, get_bound_2d_bound, crop_using_xywh, get_bounds, fill_nhwc_image, point_padding, monotonic_near_far, get_rays, get_bound_3d_near_far
+from easyvolcap.utils.math_utils import affine_inverse, affine_padding, torch_inverse_3x3, point_padding
+from easyvolcap.utils.bound_utils import get_bound_2d_bound, get_bounds, monotonic_near_far, get_bound_3d_near_far
 from easyvolcap.utils.data_utils import DataSplit, UnstructuredTensors, load_resize_undist_ims_bytes, load_image_from_bytes, as_torch_func, to_cuda, to_cpu, to_tensor, export_pts, load_pts, decode_crop_fill_ims_bytes, decode_fill_ims_bytes
 
 cv2.setNumThreads(1)  # MARK: only 1 thread for opencv undistortion, high cpu, not faster
@@ -608,9 +612,7 @@ class VolumetricVideoDataset(Dataset):
         # Need to add or complete __getitem__ utils function if smpl paramaters other than bound are needed
 
         # Import easymocap body model for type annotation
-        from easymocap.bodymodel.smplx import SMPLHModel
         from easyvolcap.utils.data_utils import get_rigid_transform, load_dotdict
-        from easyvolcap.utils.easy_utils import load_bodymodel
 
         # Load smpl body model
         # self.bodymodel: SMPLHModel = load_bodymodel(self.data_root, self.bodymodel_file)
@@ -1278,16 +1280,16 @@ class VolumetricVideoDataset(Dataset):
         rgb = rgb[i, j]
         msk = msk[i, j]
         wet = wet[i, j]
-        if 'dpt' in output: dpt[i, j]
-        if 'bkg' in output: bkg[i, j]
+        if 'dpt' in output: dpt = dpt[i, j]
+        if 'bkg' in output: bkg = bkg[i, j]
         local_timer.record('weighted sample rays')
 
         # Main inputs
         output.rgb = rgb  # ground truth
         output.msk = msk
         output.wet = wet
-        output.dpt = dpt
-        output.bkg = bkg
+        if 'dpt' in output: output.dpt = dpt
+        if 'bkg' in output: output.bkg = bkg
         output.ray_o = ray_o
         output.ray_d = ray_d
         output.coords = coords

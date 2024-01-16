@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 from functools import lru_cache
-from easyvolcap.utils.net_utils import linear_gather
+from easyvolcap.utils.chunk_utils import linear_gather
 
 # SCHP definitions
 semantic_list = [

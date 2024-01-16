@@ -29,15 +29,18 @@ cmdargs = cmdargs.split()[1:]  # remove `python``
 sys.argv = cmdargs + options
 
 from easyvolcap.engine import cfg # using original network configuration
-from lib.networks import make_network
 from easyvolcap.utils.sh_utils import ProjectFunctionNeRF, ProjectFunctionNeRFReuse
 from easyvolcap.utils.console_utils import log
-from easyvolcap.utils.net_utils import alpha2raw, load_network
+from easyvolcap.utils.net_utils import load_network
+from easyvolcap.utils.nerf_utils import alpha2raw
 from easyvolcap.utils.data_utils import export_pts, export_mesh, to_tensor, to_cuda, add_batch
 from easyvolcap.utils.sample_utils import sample_K_closest_points
-from lib.datasets.make_dataset import make_dataset
-from lib.datasets.base_dataset import Dataset
-from lib.networks.deform.base_network import Network
+
+# FIXME: FIX THESE IMPORTS
+from easyvolcap.models.networks import make_network
+from easyvolcap.models.networks import make_dataset
+from easyvolcap.models.networks import Dataset
+from easyvolcap.models.networks import Network
 # fmt: on
 
 

@@ -17,12 +17,80 @@ from pytorch3d.ops.laplacian_matrices import laplacian, cot_laplacian, norm_lapl
 
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
+from easyvolcap.utils.bound_utils import get_bounds
+from easyvolcap.utils.net_utils import take_gradient
+from easyvolcap.utils.chunk_utils import linear_gather, multi_gather, multi_gather_tris
+from easyvolcap.utils.math_utils import normalize, torch_unique_with_indices_and_inverse
 from easyvolcap.utils.sample_utils import get_voxel_grid_and_update_bounds, sample_closest_points
-from easyvolcap.utils.net_utils import get_bounds, linear_gather, multi_gather, multi_gather_tris, normalize, take_gradient, unmerge_faces
-
-from bvh_distance_queries import BVH
 
 from torch.autograd.function import FunctionCtx, Function, once_differentiable
+
+
+def unmerge_faces(faces: torch.Tensor, *args):
+    # stack into pairs of (vertex index, texture index)
+    stackable = [faces.reshape(-1)]
+    # append multiple args to the correlated stack
+    # this is usually UV coordinates (vt) and normals (vn)
+    for arg in args:
+        stackable.append(arg.reshape(-1))
+
+    # unify them into rows of a numpy array
+    stack = torch.column_stack(stackable)
+    # find unique pairs: we're trying to avoid merging
+    # vertices that have the same position but different
+    # texture coordinates
+    _, unique, inverse = torch_unique_with_indices_and_inverse(stack)
+
+    # only take the unique pairs
+    pairs = stack[unique]
+    # try to maintain original vertex order
+    order = pairs[:, 0].argsort()
+    # apply the order to the pairs
+    pairs = pairs[order]
+
+    # we re-ordered the vertices to try to maintain
+    # the original vertex order as much as possible
+    # so to reconstruct the faces we need to remap
+    remap = torch.zeros(len(order), dtype=torch.long, device=faces.device)
+    remap[order] = torch.arange(len(order), device=faces.device)
+
+    # the faces are just the inverse with the new order
+    new_faces = remap[inverse].reshape((-1, 3))
+
+    # the mask for vertices and masks for other args
+    result = [new_faces]
+    result.extend(pairs.T)
+
+    return result
+
+
+def merge_faces(faces, *args, n_verts=None):
+    # TODO: batch this
+    # remember device the faces are on
+    device = faces.device
+    # start with not altering faces at all
+    result = [faces]
+    # find the maximum index referenced by faces
+    if n_verts is None:  # sometimes things get padded
+        n_verts = faces.max() + 1
+    # add a vertex mask which is just ordered
+    result.append(torch.arange(n_verts, device=device))
+
+    # now given the order is fixed do our best on the rest of the order
+    for arg in args:
+        # create a mask of the attribute-vertex mapping
+        # note that these might conflict since we're not unmerging
+        masks = torch.zeros((3, n_verts), dtype=torch.long, device=device)
+        # set the mask using the unmodified face indexes
+        for i, f, a in zip(range(3), faces.permute(*torch.arange(faces.ndim - 1, -1, -1)), arg.permute(*torch.arange(arg.ndim - 1, -1, -1))):
+            masks[i][f] = a
+        # find the most commonly occurring attribute (i.e. UV coordinate)
+        # and use that index note that this is doing a float conversion
+        # and then median before converting back to int: could also do this as
+        # a column diff and sort but this seemed easier and is fast enough
+        result.append(torch.median(masks, dim=0)[0].to(torch.long))
+
+    return result
 
 
 def meshes_attri_laplacian_smoothing(meshes: Meshes, attri: torch.Tensor, method: str = "uniform"):
@@ -277,6 +345,8 @@ def icp_loss(v: torch.Tensor,  # input points
 
     # we don't expect batch dimension here
     v, t, n0, n1 = v[None], t[None], n0[None], n1[None]
+
+    from bvh_distance_queries import BVH
 
     bvh = BVH()  # NOTE: wasteful!
     dists_sq, points, face_ids, barys = bvh(t, v)  # forward distance, find closest point on tris_padded of every smplhs vertices
@@ -739,6 +809,7 @@ def moller_trumbore(ray_o: torch.Tensor, ray_d: torch.Tensor, tris: torch.Tensor
 
 
 def winding_distance(pts: torch.Tensor, verts: torch.Tensor, faces: torch.Tensor, winding_th=0.45):
+    from bvh_distance_queries import BVH
 
     winding = winding_number(pts, verts, faces)  # let's say its gonna be 0 or 1
     bvh = BVH()  # NOTE: wasteful!
@@ -755,6 +826,8 @@ def winding_distance(pts: torch.Tensor, verts: torch.Tensor, faces: torch.Tensor
 
 
 def bvh_distance(pts: torch.Tensor, verts: torch.Tensor, faces: torch.Tensor):
+    from bvh_distance_queries import BVH
+
     bvh = BVH()  # NOTE: wasteful!
     p: torch.Tensor = bvh(multi_gather_tris(verts[None], faces[None]), pts[None])[1][0, ...]  # remove last dimension
     d = (pts - p).norm(dim=-1)

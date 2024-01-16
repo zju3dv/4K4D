@@ -14,11 +14,11 @@ import torch
 from easyvolcap.engine import NETWORKS
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import DoesNotCareAboutStateDict
+from easyvolcap.utils.net_utils import NoopModule
 
 
 @NETWORKS.register_module()
-class NoopNetwork(DoesNotCareAboutStateDict):
+class NoopNetwork(NoopModule):
     # fmt: off
     def __init__(self,
                  **kwargs, # suppress warnings

@@ -1,9 +1,10 @@
 from typing import Callable
 import torch
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.blend_utils import torch_inverse_2x2, torch_inverse_3x3, torch_trace
+from easyvolcap.utils.net_utils import take_gradient
+from easyvolcap.utils.chunk_utils import multi_gather_tris, expand0, linear_gather
+from easyvolcap.utils.math_utils import torch_inverse_2x2, torch_inverse_3x3, torch_trace, normalize
 from easyvolcap.utils.mesh_utils import triangle_to_halfedge, face_normals, get_edge_length, get_face_connectivity, get_vertex_mass, get_face_areas
-from easyvolcap.utils.net_utils import multi_gather_tris, normalize, expand0, linear_gather, take_gradient
 
 
 class StVKMaterial(dotdict):
@@ -28,7 +29,7 @@ class StVKMaterial(dotdict):
     '''
 
     def __init__(self,
-                 density=426*0.00047,  # Fabric density (kg / m2)
+                 density=426 * 0.00047,  # Fabric density (kg / m2)
                  thickness=0.00047,  # Fabric thickness (m)
                  young_modulus=0.7e5,
                  poisson_ratio=0.485,
@@ -231,7 +232,7 @@ def bending_energy_components(v: torch.Tensor, connected_triangles: torch.Tensor
     # Compute bending coefficient according to material parameters,
     # triangle areas (a) and edge length (l)
     mat = garment.material
-    scale = l[..., 0]**2 / (4*a)
+    scale = l[..., 0]**2 / (4 * a)
 
     # Bending energy
     energy = mat.bending_coeff * scale * (theta ** 2) / 2  # B, E
@@ -303,7 +304,7 @@ def bending_energy(v: torch.Tensor, garment: Garment):
     # Compute bending coefficient according to material parameters,
     # triangle areas (a) and edge length (l)
     mat = garment.material
-    scale = l[..., 0]**2 / (4*a)
+    scale = l[..., 0]**2 / (4 * a)
 
     # Bending energy
     energy = mat.bending_coeff * scale * (theta ** 2) / 2  # B, E
@@ -328,7 +329,7 @@ def inertia_term(x_next: torch.Tensor,
 
     x_pred = x_curr + delta_t * v_curr
     x_diff = x_next - x_pred
-    
+
     inertia = (x_diff ** 2).sum(dim=-1) * mass / (2 * delta_t ** 2)
 
     return inertia.sum() / x_next.shape[0]

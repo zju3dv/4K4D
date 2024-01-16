@@ -22,7 +22,7 @@ sys.path.append('.')
 from easyvolcap.utils.console_utils import log, run, stacktrace
 from easyvolcap.utils.parallel_utils import parallel_execution
 from easyvolcap.utils.data_utils import to_numpy, load_dotdict
-from easyvolcap.utils.net_utils import affine_inverse
+from easyvolcap.utils.math_utils import affine_inverse
 # fmt: on
 
 

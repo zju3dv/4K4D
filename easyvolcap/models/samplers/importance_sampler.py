@@ -6,7 +6,8 @@ from easyvolcap.engine import cfg
 from easyvolcap.engine import SAMPLERS
 from easyvolcap.engine import call_from_cfg
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import z_vals_to_s_vals, render_weights, ray2xyz, max_dilate_weights, anneal_weights, linear_sampling, importance_sampling, s_vals_to_z_vals
+from easyvolcap.utils.nerf_utils import render_weights, ray2xyz, linear_sampling
+from easyvolcap.utils.prop_utils import z_vals_to_s_vals, max_dilate_weights, anneal_weights, importance_sampling, s_vals_to_z_vals
 
 # TODO: figure out a way to deal with this clumsy import from repeated file names
 # while require not extra work from the user to make the import visible

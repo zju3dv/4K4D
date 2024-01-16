@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from easyvolcap.engine import SUPERVISORS
 from easyvolcap.engine.registry import call_from_cfg
 from easyvolcap.utils.console_utils import *
-from easyvolcap.utils.net_utils import multi_gather, multi_scatter, resize_image, VolumetricVideoModule, ray2xyz, freeze_module, unfreeze_module, schlick_bias
+from easyvolcap.utils.image_utils import resize_image
 from easyvolcap.utils.loss_utils import mse, eikonal, l1, l2, l2_reg, l1_reg, lossfun_distortion, lossfun_outer, huber, mIoU_loss, bce_loss, elastic_crit, VGGPerceptualLoss, PerceptualLoss, ImgLossType, ElasticLossReduceType, general_loss_with_squared_residual, compute_planes_tv, compute_time_planes_smooth, lossfun_zip_outer, compute_ssim
 
 from easyvolcap.models.supervisors.volumetric_video_supervisor import VolumetricVideoSupervisor

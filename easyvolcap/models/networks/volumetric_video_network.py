@@ -22,7 +22,10 @@ from easyvolcap.engine import NETWORKS, EMBEDDERS, REGRESSORS
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.data_utils import Visualization
-from easyvolcap.utils.net_utils import GradientModule, normalize, raw2alpha
+from easyvolcap.utils.net_utils import GradientModule
+from easyvolcap.utils.math_utils import normalize
+from easyvolcap.utils.blend_utils import apply_rt
+from easyvolcap.utils.nerf_utils import raw2alpha
 from easyvolcap.utils.blend_utils import apply_rt
 
 # Only for type annotation and default arguments

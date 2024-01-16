@@ -19,7 +19,9 @@ from easyvolcap.utils.timer_utils import timer  # global timer
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.data_utils import to_x
 from easyvolcap.utils.ibr_utils import get_src_inps, get_src_feats, prepare_caches, compute_src_inps, compute_src_feats
-from easyvolcap.utils.net_utils import normalize, linear_sampling, s_vals_to_z_vals, z_vals_to_s_vals, ray2xyz, volume_rendering, interpolate_image, resize_image, create_meshgrid, multi_scatter, multi_gather, fill_nhwc_image, fill_nchw_image, get_rays
+from easyvolcap.utils.nerf_utils import linear_sampling, ray2xyz, volume_rendering
+from easyvolcap.utils.prop_utils import s_vals_to_z_vals, z_vals_to_s_vals
+from easyvolcap.utils.image_utils import interpolate_image, fill_nchw_image
 from easyvolcap.utils.enerf_utils import MinCostRegNet, CostRegNet, FeatureNet, get_proj_mats, build_cost_vol, depth_regression, render_debug_cost_volume
 
 # ? How do we share 2D convolutions between multiple levels?

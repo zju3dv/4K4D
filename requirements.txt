@@ -27,7 +27,6 @@ fast-autocomplete
 torch-tb-profiler
 
 # other requirements not available in conda
-smplx
 pymcubes
 torchdiffeq
 opencv-python

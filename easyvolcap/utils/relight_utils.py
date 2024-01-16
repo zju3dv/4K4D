@@ -3,7 +3,9 @@ import torch
 import numpy as np
 from torch.nn import functional as F
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import resize_image, get_rays, normalize
+from easyvolcap.utils.ray_utils import get_rays
+from easyvolcap.utils.math_utils import normalize
+from easyvolcap.utils.image_utils import resize_image
 
 
 def gen_light_dir(H: int, W: int, R: torch.Tensor):

@@ -11,7 +11,7 @@ from functools import partial
 from os.path import join
 import trimesh
 from easyvolcap.utils.console_utils import *
-from easyvolcap.utils.net_utils import affine_inverse, affine_padding, point_padding
+from easyvolcap.utils.math_utils import affine_inverse, affine_padding, point_padding
 from easyvolcap.utils.mesh_utils import get_surface_sliding
 from easyvolcap.utils.data_utils import to_cuda
 from torch.utils.data import default_collate 

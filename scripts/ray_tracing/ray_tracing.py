@@ -14,20 +14,16 @@ from termcolor import colored
 from bvh_ray_tracing import BVH
 from pytorch3d.structures import Meshes
 
-# fmt: off
-import sys
-sys.path.append(".")
-
 from easyvolcap.utils.console_utils import log
 from easyvolcap.utils.base_utils import dotdict
+from easyvolcap.utils.math_utils import normalize
 from easyvolcap.utils.easy_utils import read_camera
+from easyvolcap.utils.chunk_utils import multi_gather_tris
 from easyvolcap.utils.parallel_utils import parallel_execution
 from easyvolcap.utils.data_utils import load_mesh, save_unchanged
-from easyvolcap.utils.net_utils import multi_gather_tris, normalize
 from easyvolcap.utils.relight_utils import read_hdr, sample_envmap_image
 from easyvolcap.utils.sh_utils import spher2cart, spherical_uniform_sampling_upper
 from easyvolcap.utils.raster_utils import render_nvdiffrast, get_ndc_perspective_matrix
-# fmt: on
 
 
 def light_visibility(surf: torch.Tensor,  # B, P, 3

@@ -8,7 +8,9 @@ from torch import nn
 from typing import List
 from easyvolcap.engine import RENDERERS
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import volume_rendering, VolumetricVideoModule, weighted_percentile
+from easyvolcap.utils.net_utils import VolumetricVideoModule
+from easyvolcap.utils.nerf_utils import volume_rendering
+from easyvolcap.utils.prop_utils import weighted_percentile
 
 
 @RENDERERS.register_module()

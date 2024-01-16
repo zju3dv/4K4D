@@ -12,7 +12,7 @@ from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.parallel_utils import parallel_execution
 from easyvolcap.utils.data_utils import DataSplit, pin_memory, to_tensor, as_torch_func
-from easyvolcap.utils.net_utils import affine_padding, affine_inverse, crop_using_mask, get_bound_2d_bound, get_bound_3d_near_far
+from easyvolcap.utils.math_utils import affine_padding, affine_inverse
 from easyvolcap.dataloaders.datasets.volumetric_video_dataset import VolumetricVideoDataset
 
 

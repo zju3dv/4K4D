@@ -21,7 +21,6 @@ from torch.utils.data._utils.pin_memory import pin_memory
 from torch.utils.data._utils.collate import default_collate, default_convert
 
 from easyvolcap.utils.parallel_utils import parallel_execution
-from easyvolcap.utils.net_utils import get_rigid_transform_nobatch as net_get_rigid_transform
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.console_utils import *
 
@@ -1014,32 +1013,12 @@ def get_rigid_transform(pose: np.ndarray, joints: np.ndarray, parents: np.ndarra
     # pose: N, 3
     # joints: N, 3
     # parents: N
+    from easyvolcap.utils.blend_utils import get_rigid_transform_nobatch as net_get_rigid_transform
     pose, joints, parents = default_convert([pose, joints, parents])
     J, A = net_get_rigid_transform(pose, joints, parents)
     J, A = to_numpy([J, A])
 
     return J, A
-
-
-def logits_to_prob(logits):
-    ''' Returns probabilities for logits
-    Args:
-        logits (tensor): logits
-    '''
-    odds = np.exp(logits)
-    probs = odds / (1 + odds)
-    return probs
-
-
-def prob_to_logits(probs, eps=1e-4):
-    ''' Returns logits for probabilities.
-    Args:
-        probs (tensor): probability tensor
-        eps (float): epsilon value for numerical stability
-    '''
-    probs = np.clip(probs, a_min=eps, a_max=1 - eps)
-    logits = np.log(probs / (1 - probs))
-    return logits
 
 
 def get_bounds(xyz, padding=0.05):
@@ -1062,8 +1041,8 @@ def load_image_file(img_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-                    (draft[1][2] != int(w * ratio) or
-                        draft[1][3] != int(h * ratio)):
+            (draft[1][2] != int(w * ratio) or
+         draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         return img
     else:
@@ -1097,8 +1076,8 @@ def load_unchanged(img_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-                    (draft[1][2] != int(w * ratio) or
-                        draft[1][3] != int(h * ratio)):
+            (draft[1][2] != int(w * ratio) or
+         draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         return img
     else:
@@ -1123,8 +1102,8 @@ def load_mask(msk_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-                    (draft[1][2] != int(w * ratio) or
-                        draft[1][3] != int(h * ratio)):
+            (draft[1][2] != int(w * ratio) or
+         draft[1][3] != int(h * ratio)):
             msk = cv2.resize(msk.astype(np.uint8), (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_NEAREST)[..., None]
         return msk
     else:
@@ -1316,7 +1295,7 @@ def get_rays(H, W, K, R, T):
     # ray_o = np.broadcast_to(ray_o, ray_d.shape)
     # return ray_o, ray_d
 
-    from easyvolcap.utils.net_utils import get_rays
+    from easyvolcap.utils.ray_utils import get_rays
     K, R, T = to_tensor([K, R, T])
     ray_o, ray_d = get_rays(H, W, K, R, T)
     ray_o, ray_d = to_numpy([ray_o, ray_d])
@@ -1333,7 +1312,7 @@ def get_near_far(bounds, ray_o, ray_d) -> Tuple[np.ndarray, np.ndarray]:
     # near = near[mask_at_box] / norm_d[mask_at_box, 0]
     # far = far[mask_at_box] / norm_d[mask_at_box, 0]
     # return near, far, mask_at_box
-    from easyvolcap.utils.net_utils import get_near_far_aabb
+    from easyvolcap.utils.ray_utils import get_near_far_aabb
     bounds, ray_o, ray_d = to_tensor([bounds, ray_o, ray_d])  # no copy
     near, far = get_near_far_aabb(bounds, ray_o, ray_d)
     near, far = to_numpy([near, far])
@@ -1374,7 +1353,7 @@ def full_sample_ray(img, msk, K, R, T, bounds, split='train', subpixel=False):
 
 def affine_inverse(m: np.ndarray):
     import torch
-    from easyvolcap.utils.net_utils import affine_inverse
+    from easyvolcap.utils.math_utils import affine_inverse
     return affine_inverse(torch.from_numpy(m)).numpy()
 
 
@@ -1655,7 +1634,7 @@ def decode_crop_fill_im_bytes(im_bytes: BytesIO,
 
     # Crop both mask and the image using bbox's 2D projection
     H, W, _ = img.shape
-    from easyvolcap.utils.net_utils import get_bound_2d_bound
+    from easyvolcap.utils.bound_utils import get_bound_2d_bound
     bx, by, bw, bh = as_numpy_func(get_bound_2d_bound)(bounds, K, R, T, H, W)
     img = img[by:by + bh, bx:bx + bw]
     msk = msk[by:by + bh, bx:bx + bw]
@@ -1751,140 +1730,6 @@ def decode_fill_ims_bytes(ims_bytes: np.ndarray,
     return ims_bytes
 
 
-def torch_sample_rays(img, msk, K, R, T, bounds, n_rays, random):
-    from easyvolcap.utils.net_utils import fast_sample_rays, get_rays, get_near_far_aabb
-    img = torch.from_numpy(img)
-    msk = torch.from_numpy(msk)
-    K = torch.from_numpy(K)
-    R = torch.from_numpy(R)
-    T = torch.from_numpy(T)
-    bounds = torch.from_numpy(bounds)
-    H, W = img.shape[:2]
-    with Timer(get_rays.__name__):
-        ray_o, ray_d = get_rays(H, W, K, R, T)
-    with Timer(get_near_far_aabb.__name__):
-        near, far, mask_at_box = get_near_far_aabb(bounds, ray_o, ray_d, return_raw=True)
-    with Timer(fast_sample_rays.__name__):
-        rgb, ray_o, ray_d, near, far, coords, mask_at_box = \
-            fast_sample_rays(ray_o, ray_d, near, far, img, msk, mask_at_box, n_rays, 'train' if random else 'val', body_ratio=0.0, face_ratio=0.0)
-    rgb = rgb.numpy()
-    ray_o = ray_o.numpy()
-    ray_d = ray_d.numpy()
-    near = near.numpy()
-    far = far.numpy()
-    coords = coords.numpy()
-    mask_at_box = mask_at_box.numpy()
-
-    return rgb, ray_o, ray_d, near, far, coords, mask_at_box
-
-
-def sample_rays(img, msk, K, R, T, bounds, n_rays, split='train', subpixel=False, body_ratio=0.5, face_ratio=0.0):
-    H, W = img.shape[:2]
-    ray_o, ray_d = get_rays(H, W, K, R, T, subpixel)
-    near, far, mask_at_box = get_full_near_far(bounds, ray_o, ray_d)
-    msk = msk * mask_at_box
-    if "train" in split:
-        n_body = int(n_rays * body_ratio)
-        n_face = int(n_rays * face_ratio)
-        n_rays = n_rays - n_body - n_face
-        coord_body = np.argwhere(msk == 1)
-        coord_face = np.argwhere(msk == 13)
-        coord_rand = np.argwhere(mask_at_box == 1)
-        coord_body = coord_body[np.random.randint(len(coord_body), size=[n_body, ])]
-        coord_face = coord_face[np.random.randint(len(coord_face), size=[n_face, ])]
-        coord_rand = coord_rand[np.random.randint(len(coord_rand), size=[n_rays, ])]
-        coords = np.concatenate([coord_body, coord_face, coord_rand], axis=0)
-        mask_at_box = mask_at_box[coords[:, 0], coords[:, 1]]  # always True when training
-    else:
-        coords = np.argwhere(mask_at_box == 1)
-        # will not modify mask at box
-    ray_o = ray_o[coords[:, 0], coords[:, 1]].astype(np.float32)
-    ray_d = ray_d[coords[:, 0], coords[:, 1]].astype(np.float32)
-    near = near[coords[:, 0], coords[:, 1]].astype(np.float32)
-    far = far[coords[:, 0], coords[:, 1]].astype(np.float32)
-    rgb = img[coords[:, 0], coords[:, 1]].astype(np.float32)
-    return rgb, ray_o, ray_d, near, far, coords, mask_at_box
-
-
-def get_rays_within_bounds(H, W, K, R, T, bounds):
-    ray_o, ray_d = get_rays(H, W, K, R, T)
-
-    ray_o = ray_o.reshape(-1, 3).astype(np.float32)
-    ray_d = ray_d.reshape(-1, 3).astype(np.float32)
-    near, far, mask_at_box = get_near_far(bounds, ray_o, ray_d)
-    near = near.astype(np.float32)
-    far = far.astype(np.float32)
-    ray_o = ray_o[mask_at_box]
-    ray_d = ray_d[mask_at_box]
-
-    mask_at_box = mask_at_box.reshape(H, W)
-
-    return ray_o, ray_d, near, far, mask_at_box
-
-
-def get_rays_with_patch(H, W, K, R, T, bounds, patchsize):
-    ray_o, ray_d = get_rays(H, W, K, R, T)
-
-    near, far, mask_at_box = get_near_far(bounds, ray_o, ray_d)
-    mask_at_box = mask_at_box.reshape(H, W)
-
-    box_mask_inds = np.argwhere(mask_at_box)  # 2D -> 2D indexing, list of 2, (N, 2)
-    box_min, box_max = (np.array([box_mask_inds[:, 0].min(),
-                                 box_mask_inds[:, 1].min()]),
-                        np.array([box_mask_inds[:, 0].max(),
-                                  box_mask_inds[:, 1].max()]))
-    # patchsize is the maximum
-    patchsize = min(patchsize, *(box_max - box_min))
-
-    i = np.random.randint(box_min[0], box_max[0] - patchsize)
-    j = np.random.randint(box_min[1], box_max[1] - patchsize)
-    mask = np.zeros_like(mask_at_box, dtype=bool)
-    mask[i:i + patchsize, j:j + patchsize] = True
-
-    full_mask = mask & mask_at_box  # get full mask, including mask_at_box and mask, still (512 * 512)
-    box_mask = mask[mask_at_box]  # get valid indices in mask_at_box (mask_size,)
-    mask_at_box = mask_at_box[mask]  # get valid mask_at_box value in (128, 128)
-    near = near[box_mask].astype(np.float32)
-    far = far[box_mask].astype(np.float32)
-    ray_o = ray_o[full_mask].astype(np.float32)
-    ray_d = ray_d[full_mask].astype(np.float32)
-
-    return ray_o, ray_d, near, far, full_mask, mask_at_box
-
-
-def get_rays_with_downscaling(H, W, K, R, T, bounds, split, downscale: int = 16, samples: int = 2):
-    ray_o, ray_d = get_rays(H, W, K, R, T)
-    if split != 'train':
-        downscale = 1
-        samples = 1
-
-    h, w = H // downscale, W // downscale
-    assert h * downscale == H and w * downscale == W, f"H, W: {H}, {W}, {downscale}, {samples}"
-    assert samples <= downscale**2, f"H, W: {H}, {W}, {downscale}, {samples}"
-
-    mask = np.zeros([H, W], dtype=bool)
-    for i in range(h):
-        for j in range(w):
-            choices = np.random.choice(downscale**2, size=samples, replace=False)
-            for c in choices:
-                l = c // downscale
-                k = c % downscale
-                mask[i * downscale + l, j * downscale + k] = True
-
-    near, far, mask_at_box = get_near_far(bounds, ray_o, ray_d)
-
-    mask_at_box = mask_at_box.reshape(H, W)
-    full_mask = mask & mask_at_box  # get full mask, including mask_at_box and mask, still (512 * 512)
-    box_mask = mask[mask_at_box]  # get valid indices in mask_at_box (mask_size,)
-    mask_at_box = mask_at_box[mask]  # get valid mask_at_box value in (128, 128)
-    near = near[box_mask].astype(np.float32)
-    far = far[box_mask].astype(np.float32)
-    ray_o = ray_o[full_mask].astype(np.float32)
-    ray_d = ray_d[full_mask].astype(np.float32)
-
-    return ray_o, ray_d, near, far, full_mask, mask_at_box
-
-
 def batch_rodrigues(poses):
     """ poses: N x 3
     """
@@ -1913,7 +1758,6 @@ def get_rigid_transformation_and_joints(poses, joints, parents):
     joints: n_bones x 3
     parents: n_bones
     """
-    from smplx import lbs
 
     n_bones = len(joints)
     rot_mats = batch_rodrigues(poses)

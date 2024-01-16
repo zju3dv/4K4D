@@ -15,7 +15,8 @@ from tqdm import tqdm
 # Utils
 from easyvolcap.utils.console_utils import log
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import linear_gather, multi_gather, multi_gather_tris, normalize_sum, batch_aware_indexing, multi_scatter, multi_scatter_
+from easyvolcap.utils.math_utils import normalize_sum
+from easyvolcap.utils.chunk_utils import linear_gather, multi_gather, multi_gather_tris, batch_aware_indexing, multi_scatter, multi_scatter_
 
 # PyTorch3D
 from pytorch3d import _C

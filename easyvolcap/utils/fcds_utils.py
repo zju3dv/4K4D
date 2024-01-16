@@ -7,7 +7,9 @@ from typing import List, Dict, Union
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.raster_utils import get_ndc_perspective_matrix
-from easyvolcap.utils.net_utils import normalize_sum, multi_gather, multi_scatter, MLP, affine_padding, affine_inverse
+from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
+from easyvolcap.utils.math_utils import normalize_sum, affine_inverse, affine_padding
+from easyvolcap.utils.net_utils import MLP
 
 
 def estimate_occupancy_field(xyz: torch.Tensor, rad: torch.Tensor, occ: torch.Tensor):

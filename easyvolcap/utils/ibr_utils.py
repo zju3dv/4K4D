@@ -6,7 +6,7 @@ from functools import lru_cache
 from torchvision.io import decode_jpeg
 
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.net_utils import fill_nchw_image
+from easyvolcap.utils.image_utils import fill_nchw_image
 
 # How do we easily wraps all stuff in the lru?
 # Initialize the lru requires some change to global variables, better expose APIs

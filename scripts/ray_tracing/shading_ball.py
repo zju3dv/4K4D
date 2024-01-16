@@ -15,9 +15,10 @@ from glob import glob
 import sys
 sys.path.append('.')
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.console_utils import log, colored
+from easyvolcap.utils.console_utils import log, color
 from easyvolcap.utils.relight_utils import sample_envmap_image, read_hdr, Microfacet, linear2srgb, gen_light_xyz, gen_uniform_light_xyz
-from easyvolcap.utils.net_utils import normalize, multi_gather, multi_scatter
+from easyvolcap.utils.math_utils import normalize
+from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
 from easyvolcap.utils.sh_utils import spher2cart, spherical_uniform_sampling_upper, spherical_uniform_sampling
 from easyvolcap.utils.data_utils import save_image
 # fmt: on
@@ -42,10 +43,10 @@ args = parser.parse_args()
 # Prepare shapes
 albedo, roughness, fresnel = args.albedo, args.roughness, args.fresnel
 H, W, N = args.height, args.width, args.sample
-log(f'Will produce a {colored(f"{H}, {W}", "magenta")} shading ball with {colored(f"{N}", "magenta")} samples for each pixel, albedo: {colored(str(albedo), "magenta")}, roughness: {colored(str(roughness), "magenta")}, fresnel: {colored(str(fresnel), "magenta")}')
+log(f'Will produce a {color(f"{H}, {W}", "magenta")} shading ball with {color(f"{N}", "magenta")} samples for each pixel, albedo: {color(str(albedo), "magenta")}, roughness: {color(str(roughness), "magenta")}, fresnel: {color(str(fresnel), "magenta")}')
 
 # Loading environment map for shading computation
-log(f'Loading environment map from {colored(args.probe, "blue")} onto {colored(args.device, "magenta")}')
+log(f'Loading environment map from {color(args.probe, "blue")} onto {color(args.device, "magenta")}')
 probe = torch.from_numpy(read_hdr(args.probe)).to(args.device, non_blocking=True)
 
 # Construct the coordinate of the shading ball

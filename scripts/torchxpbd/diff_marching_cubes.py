@@ -5,21 +5,18 @@ from pytorch3d.ops import sample_points_from_meshes
 from pytorch3d.loss import mesh_laplacian_smoothing
 from pytorch3d.structures import Meshes
 
-# fmt: off
-import sys
-
-sys.path.append('.')
+# FIXME: FIX THESE IMPORTS
 from lib.networks.deform.base_network import SignedDistanceNetwork
 from lib.networks.deform.base_network import ResidualDeformation
 from lib.networks.deform.bijective_network import BijectiveDeformation
 
-from easyvolcap.utils.net_utils import get_bounds, make_params, normalize, take_gradient
-from easyvolcap.utils.color_utils import colormap
 from easyvolcap.utils.console_utils import log
+from easyvolcap.utils.color_utils import colormap
+from easyvolcap.utils.bound_utils import get_bounds
+from easyvolcap.utils.net_utils import take_gradient
 from easyvolcap.utils.loss_utils import eikonal, l2_reg
-from easyvolcap.utils.mesh_utils import laplacian_smoothing, differentiable_marching_cubes
 from easyvolcap.utils.data_utils import export_mesh, load_mesh
-# fmt: on
+from easyvolcap.utils.mesh_utils import laplacian_smoothing, differentiable_marching_cubes
 
 
 log('preparing network')
