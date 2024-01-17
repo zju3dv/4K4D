@@ -30,13 +30,15 @@ class VolumetricVideoEvaluator(VolumetricVideoVisualizer):
         def ssim(xs: torch.Tensor, ys: torch.Tensor):
             return np.mean([compare_ssim(x.detach().cpu().numpy(), y.detach().cpu().numpy(), channel_axis=-1, data_range=2.0) for x, y in zip(xs, ys)])
 
-        import lpips as lpips_module
-        compute_lpips = lpips_module.LPIPS(net='vgg', verbose=False).cuda()
-
         def lpips(x: torch.Tensor, y: torch.Tensor):
             # B, H, W, 3
             # B, H, W, 3
-            return compute_lpips(x.permute(0, 3, 1, 2) * 2 - 1, y.permute(0, 3, 1, 2) * 2 - 1).mean().item()
+            if not hasattr(self, 'compute_lpips'):
+                import lpips as lpips_module
+                log('Initializing LPIPS network')
+                self.compute_lpips = lpips_module.LPIPS(net='vgg', verbose=False).cuda()
+
+            return self.compute_lpips(x.permute(0, 3, 1, 2) * 2 - 1, y.permute(0, 3, 1, 2) * 2 - 1).mean().item()
 
         self.compute_metrics = [psnr, ssim, lpips]
 
