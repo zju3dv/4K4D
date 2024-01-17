@@ -343,7 +343,7 @@ class VolumetricVideoViewer:
         imgui.pop_font()
 
     def draw_imgui(self, batch: dotdict, output: dotdict):  # need to explicitly handle empty input
-        from easyvolcap.utils.gl_utils import Mesh, Splat, Gaussian
+        from easyvolcap.utils.gl_utils import Mesh, Splat, Gaussian, PointSplat
         # Initialization
         glfw.poll_events()  # process pending events, keyboard and stuff
         imgui.backends.opengl3_new_frame()
@@ -778,7 +778,7 @@ class VolumetricVideoViewer:
                 self.static.mesh_class = Mesh
             if imgui.button('Add point splat from file'):
                 self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
-                self.static.mesh_class = Splat
+                self.static.mesh_class = PointSplat
             if imgui.button('Add gaussian splat from file'):
                 self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['3DGS Files', '*.ply *.npz *.pt *.pth'])
                 self.static.mesh_class = Gaussian

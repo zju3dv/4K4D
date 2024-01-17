@@ -22,6 +22,7 @@ class SplitRegressor(nn.Module):
                  activs=nn.ModuleList([nn.Softplus(), nn.Identity()]),
                  sequential_split=False,
                  dtype: str = 'float',
+                 **kwargs,
                  ):
         super().__init__()
 

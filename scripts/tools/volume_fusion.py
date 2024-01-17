@@ -76,6 +76,7 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
         dirs = []
 
         occs = []
+        rads = []
         rgbs = []
 
         for v in range(nv):
@@ -91,6 +92,12 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
             H, W = batch.meta.H[0].item(), batch.meta.W[0].item()
             rgb = batch.rgb.view(H, W, -1)
             occ = output.acc_map.view(H, W, -1)
+            rad = torch.full_like(occ, 0.0015)
+
+            # Other scalars
+            if 'gs' in output:
+                occ = output.gs.occ.view(H, W, -1)
+                rad = output.gs.pix.view(H, W, -1)[..., :1]
 
             dpt = output.dpt_map.view(H, W, -1)
             cen = batch.ray_o.view(H, W, -1)
@@ -105,6 +112,7 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
             cens.append(cen)  # keep the cuda version for later geometric fusion
             dirs.append(dir)  # keep the cuda version for later geometric fusion
             occs.append(occ)  # keep the cuda version for later geometric fusion
+            rads.append(rad)  # keep the cuda version for later geometric fusion
             rgbs.append(rgb)  # keep the cuda version for later geometric fusion
             pbar.update()
 
@@ -126,10 +134,12 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
             dirs = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in dirs])  # V, H, W, 3
             rgbs = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in rgbs])  # V, H, W, 3
             occs = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in occs])  # V, H, W, 1
+            rads = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in occs])  # V, H, W, 1
 
             ptss_out = []
             rgbs_out = []
             occs_out = []
+            rads_out = []
 
             # Perform depth consistency check and filtering
             for v in range(nv):
@@ -162,6 +172,7 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
                 cen = multi_gather(cens[v].view(-1, 3), ind)  # N, 3
                 rgb = multi_gather(rgbs[v].view(-1, 3), ind)  # N, 3
                 occ = multi_gather(occs[v].view(-1, 1), ind)  # N, 1
+                rad = multi_gather(rads[v].view(-1, 1), ind)  # N, 1
                 pts = cen + dpt * dir  # N, 3
 
                 log(f'View {v}, photo_mask {photo_mask.sum() / photo_mask.numel():.04f}, geometry mask {geo_mask.sum() / geo_mask.numel():.04f}, final mask {final_mask.sum() / final_mask.numel():.04f}, final point count {len(pts)}')
@@ -169,20 +180,23 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
                 ptss_out.append(pts)
                 rgbs_out.append(rgb)
                 occs_out.append(occ)
+                rads_out.append(rad)
         else:
             ptss_out = [(cens[v] + dpts[v] * dirs[v]).view(-1, 3) for v in range(nv)]
             rgbs_out = [rgb.view(-1, 3) for rgb in rgbs]
-            occs_out = [occ.view(-1, 1) for rgb in occs]
+            occs_out = [occ.view(-1, 1) for occ in occs]
+            rads_out = [rad.view(-1, 1) for rad in occs]
 
         # Concatenate per-view depth map and other information
         pts = torch.cat(ptss_out, dim=-2).float()  # N, 3
         rgb = torch.cat(rgbs_out, dim=-2).float()  # N, 3
         occ = torch.cat(occs_out, dim=-2).float()  # N, 1
+        rad = torch.cat(rads_out, dim=-2).float()  # N, 1
 
         # Apply some global filtering
-        points = filter_global_points(dotdict(pts=pts, rgb=rgb, occ=occ))
+        points = filter_global_points(dotdict(pts=pts, rgb=rgb, occ=occ, rad=rad))
         log(f'Filtered to {len(points.pts) / len(pts):.06f} of the points globally, final count {len(points.pts)}')
-        pts, rgb, occ = points.pts, points.rgb, points.occ
+        pts, rgb, occ, rad = points.pts, points.rgb, points.occ, points.rad
 
         # Align point cloud with the average camera, which is processed in memory, to make sure the stored files are consistent
         if dataset.use_aligned_cameras and not args.skip_align_with_camera:  # match the visual hull implementation
@@ -190,7 +204,7 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
 
         # Save final fused point cloud back onto the disk
         filename = join(args.result_dir, runner.exp_name, str(runner.visualizer.save_tag), 'POINT', f'{prefix}{f:04d}.ply')
-        export_pts(pts, rgb, filename=filename)
+        export_pts(pts, rgb, scalars=dotdict(radius=rad, alpha=occ), filename=filename)
         log(yellow(f'Fused points saved to {blue(filename)}, totally {cyan(pts.numel() // 3)} points'))
     pbar.close()
 

@@ -552,8 +552,8 @@ def export_pts(pts: torch.Tensor, color: torch.Tensor = None, normal: torch.Tens
         data.green = (pts[:, 1] * 255).astype(np.uint8)
         data.blue = (pts[:, 2] * 255).astype(np.uint8)
 
-    if 'alpha' in scalars:
-        data.alpha = (scalars.alpha * 255).astype(np.uint8)
+    # if 'alpha' in scalars:
+    #     data.alpha = (scalars.alpha * 255).astype(np.uint8)
 
     if normal is not None:
         normal = to_numpy(normal)

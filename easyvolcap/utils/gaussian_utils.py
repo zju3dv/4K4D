@@ -617,7 +617,7 @@ class GaussianModel(nn.Module):
         sh = self.get_features
 
         # Prepare the camera transformation for Gaussian
-        gaussian_camera = to_x(prepare_gaussian_camera(add_batch(batch)), torch.float)
+        gaussian_camera = to_x(prepare_gaussian_camera(batch), torch.float)
 
         # Prepare rasterization settings for gaussian
         raster_settings = GaussianRasterizationSettings(

@@ -12,7 +12,7 @@ import numpy as np
 
 from torch import nn
 from enum import Enum, auto
-from os.path import join, dirname
+from types import MethodType
 from typing import Dict, Union, List
 from glm import vec2, vec3, vec4, mat3, mat4, mat4x3, mat2x3  # This is actually highly optimized
 
@@ -24,11 +24,12 @@ from easyvolcap.utils.chunk_utils import multi_gather
 from easyvolcap.utils.color_utils import cm_cpu_store
 from easyvolcap.utils.ray_utils import create_meshgrid
 from easyvolcap.utils.depth_utils import depth_curve_fn
+from easyvolcap.utils.gaussian_utils import rgb2sh0, sh02rgb
 from easyvolcap.utils.nerf_utils import volume_rendering, raw2alpha
-from easyvolcap.utils.data_utils import load_pts, load_mesh, to_cuda
-from easyvolcap.utils.fcds_utils import prepare_feedback_transform, get_opencv_camera_params
-from easyvolcap.utils.net_utils import typed, torch_dtype_to_numpy_dtype, load_pretrained
+from easyvolcap.utils.data_utils import load_pts, load_mesh, to_cuda, add_batch
 from easyvolcap.utils.cuda_utils import CHECK_CUDART_ERROR, FORMAT_CUDART_ERROR
+from easyvolcap.utils.net_utils import typed, torch_dtype_to_numpy_dtype, load_pretrained
+from easyvolcap.utils.fcds_utils import prepare_feedback_transform, get_opencv_camera_params
 
 # fmt: off
 # Environment variable messaging
@@ -439,26 +440,26 @@ class Mesh:
         mesh.point_radius = imgui.slider_float(f'Point radius##{i}', mesh.point_radius, 0.0005, 3.0)[1]  # 0.1mm
         if hasattr(mesh, 'pts_per_pix'): mesh.pts_per_pix = imgui.slider_int('Point per pixel', mesh.pts_per_pix, 0, 60)[1]  # 0.1mm
 
-        push_button_color(0xff33cc55 if not mesh.shade_flat else 0xffaa5588)  # 0x55cc33ff
+        push_button_color(0x55cc33ff if not mesh.shade_flat else 0x8855aaff)
         if imgui.button(f'Smooth##{i}' if not mesh.shade_flat else f' Flat ##{i}'):
             mesh.shade_flat = not mesh.shade_flat
         pop_button_color()
 
         imgui.same_line()
-        push_button_color(0xff33cc55 if not mesh.render_normal else 0xffaa5588)  # 0x55cc33ff
+        push_button_color(0x55cc33ff if not mesh.render_normal else 0x8855aaff)
         if imgui.button(f'Color ##{i}' if not mesh.render_normal else f'Normal##{i}'):
             mesh.render_normal = not mesh.render_normal
         pop_button_color()
 
         imgui.same_line()
-        push_button_color(0xff33cc55 if not mesh.visible else 0xffaa5588)  # 0x55cc33ff
+        push_button_color(0x55cc33ff if not mesh.visible else 0x8855aaff)
         if imgui.button(f'Show##{i}' if not mesh.visible else f'Hide##{i}'):
             mesh.visible = not mesh.visible
         pop_button_color()
 
         # Render the delete button
         imgui.same_line()
-        push_button_color(0xff3355ff)  # 0xff5533ff
+        push_button_color(0xff5533ff)
         if imgui.button(f'Delete##{i}'):
             will_delete.append(i)
         pop_button_color()
@@ -903,7 +904,7 @@ class Gaussian(Mesh):
     @torch.no_grad()
     def render(self, camera: Camera):
         # Perform actual gaussian rendering
-        batch = to_cuda(camera.to_batch())
+        batch = add_batch(to_cuda(camera.to_batch()))
         rgb, acc, dpt = self.gaussian_model.render(batch)
 
         if self.render_depth:
@@ -916,8 +917,85 @@ class Gaussian(Mesh):
         self.quad.copy_to_texture(rgba)
         self.quad.render()
 
+    def render_imgui(mesh, viewer: 'VolumetricVideoViewer', batch: dotdict):
+        super().render_imgui(viewer, batch)
 
-class Splat(Mesh):
+        from imgui_bundle import imgui
+        from easyvolcap.utils.imgui_utils import push_button_color, pop_button_color
+
+        i = batch.i
+        push_button_color(0x55cc33ff if not mesh.view_depth else 0x8855aaff)
+        if imgui.button(f'Color##{i}' if not mesh.view_depth else f' Depth ##{i}'):
+            mesh.view_depth = not mesh.view_depth
+        pop_button_color()
+
+
+class PointSplat(Gaussian):
+    def __init__(self,
+                 filename: str = 'assets/meshes/zju3dv.ply',
+
+                 quad_cfg: dotdict = dotdict(),
+
+                 view_depth: bool = False,  # show depth or show color
+                 dpt_cm: str = 'linear',
+
+                 H: int = 1024,
+                 W: int = 1024,
+                 **kwargs,
+                 ):
+        # Import Gaussian Model
+        from easyvolcap.engine.registry import call_from_cfg
+        from easyvolcap.utils.data_utils import load_pts
+        from easyvolcap.utils.net_utils import make_buffer
+        from easyvolcap.models.samplers.gaussiant_sampler import GaussianTSampler
+
+        # Housekeeping
+        super(Gaussian, self).__init__(**kwargs)
+        self.name = split(filename)[-1]
+        self.render_radius = MethodType(GaussianTSampler.render_radius, self)  # override the method
+
+        # Init PointSplat related models, for now only the first gaussian model is supported
+        if filename.endswith('.ply'):
+            # Load raw GaussianModel
+            pts, rgb, norms, scalars = load_pts(filename)
+            occ, rad = scalars.alpha, scalars.radius
+            self.pts = make_buffer(torch.from_numpy(pts))  # N, 3
+            self.rgb = make_buffer(torch.from_numpy(rgb))  # N, 3
+            self.occ = make_buffer(torch.from_numpy(occ))  # N, 1
+            self.rad = make_buffer(torch.from_numpy(rad))  # N, 1
+        else:
+            raise NotImplementedError
+
+        # Init rendering quad
+        self.quad: Quad = call_from_cfg(Quad, quad_cfg, H=H, W=W)
+
+        # Other configurations
+        self.view_depth = view_depth
+        self.dpt_cm = dpt_cm
+
+    # The actual rendering function
+    @torch.no_grad()
+    def render(self, camera: Camera):
+        # Perform actual gaussian rendering
+        batch = add_batch(to_cuda(camera.to_batch()))
+        sh0 = rgb2sh0(self.rgb)
+        xyz = self.pts
+        occ = self.occ
+        rad = self.rad
+        rgb, acc, dpt = self.render_radius(*add_batch([xyz, sh0, rad, occ]), batch)
+
+        if self.view_depth:
+            rgba = torch.cat([depth_curve_fn(dpt, cm=self.dpt_cm), acc], dim=-1)  # H, W, 4
+        else:
+            rgba = torch.cat([rgb, acc], dim=-1)  # H, W, 4
+
+        # Copy rendered tensor to screen
+        rgba = (rgba.clip(0, 1) * 255).type(torch.uint8).flip(0)  # transform
+        self.quad.copy_to_texture(rgba)
+        self.quad.render()
+
+
+class Splat(Mesh):  # FIXME: Not rendering, need to debug this
     def __init__(self,
                  *args,
                  H: int = 512,
