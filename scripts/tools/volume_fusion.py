@@ -16,6 +16,7 @@ from easyvolcap.utils.math_utils import point_padding, affine_padding, affine_in
 from easyvolcap.utils.fusion_utils import filter_global_points, depth_geometry_consistency, compute_consistency
 from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
 from easyvolcap.utils.cam_utils import compute_camera_similarity
+from easyvolcap.utils.image_utils import image_to_size
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -74,12 +75,12 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
 
     pbar = tqdm(total=nl * nv, desc=f'Fusing rendered RGBD')
     for f in range(nl):
-        dpts_cuda = []
-        cens_cuda = []
-        dirs_cuda = []
+        dpts = []
+        cens = []
+        dirs = []
 
-        occs_cuda = []
-        rgbs_cuda = []
+        occs = []
+        rgbs = []
 
         for v in range(nv):
             # Handle data movement
@@ -91,59 +92,59 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
                 output = runner.model(batch)  # get everything we need from the model, this performs the actual rendering
 
             # Get output point clouds
-            rgb = batch.rgb[0]
-            occ = output.acc_map[0]
+            H, W = batch.meta.H[0].item(), batch.meta.W[0].item()
+            rgb = batch.rgb.view(H, W, -1)
+            occ = output.acc_map.view(H, W, -1)
 
-            dpt = output.dpt_map[0]
-            cen = batch.ray_o[0]
-            dir = batch.ray_d[0]
+            dpt = output.dpt_map.view(H, W, -1)
+            cen = batch.ray_o.view(H, W, -1)
+            dir = batch.ray_d.view(H, W, -1)
 
             # Store CUDA depth for later use
-            dpts_cuda.append(dpt)  # keep the cuda version for later geometric fusion
-            cens_cuda.append(cen)  # keep the cuda version for later geometric fusion
-            dirs_cuda.append(dir)  # keep the cuda version for later geometric fusion
-            occs_cuda.append(occ)  # keep the cuda version for later geometric fusion
-            rgbs_cuda.append(rgb)  # keep the cuda version for later geometric fusion
+            dpts.append(dpt)  # keep the cuda version for later geometric fusion
+            cens.append(cen)  # keep the cuda version for later geometric fusion
+            dirs.append(dir)  # keep the cuda version for later geometric fusion
+            occs.append(occ)  # keep the cuda version for later geometric fusion
+            rgbs.append(rgb)  # keep the cuda version for later geometric fusion
             pbar.update()
 
         if dataset.closest_using_t:
             c2ws = dataset.c2ws[f]
             w2cs = dataset.w2cs[f]
             Ks = dataset.Ks[f]
-            Hs = dataset.Hs[f]
-            Ws = dataset.Ws[f]
         else:
             c2ws = dataset.c2ws[:, f]
             w2cs = dataset.w2cs[:, f]
-            Ks = dataset.Ks[: f]
-            Hs = dataset.Hs[: f]
-            Ws = dataset.Ws[: f]
+            Ks = dataset.Ks[:, f]
 
         _, src_inds = compute_camera_similarity(c2ws, c2ws)  # V, V
-        dpts_cuda = torch.stack(dpts_cuda)  # V, HW, 1
-        cens_cuda = torch.stack(cens_cuda)  # V, HW, 3
-        dirs_cuda = torch.stack(dirs_cuda)  # V, HW, 3
+        H, W = max([d.shape[-3] for d in dpts]), max([d.shape[-2] for d in dpts])
 
-        ptss_cpu = []
-        rgbs_cpu = []
-        occs_cpu = []
+        dpts = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in dpts])  # V, H, W, 1
+        cens = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in cens])  # V, H, W, 3
+        dirs = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in dirs])  # V, H, W, 3
+        rgbs = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in rgbs])  # V, H, W, 3
+        occs = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in occs])  # V, H, W, 1
+
+        ptss_out = []
+        rgbs_out = []
+        occs_out = []
 
         # Perform depth consistency check and filtering
         for v in range(nv):
             # Prepare source views' information
             src_ind = src_inds[v, 1:1 + args.n_srcs]  # 4,
-            dpt_src = dpts_cuda[src_ind]  # 4, HW
+            dpt_src = dpts[src_ind]  # 4, HW
             ixt_src = Ks[src_ind]  # 4, 3, 3
             ext_src = affine_padding(w2cs[src_ind])  # 4, 3, 3
 
             # Prepare reference view's information
-            dpt_ref = dpts_cuda[v]  # HW, 1
+            dpt_ref = dpts[v]  # HW, 1
             ixt_ref = Ks[v]  # 3, 3
             ext_ref = affine_padding(w2cs[v])  # 4, 4
 
             # Prepare data for computation
-            H, W = Hs[v], Ws[v]  # int
-            S, HW, C = dpt_src.shape
+            S, H, W, C = dpt_src.shape
             dpt_src = dpt_src.view(S, H, W)  # 4, H, W
             dpt_ref = dpt_ref.view(H, W)
             ixt_ref, ext_ref, ixt_src, ext_src = to_cuda([ixt_ref, ext_ref, ixt_src, ext_src])
@@ -156,22 +157,22 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
             # Filter points based on geometry and photometric mask
             ind = final_mask.view(-1).nonzero()  # N, 1
             dpt = multi_gather(depth_est_averaged.view(-1, 1), ind)  # N, 1
-            dir = multi_gather(dirs_cuda[v].view(-1, 3), ind)  # N, 3
-            cen = multi_gather(cens_cuda[v].view(-1, 3), ind)  # N, 3
-            rgb = multi_gather(rgbs_cuda[v].view(-1, 3), ind)  # N, 3
-            occ = multi_gather(occs_cuda[v].view(-1, 1), ind)  # N, 1
+            dir = multi_gather(dirs[v].view(-1, 3), ind)  # N, 3
+            cen = multi_gather(cens[v].view(-1, 3), ind)  # N, 3
+            rgb = multi_gather(rgbs[v].view(-1, 3), ind)  # N, 3
+            occ = multi_gather(occs[v].view(-1, 1), ind)  # N, 1
             pts = cen + dpt * dir  # N, 3
 
             log(f'View {v}, photo_mask {photo_mask.sum() / photo_mask.numel():.04f}, geometry mask {geo_mask.sum() / geo_mask.numel():.04f}, final mask {final_mask.sum() / final_mask.numel():.04f}, final point count {len(pts)}')
 
-            ptss_cpu.append(pts.detach().cpu())
-            rgbs_cpu.append(rgb.detach().cpu())
-            occs_cpu.append(occ.detach().cpu())
+            ptss_out.append(pts)
+            rgbs_out.append(rgb)
+            occs_out.append(occ)
 
         # Concatenate per-view depth map and other information
-        pts = torch.cat(ptss_cpu, dim=-2).float()  # N, 3
-        rgb = torch.cat(rgbs_cpu, dim=-2).float()  # N, 3
-        occ = torch.cat(occs_cpu, dim=-2).float()  # N, 1
+        pts = torch.cat(ptss_out, dim=-2).float()  # N, 3
+        rgb = torch.cat(rgbs_out, dim=-2).float()  # N, 3
+        occ = torch.cat(occs_out, dim=-2).float()  # N, 1
 
         # Apply some global filtering
         points = filter_global_points(dotdict(pts=pts, rgb=rgb, occ=occ))
@@ -180,10 +181,10 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
 
         # Align point cloud with the average camera, which is processed in memory, to make sure the stored files are consistent
         if dataset.use_aligned_cameras and not args.skip_align:  # match the visual hull implementation
-            pts = (point_padding(pts) @ affine_padding(dataset.c2w_avg).mT)[..., :3]  # homo
+            pts = (point_padding(pts) @ affine_padding(to_cuda(dataset.c2w_avg)).mT)[..., :3]  # homo
 
         # Save final fused point cloud back onto the disk
-        filename = join(args.result_dir, runner.exp_name, runner.visualizer.save_tag, 'POINT', f'{prefix}{f:04d}.ply')
+        filename = join(args.result_dir, runner.exp_name, str(runner.visualizer.save_tag), 'POINT', f'{prefix}{f:04d}.ply')
         export_pts(pts, rgb, filename=filename)
         log(yellow(f'Fused points saved to {blue(filename)}, totally {cyan(pts.numel() // 3)} points'))
     pbar.close()
