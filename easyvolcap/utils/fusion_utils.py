@@ -26,9 +26,9 @@ def filter_global_points(points: dotdict[str, torch.Tensor]):
     ind = (points.occ > 0.01)[..., 0].nonzero()[..., 0]  # P,
     points = gather_from_inds(ind, points)
 
-    # Remove statistic outliers (il_ind -> inlier indices)
-    ind = remove_outlier(points.pts[None], K=50, std_ratio=4.0, return_inds=True)[0]  # P,
-    points = gather_from_inds(ind, points)
+    # # Remove statistic outliers (il_ind -> inlier indices)
+    # ind = remove_outlier(points.pts[None], K=50, std_ratio=4.0, return_inds=True)[0]  # P,
+    # points = gather_from_inds(ind, points)
 
     return points
 
@@ -78,7 +78,7 @@ def depth_reprojection(dpt_ref: torch.Tensor,  # B, H, W
     xy_grid = xy_grid.view(-1, *xy_grid.shape[-3:])  # BS, 1, H, W
     sampled_depth_src = F.grid_sample(dpt_input, xy_grid, padding_mode='border')  # BS, 1, H, W # sampled src depth map
     sampled_depth_src = sampled_depth_src.view(*bs, H, W)  # B, S, H, W
-    # mask = sampled_depth_src > 0
+    mask_projected = sampled_depth_src > 0
 
     # source 3D space
     # NOTE that we should use sampled source-view depth_here to project back
@@ -96,7 +96,7 @@ def depth_reprojection(dpt_ref: torch.Tensor,  # B, H, W
     x_reprojected = xy_reprojected[..., 0].view(*sh, -1, H, W)  # source point in ref screen space, x: B, S, H, W
     y_reprojected = xy_reprojected[..., 1].view(*sh, -1, H, W)  # source point in ref screen space, y: B, S, H, W
 
-    return depth_reprojected, x_reprojected, y_reprojected, x_src, y_src
+    return depth_reprojected, x_reprojected, y_reprojected, x_src, y_src, mask_projected
 
 
 def depth_geometry_consistency(
@@ -115,8 +115,8 @@ def depth_geometry_consistency(
     sh = dpt_ref.shape[:-2]
     H, W = dpt_ref.shape[-2:]
 
-    # step1. project reference pixels to the source view
-    # reference view x, y
+    # Step1. project reference pixels to the source view
+    # Reference view x, y
     ij_ref = create_meshgrid(H, W, device=dpt_ref.device, dtype=dpt_ref.dtype)
     xy_ref = ij_ref.flip(-1)
     for _ in range(len(sh)): xy_ref = xy_ref[None]  # add dimension
@@ -125,18 +125,20 @@ def depth_geometry_consistency(
     x_ref: torch.Tensor  # add type annotation
     y_ref: torch.Tensor  # add type annotation
 
-    depth_reprojected, x2d_reprojected, y2d_reprojected, x2d_src, y2d_src = depth_reprojection(
+    depth_reprojected, x2d_reprojected, y2d_reprojected, x2d_src, y2d_src, mask_projected = depth_reprojection(
         dpt_ref, ixt_ref, ext_ref,
         dpt_src, ixt_src, ext_src)
-    # check |p_reproj-p_1| < 1
+
+    # Check |p_reproj-p_1| < 1
     dist = torch.sqrt((x2d_reprojected - x_ref.unsqueeze(-3)) ** 2 + (y2d_reprojected - y_ref.unsqueeze(-3)) ** 2)  # B, S, H, W
 
-    # check |d_reproj-d_1| / d_1 < 0.01
+    # Check |d_reproj-d_1| / d_1 < 0.01
     depth_diff = torch.abs(depth_reprojected - dpt_ref.unsqueeze(-3))  # unprojected depth difference
-    relative_depth_diff = depth_diff / dpt_ref  # relative unprojected depth difference
+    relative_depth_diff = depth_diff / dpt_ref  # relative unprojected depth difference  # B, S, H, W
 
     mask = torch.logical_and(dist < geo_abs_thresh, relative_depth_diff < geo_rel_thresh)  # smaller than 0.5 pix, relative smaller than 0.01
-    depth_reprojected[~mask] = 0  # those are valid points
+    mask = torch.logical_and(mask, mask_projected)
+    depth_reprojected = torch.where(mask, depth_reprojected, 0)
 
     return mask, depth_reprojected, x2d_src, y2d_src
 
@@ -162,7 +164,8 @@ def compute_consistency(
     # Aggregate the projected mask
     geo_mask_sum = geo_mask.sum(-3)  # H, W
     depth_est_averaged = (depth_reprojected.sum(-3) + dpt_ref) / (geo_mask_sum + 1)  # average depth values, H, W
-    # at least 3 source views matched
+
+    # At least 3 source views matched
     geo_mask = geo_mask_sum >= 3  # a pixel is considered valid when at least 3 sources matches up
     photo_mask = dpt_ref >= pho_abs_thresh
     final_mask = torch.logical_and(photo_mask, geo_mask)  # H, W
