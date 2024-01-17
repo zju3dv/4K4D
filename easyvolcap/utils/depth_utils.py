@@ -1,12 +1,32 @@
 # Adopted from https://github.com/autonomousvision/differentiable_volumetric_rendering/blob/master/im2mesh/dvr/models/depth_function.py
 import torch
+import torch.nn.functional as F
 
 from torch import nn
 from typing import Mapping
+
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.color_utils import colormap
-from easyvolcap.utils.math_utils import affine_inverse, torch_inverse_3x3
 from easyvolcap.utils.ray_utils import create_meshgrid
+from easyvolcap.utils.enerf_utils import depth_regression
+from easyvolcap.utils.math_utils import affine_inverse, torch_inverse_3x3
+
+
+def depth_confidence(depth_prob: torch.Tensor):
+    depth_range = torch.arange(depth_prob.shape[-3], dtype=torch.float, device=depth_prob.device)  # ,
+    depth_range = depth_range[None, :, None, None].expand(depth_prob.shape)  # B, D, H, W
+
+    depth_index, _ = depth_regression(depth_prob, depth_range)  # B, H, W
+    depth_index = depth_index.long()
+
+    depth_prob_sum4 = depth_prob.softmax(dim=-3)[:, None]  # B, 1, D, H, W
+    depth_prob_sum4 = F.pad(depth_prob_sum4, pad=(0, 0, 0, 0, 1, 2))  # B, 1, D + 3, H, W
+    depth_prob_sum4 = F.avg_pool3d(depth_prob_sum4, (4, 1, 1), stride=1, padding=0)[:, 0]  # B, D, H, W
+    depth_prob_sum4 = depth_prob_sum4 * 4  # B, D, H, W
+
+    conf = depth_prob_sum4.gather(-3, depth_index[..., None, :, :]).view(-1)  # B, 1, H, W -> -1
+
+    return conf
 
 
 def depth2xyz(depth: torch.Tensor, ixts: torch.Tensor, exts: torch.Tensor, correct_pix: bool = True):
