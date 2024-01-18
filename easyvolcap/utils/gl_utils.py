@@ -982,6 +982,7 @@ class PointSplat(Gaussian):
         xyz = self.pts
         occ = self.occ
         rad = self.rad
+
         rgb, acc, dpt = self.render_radius(*add_batch([xyz, sh0, rad, occ]), batch)
 
         if self.view_depth:

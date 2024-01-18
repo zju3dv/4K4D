@@ -778,7 +778,7 @@ class VolumetricVideoViewer:
                 self.static.mesh_class = Mesh
             if imgui.button('Add point splat from file'):
                 self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
-                self.static.mesh_class = PointSplat
+                self.static.mesh_class = Splat
             if imgui.button('Add gaussian splat from file'):
                 self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['3DGS Files', '*.ply *.npz *.pt *.pth'])
                 self.static.mesh_class = Gaussian

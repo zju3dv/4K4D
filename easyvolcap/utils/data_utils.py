@@ -505,12 +505,12 @@ def load_pts(filename: str):
         r = np.asarray(cloud.points['red'])
         g = np.asarray(cloud.points['green'])
         b = np.asarray(cloud.points['blue'])
-        colors = np.stack([r, g, b], axis=-1) / 255
+        colors = (np.stack([r, g, b], axis=-1) / 255).astype(np.float32)
     elif 'r' in cloud.points and 'g' in cloud.points and 'b' in cloud.points:
         r = np.asarray(cloud.points['r'])
         g = np.asarray(cloud.points['g'])
         b = np.asarray(cloud.points['b'])
-        colors = np.stack([r, g, b], axis=-1) / 255
+        colors = (np.stack([r, g, b], axis=-1) / 255).astype(np.float32)
     else:
         colors = None
 
@@ -522,8 +522,8 @@ def load_pts(filename: str):
     else:
         norms = None
 
-    if 'alpha' in cloud.points:
-        cloud.points['alpha'] = cloud.points['alpha'] / 255
+    # if 'alpha' in cloud.points:
+    #     cloud.points['alpha'] = cloud.points['alpha'] / 255
 
     reserved = ['x', 'y', 'z', 'red', 'green', 'blue', 'r', 'g', 'b', 'nx', 'ny', 'nz']
     scalars = dotdict({k: np.asarray(cloud.points[k])[..., None] for k in cloud.points if k not in reserved})  # one extra dimension at the back added

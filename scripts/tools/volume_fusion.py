@@ -134,7 +134,7 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
             dirs = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in dirs])  # V, H, W, 3
             rgbs = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in rgbs])  # V, H, W, 3
             occs = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in occs])  # V, H, W, 1
-            rads = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in occs])  # V, H, W, 1
+            rads = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in rads])  # V, H, W, 1
 
             ptss_out = []
             rgbs_out = []
