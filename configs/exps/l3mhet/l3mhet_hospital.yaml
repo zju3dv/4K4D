@@ -1,0 +1,16 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/l3mhet.yaml # network model configuration
+
+dataloader_cfg:
+    dataset_cfg: &dataset_cfg
+        data_root: /mnt/data/home/shuaiqing/Code/MultiNBFast/cache/Hospital/4
+        bounds: [[-8, -10, 1.], [8, 10, 3.]]
+        use_aligned_cameras: False
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

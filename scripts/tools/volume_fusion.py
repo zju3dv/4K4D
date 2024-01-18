@@ -10,13 +10,12 @@ import argparse
 from os.path import join
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.fcds_utils import voxel_down_sample, remove_outlier
-from easyvolcap.utils.data_utils import add_batch, to_cuda, export_pts, export_mesh, export_pcd, to_x
-from easyvolcap.utils.math_utils import point_padding, affine_padding, affine_inverse
-from easyvolcap.utils.fusion_utils import filter_global_points, depth_geometry_consistency, compute_consistency
-from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
+from easyvolcap.utils.image_utils import pad_image
 from easyvolcap.utils.cam_utils import compute_camera_similarity
-from easyvolcap.utils.image_utils import image_to_size
+from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
+from easyvolcap.utils.math_utils import point_padding, affine_padding, affine_inverse
+from easyvolcap.utils.data_utils import add_batch, to_cuda, export_pts, export_mesh, export_pcd, to_x
+from easyvolcap.utils.fusion_utils import filter_global_points, depth_geometry_consistency, compute_consistency
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -129,12 +128,12 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
             _, src_inds = compute_camera_similarity(c2ws, c2ws)  # V, V
             H, W = max([d.shape[-3] for d in dpts]), max([d.shape[-2] for d in dpts])
 
-            dpts = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in dpts])  # V, H, W, 1
-            cens = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in cens])  # V, H, W, 3
-            dirs = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in dirs])  # V, H, W, 3
-            rgbs = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in rgbs])  # V, H, W, 3
-            occs = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in occs])  # V, H, W, 1
-            rads = torch.stack([image_to_size(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in rads])  # V, H, W, 1
+            dpts = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in dpts])  # V, H, W, 1
+            cens = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in cens])  # V, H, W, 3
+            dirs = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in dirs])  # V, H, W, 3
+            rgbs = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in rgbs])  # V, H, W, 3
+            occs = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in occs])  # V, H, W, 1
+            rads = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in rads])  # V, H, W, 1
 
             ptss_out = []
             rgbs_out = []
@@ -185,7 +184,7 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
             ptss_out = [(cens[v] + dpts[v] * dirs[v]).view(-1, 3) for v in range(nv)]
             rgbs_out = [rgb.view(-1, 3) for rgb in rgbs]
             occs_out = [occ.view(-1, 1) for occ in occs]
-            rads_out = [rad.view(-1, 1) for rad in occs]
+            rads_out = [rad.view(-1, 1) for rad in rads]
 
         # Concatenate per-view depth map and other information
         pts = torch.cat(ptss_out, dim=-2).float()  # N, 3

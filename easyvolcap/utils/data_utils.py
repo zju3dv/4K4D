@@ -1035,7 +1035,9 @@ def load_image_file(img_path: str, ratio=1.0):
         im = Image.open(img_path)
         w, h = im.width, im.height
         draft = im.draft('RGB', (int(w * ratio), int(h * ratio)))
-        img = np.asarray(im).astype(np.float32) / 255
+        img = np.asarray(im)
+        if np.issubdtype(img.dtype, np.integer):
+            img = img.astype(np.float32) / np.iinfo(img.dtype).max  # normalize
         if img.ndim == 2:
             img = img[..., None]
         if ratio != 1.0 and \
@@ -1051,11 +1053,29 @@ def load_image_file(img_path: str, ratio=1.0):
             img[..., :3] = img[..., [2, 1, 0]]  # BGR to RGB
         if img.ndim == 2:
             img = img[..., None]
-        img = img.astype(np.float32) / np.iinfo(img.dtype).max  # normalize
+        if np.issubdtype(img.dtype, np.integer):
+            img = img.astype(np.float32) / np.iinfo(img.dtype).max  # normalize
         if ratio != 1.0:
             height, width = img.shape[:2]
             img = cv2.resize(img, (int(width * ratio), int(height * ratio)), interpolation=cv2.INTER_AREA)
         return img
+
+
+def load_depth(depth_file: str):
+    if depth_file.endswith('.npy'):
+        depth = np.load(depth_file)[..., None]  # H, W, 1
+    elif depth_file.endswith('.pfm'):
+        depth, scale = read_pfm(depth_file)
+        depth = depth / scale
+        if depth.ndim == 2:
+            depth = depth[..., None]  # H, W, 1
+        depth = depth[..., :1]
+    elif depth_file.endswith('.hdr') or depth_file.endswith('.exr'):
+        depth = load_image(depth_file)
+        depth = depth[..., :1]
+    else:
+        raise NotImplementedError
+    return depth  # H, W, 1
 
 
 def load_image(path: Union[str, np.ndarray], ratio: int = 1.0):

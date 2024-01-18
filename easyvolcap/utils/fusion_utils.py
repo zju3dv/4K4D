@@ -153,22 +153,23 @@ def compute_consistency(
 
     geo_abs_thresh: float = 0.5,
     geo_rel_thresh: float = 0.01,
+    geo_sum_thresh: float = 0.75,
     pho_abs_thresh: float = 0.0,
 ):
     # Perform actual geometry consistency check
     geo_mask, depth_reprojected, x2d_src, y2d_src = depth_geometry_consistency(
         dpt_ref, ixt_ref, ext_ref, dpt_src, ixt_src, ext_src,
         geo_abs_thresh, geo_rel_thresh
-    )  # H, W; 4, H, W; 4, H, W; 4, H, W
+    )  # [B, H, W]; [B, S, H, W]; [B, S, H, W]; [B, S, H, W]
 
     # Aggregate the projected mask
-    geo_mask_sum = geo_mask.sum(-3)  # H, W
-    depth_est_averaged = (depth_reprojected.sum(-3) + dpt_ref) / (geo_mask_sum + 1)  # average depth values, H, W
+    geo_mask_sum = geo_mask.sum(-3)  # B, H, W
+    depth_est_averaged = (depth_reprojected.sum(-3) + dpt_ref) / (geo_mask_sum + 1)  # average depth values, B, H, W
 
     # At least 3 source views matched
-    geo_mask = geo_mask_sum >= 3  # a pixel is considered valid when at least 3 sources matches up
+    geo_mask = geo_mask_sum >= (geo_sum_thresh * dpt_src.shape[-3])  # a pixel is considered valid when at least 3 sources matches up
     photo_mask = dpt_ref >= pho_abs_thresh
-    final_mask = torch.logical_and(photo_mask, geo_mask)  # H, W
+    final_mask = torch.logical_and(photo_mask, geo_mask)  # B, H, W
 
     return depth_est_averaged, photo_mask, geo_mask, final_mask
 

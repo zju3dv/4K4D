@@ -33,8 +33,8 @@ def print_shape(batch: dotdict):
     elif isinstance(batch, list):
         for v in batch:
             print_shape(v)
-    elif isinstance(v, torch.Tensor):
-        print(f'{k}: {v.shape}')
+    elif isinstance(batch, torch.Tensor):
+        print(f'{batch.shape}')
     else:
         print(batch)
 

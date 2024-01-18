@@ -56,7 +56,7 @@ def crop_using_xywh(x, y, w, h, K, *list_of_imgs):
     return K, *list_of_imgs
 
 
-def image_to_size(img: torch.Tensor, size: List[int], mode='replicate', value=None):
+def pad_image(img: torch.Tensor, size: List[int], mode='replicate', value=None):
     bs = img.shape[:-3]  # batch size
     img = img.reshape(-1, *img.shape[-3:])
     H, W = img.shape[-2:]  # H, W

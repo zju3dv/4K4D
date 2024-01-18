@@ -1,6 +1,6 @@
 from __future__ import annotations
 from copy import copy
-from typing import Mapping, TypeVar, Union, Iterable, Callable, Dict
+from typing import Mapping, TypeVar, Union, Iterable, Callable, Dict, List
 # these are generic type vars to tell mapping to accept any type vars when creating a type
 KT = TypeVar("KT")  # key type
 VT = TypeVar("VT")  # value type
@@ -69,6 +69,8 @@ class dotdict(dict, Dict[KT, VT]):
             else:
                 if isinstance(v, dict):
                     self[k] = dotdict(v)  # recursion?
+                elif isinstance(v, list):
+                    self[k] = [dotdict(x) if isinstance(x, dict) else x for x in v]
                 else:
                     self[k] = v
         return self
