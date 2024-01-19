@@ -499,7 +499,7 @@ class VolumetricVideoViewer:
 
             self.visualize_axes = imgui_toggle.toggle('Visualize axes', self.visualize_axes, config=toggle_ios_style)[1]
             self.visualize_bounds = imgui_toggle.toggle('Visualize bounds', self.visualize_bounds, config=toggle_ios_style)[1]
-            if hasattr(self.dataset, 'Ks'): self.visualize_cameras = imgui_toggle.toggle('Visualize cameras', self.visualize_cameras, config=toggle_ios_style)[1]
+            self.visualize_cameras = imgui_toggle.toggle('Visualize cameras', self.visualize_cameras, config=toggle_ios_style)[1]
             if network_available: self.render_network = imgui_toggle.toggle('Render network', self.render_network, config=toggle_ios_style)[1]
             self.render_meshes = imgui_toggle.toggle('Render meshes', self.render_meshes, config=toggle_ios_style)[1]
             if network_available: self.render_alpha = imgui_toggle.toggle('Render alpha', self.render_alpha, config=toggle_ios_style)[1]
@@ -854,7 +854,7 @@ class VolumetricVideoViewer:
         if self.visualize_cameras:
             self.camera_path.draw(self.camera)  # do the projection
 
-        if self.visualize_cameras:
+        if self.visualize_cameras and hasattr(self.dataset, 'Ks'):
             # Prepare tensors to render
             dataset = self.dataset
             if hasattr(dataset, 'closest_using_t') and dataset.closest_using_t:
@@ -1001,7 +1001,8 @@ class VolumetricVideoViewer:
             self.show_metrics_window = not self.show_metrics_window  # will render test window
 
         elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_SPACE:
-            self.playing = not self.playing  # play automatically
+            if SHIFT: self.camera_path.playing = not self.camera_path.playing
+            else: self.playing = not self.playing  # play automatically
 
         elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_N:
             self.render_network = not self.render_network
@@ -1012,6 +1013,14 @@ class VolumetricVideoViewer:
         elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_R:
             # Reset gui (mainly camera)
             self.reset()
+
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_A:
+            # Insert animation keyframe
+            self.camera_path.insert(self.camera)
+
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_L:
+            # Toggle camera path looping
+            self.camera_path.loop_interp = not self.camera_path.loop_interp
 
         elif ((action == glfw.PRESS or action == glfw.REPEAT) or action == glfw.REPEAT) and key == glfw.KEY_LEFT:
             # Backup one frame
