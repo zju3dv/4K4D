@@ -5,6 +5,7 @@ configs:
     - configs/specs/optcam.yaml
     - configs/specs/transient.yaml
     - configs/specs/static.yaml
+    - configs/specs/hash10.yaml
 
 # prettier-ignore
 exp_name: {{fileBasenameNoExtension}}

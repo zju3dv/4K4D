@@ -1,0 +1,18 @@
+model_cfg:
+    network_cfg:
+        network_cfgs:
+            '0': # coarse network config
+                type: VolumetricVideoNetwork
+                xyzt_embedder_cfg:
+                    xyz_embedder_cfg:
+                        log2_hashmap_size: 14 # smaller base hash resolution
+            '1': # coarse network config
+                type: VolumetricVideoNetwork
+                xyzt_embedder_cfg:
+                    xyz_embedder_cfg:
+                        log2_hashmap_size: 17 # smaller base hash resolution
+            '2': # fine network config
+                type: VolumetricVideoNetwork
+                xyzt_embedder_cfg:
+                    xyz_embedder_cfg:
+                        log2_hashmap_size: 19 # smaller base hash resolution

@@ -12,16 +12,18 @@ from easyvolcap.utils.easy_utils import write_camera
 @catch_throw
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--nerf_root', type=str, default='/mnt/data/home/shuaiqing/Code/MultiNBFast/cache/Hospital')
-    parser.add_argument('--volcap_root', type=str, default='/mnt/data/home/shuaiqing/Code/MultiNBFast/cache/Hospital')
-    parser.add_argument('--transform_file', type=str, default='train_100.json')
+    parser.add_argument('--nerf_root', type=str, default='/mnt/data/home/shuaiqing/Code/MultiNBFast/cache/Hospital/4')
+    parser.add_argument('--volcap_root', type=str, default='/mnt/data/home/shuaiqing/Code/MultiNBFast/cache/Hospital/4')
+    parser.add_argument('--transforms_file', type=str, default='transforms_train.json')
+    parser.add_argument('--intri_file', type=str, default='intri.yml')
+    parser.add_argument('--extri_file', type=str, default='extri.yml')
     args = parser.parse_args()
 
     # clean and restart
     os.makedirs(args.volcap_root, exist_ok=True)
 
     # load the raw split information
-    transforms = dotdict(json.load(open(join(args.nerf_root, args.transform_file))))
+    transforms = dotdict(json.load(open(join(args.nerf_root, args.transforms_file))))
     H, W = transforms.h, transforms.w
 
     # global parameter
@@ -53,8 +55,13 @@ def main():
         }
 
     # write the cameras
-    write_camera(evc_cams, args.volcap_root)
-    log(yellow(f'Converted cameras saved to {blue(join(args.volcap_root, "{intri.yml,extri.yml}"))}'))
+    write_camera(
+        evc_cams,
+        args.volcap_root,
+        join(args.volcap_root, args.intri_file),
+        join(args.volcap_root, args.extri_file)
+    )
+    log(yellow(f'Converted cameras saved to {blue(join(args.volcap_root, f"{{{args.intri_file},{args.extri_file}}}"))}'))
 
 
 if __name__ == '__main__':
