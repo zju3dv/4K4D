@@ -127,10 +127,10 @@ class VolumetricVideoViewer:
         self.bind_callbacks()
 
         # Initialize animation related stuff
-        self.camera_paths = CameraPath()
+        self.camera_path = CameraPath()
         if load_keyframes_at_init:
             try:
-                self.camera_paths.load_keyframes(self.dataset.data_root)
+                self.camera_path.load_keyframes(self.dataset.data_root)
             except:
                 log(yellow('Unable to load training cameras as keyframes, skipping...'))
 
@@ -352,7 +352,7 @@ class VolumetricVideoViewer:
         imgui.push_font(self.default_font)
 
         # States
-        playing_time = self.camera_paths.playing_time  # Remember this, if changed, update camera
+        playing_time = self.camera_path.playing_time  # Remember this, if changed, update camera
         slider_width = imgui.get_window_width() * 0.65  # https://github.com/ocornut/imgui/issues/267
         toggle_ios_style = imgui_toggle.ios_style(size_scale=0.2)
 
@@ -603,30 +603,30 @@ class VolumetricVideoViewer:
 
         # Export animation (camera paths)
         # imgui.set_next_item_open(True)
-        if imgui.collapsing_header(f'Animation (keyframes: {len(self.camera_paths)})###animation', ):
+        if imgui.collapsing_header(f'Animation (keyframes: {len(self.camera_path)})###animation', ):
 
             push_button_color(0x55cc33ff)
             if imgui.button('Insert'):
-                self.camera_paths.insert(self.camera)
+                self.camera_path.insert(self.camera)
             pop_button_color()
 
-            if len(self.camera_paths):  # if exists, can delete or replace
+            if len(self.camera_path):  # if exists, can delete or replace
                 # Update the keyframes
                 imgui.same_line()
                 push_button_color(0xff5533ff)
-                if imgui.button('Replace'): self.camera_paths.replace(self.camera)
+                if imgui.button('Replace'): self.camera_path.replace(self.camera)
                 pop_button_color()
 
                 # Update the keyframes
                 imgui.same_line()
                 push_button_color(0xff3355ff)
-                if imgui.button('Delete'): self.camera_paths.delete(self.camera_paths.selected)
+                if imgui.button('Delete'): self.camera_path.delete(self.camera_path.selected)
                 pop_button_color()
 
                 # Update the keyframes
                 imgui.same_line()
                 push_button_color(0xff3355ff)
-                if imgui.button('Clear'): self.camera_paths.clear()
+                if imgui.button('Clear'): self.camera_path.clear()
                 pop_button_color()
 
             # push_button_color(0xff5533ff)
@@ -638,12 +638,12 @@ class VolumetricVideoViewer:
                     self.static.load_keyframes_dialog.ready(timeout=1):  # this is not moved up since it spans frames # MARK: SLOW
                 directory = self.static.load_keyframes_dialog.result()
                 if directory:
-                    self.camera_paths.load_keyframes(directory)
+                    self.camera_path.load_keyframes(directory)
                     self.static.keyframes_path = directory
                 self.static.load_keyframes_dialog = None
 
             # Timelines
-            if len(self.camera_paths):  # need at least 3 components to interpolate
+            if len(self.camera_path):  # need at least 3 components to interpolate
                 imgui.same_line()
                 if imgui.button('Export'):
                     self.static.export_keyframes_dialog = pfd.select_folder("Select folder")
@@ -652,7 +652,7 @@ class VolumetricVideoViewer:
                         self.static.export_keyframes_dialog.ready(timeout=1):  # this is not moved up since it spans frames # MARK: SLOW
                     directory = self.static.export_keyframes_dialog.result()
                     if directory:
-                        self.camera_paths.export_keyframes(directory)
+                        self.camera_path.export_keyframes(directory)
                         self.static.keyframes_path = directory
                     self.static.export_keyframes_dialog = None
 
@@ -664,61 +664,61 @@ class VolumetricVideoViewer:
                         self.static.export_interp_dialog.ready(timeout=1):  # this is not moved up since it spans frames # MARK: SLOW
                     directory = self.static.export_interp_dialog.result()
                     if directory:
-                        self.camera_paths.export_interps(directory)
+                        self.camera_path.export_interps(directory)
                         self.static.keyframes_path = directory
                     self.static.export_interp_dialog = None
 
-                self.camera_paths.n_render_views = imgui.slider_int('N Interps', self.camera_paths.n_render_views, 100, 10000)[1]  # temporal interpolation
+                self.camera_path.n_render_views = imgui.slider_int('N Interps', self.camera_path.n_render_views, 100, 10000)[1]  # temporal interpolation
 
-            if len(self.camera_paths):  # if exists, can delete or replace
+            if len(self.camera_path):  # if exists, can delete or replace
                 imgui.text('Timeline control')
-                space = (len(self.camera_paths) - 1) / len(self.camera_paths)  # to fill them up
-                width = slider_width / len(self.camera_paths) - space
-                for i in range(len(self.camera_paths)):
+                space = (len(self.camera_path) - 1) / len(self.camera_path)  # to fill them up
+                width = slider_width / len(self.camera_path) - space
+                for i in range(len(self.camera_path)):
                     if i != 0:
                         imgui.same_line(0, 1)
-                    sel = i == self.camera_paths.selected  # might get updated during this
+                    sel = i == self.camera_path.selected  # might get updated during this
                     if sel:
                         push_button_color(0x8855aaff)  #
                     if imgui.button(f'###{i}', ImVec2(width, 0)):
-                        self.camera_paths.selected = i  # will not change playing_time after inserting the first keyframe
-                        playing_time = self.camera_paths.playing_time  # Do not change playing time, instead load the stored camera, this variable controls wherther to interp
-                        self.camera = deepcopy(self.camera_paths.keyframes[i])  # change the current camera
+                        self.camera_path.selected = i  # will not change playing_time after inserting the first keyframe
+                        playing_time = self.camera_path.playing_time  # Do not change playing time, instead load the stored camera, this variable controls wherther to interp
+                        self.camera = deepcopy(self.camera_path.keyframes[i])  # change the current camera
                     if sel:
                         pop_button_color()
 
             # Timelines
-            if len(self.camera_paths) > 3:  # need at least 3 components to interpolate
+            if len(self.camera_path) > 3:  # need at least 3 components to interpolate
 
                 # Player control
                 imgui.text('Player control')
                 if imgui.button(f'{"|<"}'):  # centered
-                    self.camera_paths.selected = 0
+                    self.camera_path.selected = 0
                 imgui.same_line()
                 if imgui.button(f'{"<"}'):
-                    self.camera_paths.selected = max(0, self.camera_paths.selected - 1)
+                    self.camera_path.selected = max(0, self.camera_path.selected - 1)
 
                 imgui.same_line()
-                push_button_color(0xff5533ff if self.camera_paths.playing else 0x55cc33ff)
-                if imgui.button(f'{"Stop": ^4}' if self.camera_paths.playing else f'{"Play": ^4}'):
-                    self.camera_paths.playing = not self.camera_paths.playing
+                push_button_color(0xff5533ff if self.camera_path.playing else 0x55cc33ff)
+                if imgui.button(f'{"Stop": ^4}' if self.camera_path.playing else f'{"Play": ^4}'):
+                    self.camera_path.playing = not self.camera_path.playing
                 pop_button_color()
 
                 imgui.same_line()
                 if imgui.button(f'{">"}'):
-                    self.camera_paths.selected = min(len(self.camera_paths) - 1, self.camera_paths.selected + 1)
+                    self.camera_path.selected = min(len(self.camera_path) - 1, self.camera_path.selected + 1)
 
                 imgui.same_line()
                 if imgui.button(f'{">|"}'):
-                    self.camera_paths.selected = len(self.camera_paths) - 1
+                    self.camera_path.selected = len(self.camera_path) - 1
 
-                # if self.camera_paths.playing:
+                # if self.camera_path.playing:
                 imgui.same_line()
-                self.camera_paths.playing_speed = imgui.slider_float('Speed', self.camera_paths.playing_speed, 0.0001, 0.1)[1]  # temporal interpolation
+                self.camera_path.playing_speed = imgui.slider_float('Speed', self.camera_path.playing_speed, 0.0001, 0.1)[1]  # temporal interpolation
 
                 # Timeline slider
-                self.camera_paths.playing_time = imgui.slider_float('Playing time', self.camera_paths.playing_time, 0, 1)[1]  # temporal interpolation
-                self.camera_paths.loop_interp = imgui_toggle.toggle('Loop interpolations', self.camera_paths.loop_interp, config=toggle_ios_style)[1]
+                self.camera_path.playing_time = imgui.slider_float('Playing time', self.camera_path.playing_time, 0, 1)[1]  # temporal interpolation
+                self.camera_path.loop_interp = imgui_toggle.toggle('Loop interpolations', self.camera_path.loop_interp, config=toggle_ios_style)[1]
                 self.visualize_paths = imgui_toggle.toggle('Visualize paths', self.visualize_paths, config=toggle_ios_style)[1]
 
                 if 'keyframes_path' in self.static:
@@ -732,7 +732,7 @@ class VolumetricVideoViewer:
                     source += " " + f"val_dataloader_cfg.dataset_cfg.camera_path_extri={join(self.static.keyframes_path, 'extri.yml').replace(backslash, slash)}"
                     source += " " + f"val_dataloader_cfg.dataset_cfg.temporal_range=None"
                     source += " " + f"configs=configs/specs/cubic.yaml,configs/specs/ibr.yaml,configs/specs/cubic.yaml,configs/specs/interp.yaml" if 'ImageBased' in self.dataset.__class__.__name__ else " " + f"configs=configs/specs/interp.yaml"
-                    source += " " + f"val_dataloader_cfg.dataset_cfg.interp_cfg.smoothing_term=0.0" if self.camera_paths.loop_interp else " " + f"val_dataloader_cfg.dataset_cfg.interp_cfg.smoothing_term=10.0"
+                    source += " " + f"val_dataloader_cfg.dataset_cfg.interp_cfg.smoothing_term=0.0" if self.camera_path.loop_interp else " " + f"val_dataloader_cfg.dataset_cfg.interp_cfg.smoothing_term=10.0"
 
                     if 'editor' not in self.static:
                         editor = ed.TextEditor()
@@ -834,25 +834,25 @@ class VolumetricVideoViewer:
             else:
                 self.camera.t = (self.camera.t + self.playing_speed) % 1
 
-        if self.camera_paths.playing:  # automatic update of playing time
-            self.camera_paths.playing_time = (self.camera_paths.playing_time + self.camera_paths.playing_speed) % 1
+        if self.camera_path.playing:  # automatic update of playing time
+            self.camera_path.playing_time = (self.camera_path.playing_time + self.camera_path.playing_speed) % 1
 
-        if self.camera_paths.playing_time != playing_time and len(self.camera_paths) > 3:  # ok to interpolate
+        if self.camera_path.playing_time != playing_time and len(self.camera_path) > 3:  # ok to interpolate
             # Update main camera
-            us = self.camera_paths.playing_time
-            self.camera = self.camera_paths.interp(us) or self.camera  # may return None
+            us = self.camera_path.playing_time
+            self.camera = self.camera_path.interp(us) or self.camera  # may return None
 
             # Update cursor when dragging the slider
-            K = len(self.camera_paths)
-            self.camera_paths.cursor_index = min(int(np.floor(us * (K - 1))), K - 1)  # do not interp or change playtime
+            K = len(self.camera_path)
+            self.camera_path.cursor_index = min(int(np.floor(us * (K - 1))), K - 1)  # do not interp or change playtime
 
         # Render debug cameras out (this should not be affected bu guis)
-        if self.visualize_axes or self.visualize_cameras or self.visualize_bounds or self.camera_paths.keyframes:
+        if self.visualize_axes or self.visualize_cameras or self.visualize_bounds or self.camera_path.keyframes:
             proj = self.camera.w2p  # 3, 4
 
         # Render user added camera path
         if self.visualize_cameras:
-            self.camera_paths.draw(self.camera)  # do the projection
+            self.camera_path.draw(self.camera)  # do the projection
 
         if self.visualize_cameras:
             # Prepare tensors to render

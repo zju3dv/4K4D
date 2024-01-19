@@ -344,6 +344,7 @@ class CameraPath:
         # The actual rendering starts here, the camera paths are considered GUI elements for eaiser management
         # This rendering pattern is extremly slow and hard on the CPU, but whatever for now, just visualization
         if not self.visible: return
+        if not len(self): return
         proj = camera.w2p  # 3, 4
 
         # Render cameras
@@ -355,7 +356,7 @@ class CameraPath:
             # Add to imgui rendering list
             visualize_cameras(proj, ixt, c2w, col=self.camera_color, thickness=self.camera_thickness, axis_size=self.camera_axis_size)
 
-        if self.render_plots:
+        if self.render_plots and len(self) >= 4:
             us = np.linspace(0, 1, self.n_render_views, dtype=np.float32)
             c2ws = self.c2w_func(us)
             cs = c2ws[..., :3, 3]  # N, 3
