@@ -100,7 +100,6 @@ def visualize_cameras(proj: mat4, ixt: mat3, c2w: mat4x3, axis_size: float = 0.1
     focal = (ixt[0, 0] + ixt[1, 1]) / 2
     axis_size = focal * axis_size / 1000
 
-
     aspect = ixt[0, 0] / ixt[1, 1]
     xs = axis_size * aspect
     ys = axis_size
@@ -377,8 +376,8 @@ class Camera:
                  H: int = 512,
                  W: int = 512,
                  K: torch.Tensor = torch.tensor([[512.0, 0.0, 256], [0.0, 512.0, 256.0], [0.0, 0.0, 1.0]]),  # intrinsics
-                 R: torch.Tensor = torch.tensor([[-1.0, 0.0, 0.0,], [0.0, 0.0, -1.0,], [0.0, -1.0, 0.0,]]),  # extrinsics
-                 T: torch.Tensor = torch.tensor([[0.0], [0.0], [-3.0],]),  # extrinsics
+                 R: torch.Tensor = torch.tensor([[-0.9977766275405884, 0.06664637476205826, 0.0], [0.004728599451482296, 0.07079283893108368, -0.9974799156188965], [-0.0664784237742424, -0.9952622056007385, -0.07095059007406235]]),  # extrinsics
+                 T: torch.Tensor = torch.tensor([[-2.059340476989746e-5], [2.5779008865356445e-6], [-3.000047445297241]]),  # extrinsics
                  n: float = 0.002,  # bounds limit
                  f: float = 100,  # bounds limit
                  t: float = 0.0,  # temporal dimension (implemented as a float instead of int)
@@ -486,7 +485,8 @@ class Camera:
         self.R[0, 1], self.R[1, 1], self.R[2, 1] = down.x, down.y, down.z
 
     @property
-    def center(self): return -glm.transpose(self.R) @ self.T  # 3,
+    def center(self):
+        return -glm.transpose(self.R) @ self.T  # 3,
 
     @center.setter
     def center(self, v: vec3):
@@ -595,19 +595,19 @@ class Camera:
         meta = dotdict()
         meta.H = torch.as_tensor(self.H)
         meta.W = torch.as_tensor(self.W)
-        meta.K = torch.as_tensor(self.K.to_list()).mT
-        meta.R = torch.as_tensor(self.R.to_list()).mT
-        meta.T = torch.as_tensor(self.T.to_list())[..., None]
-        meta.n = torch.as_tensor(self.n)
-        meta.f = torch.as_tensor(self.f)
-        meta.t = torch.as_tensor(self.t)
-        meta.v = torch.as_tensor(self.v)
-        meta.bounds = torch.as_tensor(self.bounds.to_list())  # no transpose for bounds
+        meta.K = torch.as_tensor(self.K.to_list(), dtype=torch.float).mT
+        meta.R = torch.as_tensor(self.R.to_list(), dtype=torch.float).mT
+        meta.T = torch.as_tensor(self.T.to_list(), dtype=torch.float)[..., None]
+        meta.n = torch.as_tensor(self.n, dtype=torch.float)
+        meta.f = torch.as_tensor(self.f, dtype=torch.float)
+        meta.t = torch.as_tensor(self.t, dtype=torch.float)
+        meta.v = torch.as_tensor(self.v, dtype=torch.float)
+        meta.bounds = torch.as_tensor(self.bounds.to_list(), dtype=torch.float)  # no transpose for bounds
 
         # GUI related elements
-        meta.movement_speed = torch.as_tensor(self.movement_speed)
-        meta.origin = torch.as_tensor(self.origin.to_list())
-        meta.world_up = torch.as_tensor(self.world_up.to_list())
+        meta.movement_speed = torch.as_tensor(self.movement_speed, dtype=torch.float)
+        meta.origin = torch.as_tensor(self.origin.to_list(), dtype=torch.float)
+        meta.world_up = torch.as_tensor(self.world_up.to_list(), dtype=torch.float)
 
         batch = dotdict()
         batch.update(meta)

@@ -1966,7 +1966,7 @@ def random_crop_image(img, msk, K, min_size, max_size):
 def get_bound_corners(bounds):
     min_x, min_y, min_z = bounds[0]
     max_x, max_y, max_z = bounds[1]
-    corners_3d = np.array([
+    corners_3d = np.asarray([
         [min_x, min_y, min_z],
         [min_x, min_y, max_z],
         [min_x, max_y, min_z],
@@ -1975,7 +1975,7 @@ def get_bound_corners(bounds):
         [max_x, min_y, max_z],
         [max_x, max_y, min_z],
         [max_x, max_y, max_z],
-    ])
+    ], dtype=np.float32)
     return corners_3d
 
 

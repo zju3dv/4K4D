@@ -1032,8 +1032,6 @@ class VolumetricVideoDataset(Dataset):
         meta.tar_ixt = K
         meta.H = torch.as_tensor(new_h)
         meta.W = torch.as_tensor(new_w)
-        meta.full_H = torch.as_tensor(orig_h)
-        meta.full_W = torch.as_tensor(orig_w)
         if 'orig_h' in output:
             meta.crop_x = torch.as_tensor(int(output.crop_x * ratio))
             meta.crop_y = torch.as_tensor(int(output.crop_y * ratio))  # TODO: this is messy

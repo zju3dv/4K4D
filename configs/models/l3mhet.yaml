@@ -6,15 +6,15 @@ _: &mlp_size # skip_geo_feat: True
     appearance_cfg:
         width: 32
         depth: 2
-    parameterizer_cfg:
-        radius: 3.0 # strange contraction artifacts?
+    # parameterizer_cfg:
+        # radius: 3.0 # strange contraction artifacts?
     dir_embedder_cfg:
         type: TcnnDirEmbedder
     xyzt_embedder_cfg:
         xyz_embedder_cfg:
             type: TcnnHashEmbedder # no mipnerf360 contraction
             # dtype: half
-            bounds: [[-5.0, -5.0, -5.0], [5.0, 5.0, 5.0]]
+            # bounds: [[-5.0, -5.0, -5.0], [5.0, 5.0, 5.0]]
         t_embedder_cfg:
             out_dim: 8 # smaller latent code
 

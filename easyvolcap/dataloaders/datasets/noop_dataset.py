@@ -18,7 +18,11 @@ class NoopDataset(Dataset):
                  render_ratio=1.0,
                  focal_ratio: float = 1.0,
 
+                 Rv=[[-0.9977766275405884, 0.06664637476205826, 0.0], [0.004728599451482296, 0.07079283893108368, -0.9974799156188965], [-0.0664784237742424, -0.9952622056007385, -0.07095059007406235]],
+                 Tv=[[-2.059340476989746e-5], [2.5779008865356445e-6], [-3.000047445297241]],
+
                  imbound_crop: bool = True,
+                 use_objects_priors: bool = False,
                  **kwargs):
         self.view_sample = view_sample
         self.frame_sample = frame_sample
@@ -28,19 +32,16 @@ class NoopDataset(Dataset):
         self.n_frames_total = self.n_latents
         self.n_view_total = self.n_views
 
-        self.Rv = torch.as_tensor([
-            [1, 0, 0],
-            [0, 0, -1],
-            [0, 1, 0],
-        ])  # 3, 3
-        self.Tv = torch.as_tensor([0, 0, 3])  # 3, 1
+        self.Rv = torch.as_tensor(Rv, dtype=torch.float)  # 3, 3
+        self.Tv = torch.as_tensor(Tv, dtype=torch.float)  # 3, 1
         self.near = near
         self.far = far
-        self.bounds = torch.as_tensor(bounds)
+        self.bounds = torch.as_tensor(bounds, dtype=torch.float)
         self.render_ratio = render_ratio
         self.focal_ratio = focal_ratio
 
         self.imbound_crop = imbound_crop
+        self.use_objects_priors = use_objects_priors
 
     def __len__(self):
         return self.n_latents * self.n_views
@@ -116,5 +117,8 @@ class NoopDataset(Dataset):
 
         if self.imbound_crop:
             output = self.crop_ixts_bounds(output)
+
+        if self.use_objects_priors:
+            output = self.get_objects_priors(output)
 
         return output

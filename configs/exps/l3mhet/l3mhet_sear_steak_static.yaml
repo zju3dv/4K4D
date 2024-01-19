@@ -1,0 +1,15 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/l3mhet.yaml # network model configuration
+    - configs/datasets/neural3dv/sear_steak.yaml # dataset usage configuration
+    - configs/specs/optcam.yaml
+    - configs/specs/transient.yaml
+    - configs/specs/static.yaml
+
+runner_cfg:
+    save_latest_ep: 1
+    save_ep: 1
+    eval_ep: 1
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

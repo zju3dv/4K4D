@@ -425,46 +425,48 @@ class VolumetricVideoViewer:
         if imgui.collapsing_header('Camera'):
             if imgui.tree_node_ex('Intrinsics'):
                 imgui.push_item_width(slider_width * 0.5)
-                changed, value = imgui.slider_float('fx', self.camera.fx, 1.0, self.W * 3)
+                changed, value = imgui.slider_float('fx', self.camera.fx, 1.0, self.W * 3, format='%.6f')
                 imgui.same_line()  # near bound
                 if changed: self.camera.fx = value
-                changed, value = imgui.slider_float('fy', self.camera.fx, 1.0, self.H * 3)
+                changed, value = imgui.slider_float('fy', self.camera.fx, 1.0, self.H * 3, format='%.6f')
                 if changed: self.camera.fy = value
-                self.camera.cx = imgui.slider_float('cx', self.camera.cx, 0.0, self.W * 1)[1]
+                self.camera.cx = imgui.slider_float('cx', self.camera.cx, 0.0, self.W * 1, format='%.6f')[1]
                 imgui.same_line()  # near bound
-                self.camera.cy = imgui.slider_float('cy', self.camera.cy, 0.0, self.H * 1)[1]
+                self.camera.cy = imgui.slider_float('cy', self.camera.cy, 0.0, self.H * 1, format='%.6f')[1]
                 imgui.pop_item_width()
                 imgui.tree_pop()
 
             if imgui.tree_node_ex('Extrinsics'):
-                imgui.input_float3('Right', self.camera.right, flags=imgui.InputTextFlags_.read_only)
-                imgui.input_float3('Down', self.camera.down, flags=imgui.InputTextFlags_.read_only)
-                self.camera.front = vec3(imgui.input_float3('Front', self.camera.front)[1])  # changed, value
-                self.camera.center = vec3(imgui.input_float3('Center', self.camera.center)[1])
+                imgui.input_float3('Right', self.camera.right, flags=imgui.InputTextFlags_.read_only, format='%.6f')
+                imgui.input_float3('Down', self.camera.down, flags=imgui.InputTextFlags_.read_only, format='%.6f')
+                changed, front = vec3(imgui.input_float3('Front', self.camera.front, format='%.6f')[1])  # changed, value
+                if changed: self.camera.front = front
+                changed, center = vec3(imgui.input_float3('Center', self.camera.center, format='%.6f')[1])
+                if changed: self.camera.center = center
                 imgui.tree_pop()
 
             if imgui.tree_node_ex('Alignment'):
-                self.camera.origin = vec3(imgui.input_float3('Origin', self.camera.origin)[1])
-                self.camera.world_up = vec3(imgui.input_float3('World up', self.camera.world_up)[1])
+                self.camera.origin = vec3(imgui.input_float3('Origin', self.camera.origin, format='%.6f')[1])
+                self.camera.world_up = vec3(imgui.input_float3('World up', self.camera.world_up, format='%.6f')[1])
                 imgui.tree_pop()
 
             if imgui.tree_node_ex('Bounds & range'):
                 if 'log10_size' not in self.static: self.static.log10_size = 1.0  # 10m range
                 self.static.log10_size = imgui.slider_float('Bound log10 size (slider range)', self.static.log10_size, -2.0, 5.0)[1]
                 size = 10 ** self.static.log10_size
-                self.camera.bounds[0] = vec3(imgui.slider_float3('Min x, y, z', self.camera.bounds[0], -size, size)[1])
-                self.camera.bounds[1] = vec3(imgui.slider_float3('Max x, y, z', self.camera.bounds[1], -size, size)[1])
+                self.camera.bounds[0] = vec3(imgui.slider_float3('Min x, y, z', self.camera.bounds[0], -size, size, format='%.6f')[1])
+                self.camera.bounds[1] = vec3(imgui.slider_float3('Max x, y, z', self.camera.bounds[1], -size, size, format='%.6f')[1])
 
                 imgui.push_item_width(slider_width * 0.5)
-                self.camera.n = imgui.slider_float('Near', self.camera.n, 0.002, self.camera.f - 0.01)[1]
+                self.camera.n = imgui.slider_float('Near', self.camera.n, 0.002, self.camera.f - 0.01, format='%.6f')[1]
                 imgui.same_line()  # near bound
-                self.camera.f = imgui.slider_float('Far', self.camera.f, self.camera.n + 0.01, 100)[1]  # far bound
+                self.camera.f = imgui.slider_float('Far', self.camera.f, self.camera.n + 0.01, 100, format='%.6f')[1]  # far bound
                 imgui.pop_item_width()
                 imgui.tree_pop()
 
             if imgui.tree_node_ex('Temporal'):
-                self.camera.v = imgui.slider_float('v', self.camera.v, 0, 1)[1]  # spacial interpolation
-                self.camera.t = imgui.slider_float('t', self.camera.t, 0, 1)[1]  # temporal interpolation
+                self.camera.v = imgui.slider_float('v', self.camera.v, 0, 1, format='%.6f')[1]  # spacial interpolation
+                self.camera.t = imgui.slider_float('t', self.camera.t, 0, 1, format='%.6f')[1]  # temporal interpolation
                 imgui.push_item_width(slider_width * 0.33)
                 self.playing = imgui_toggle.toggle('Autoplay', self.playing, config=toggle_ios_style)[1]
                 imgui.same_line()

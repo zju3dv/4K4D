@@ -667,7 +667,8 @@ def build_parser(d: dict, parser: argparse.ArgumentParser = None):
         elif isinstance(v, list):
             parser.add_argument(f'--{k}', type=type(v[0]) if len(v) else str, default=v, nargs='+')
         elif isinstance(v, bool):
-            parser.add_argument(f'--{k}', action='store_false' if v else 'store_true')
+            t = 'no_' + k if v else k
+            parser.add_argument(f'--{t}', action='store_false' if v else 'store_true', dest=k)
         else:
             parser.add_argument(f'--{k}', type=type(v), default=v)
     return parser
