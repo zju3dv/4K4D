@@ -11,7 +11,7 @@ from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.easy_utils import write_camera
 from easyvolcap.utils.parallel_utils import parallel_execution
-from easyvolcap.utils.data_utils import read_cam_file, read_pfm
+from easyvolcap.utils.data_utils import read_cam_file, read_pfm, save_image
 
 
 def main():
@@ -67,11 +67,11 @@ def main():
 
             # Writing and linking
             img_out_path = join(img_out_dir, f'{i:06d}.jpg')
-            cv2.imwrite(img_out_path, cv2.imread(img_path), [cv2.IMWRITE_JPEG_QUALITY, 100])  # highest quality compression
+            save_image(img_out_path, cv2.imread(img_path), jpeg_quality=100)  # highest quality compression
             msk_out_path = join(msk_out_dir, f'{i:06d}.jpg')
-            cv2.imwrite(msk_out_path, msk * 255)
-            dpt_out_path = join(dpt_out_dir, f'{i:06d}.hdr')
-            cv2.imwrite(dpt_out_path, dpt)
+            save_image(msk_out_path, msk * 255)
+            dpt_out_path = join(dpt_out_dir, f'{i:06d}.exr')
+            save_image(dpt_out_path, dpt)
 
         parallel_execution(list(range(num_cams)), action=process_image)
 

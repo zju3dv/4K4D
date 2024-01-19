@@ -18,7 +18,7 @@ from functools import lru_cache, partial
 
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.data_utils import export_pts, to_x
+from easyvolcap.utils.data_utils import export_pts, to_x, load_pts
 from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
 from easyvolcap.utils.net_utils import make_params, make_buffer, VolumetricVideoModule
 from easyvolcap.utils.math_utils import normalize, affine_inverse, affine_padding, point_padding
@@ -168,8 +168,17 @@ class PointPlanesSampler(VolumetricVideoModule):
         skip_loading_points = skip_loading_points and not points_only  # will always load init vhulls if points_only
 
         make_params_or_buffer = make_params if opt_pcd else make_buffer
+
+        # Some initialization possibility
+        self.pcds: nn.ParameterList[nn.Parameter] = nn.ParameterList()
+        self.rgbs: List[torch.Tensor] = []
+        self.nors: List[torch.Tensor] = []
+        self.rads: List[torch.Tensor] = []
+        self.occs: List[torch.Tensor] = []
+
         if skip_loading_points:
-            self.pcds: nn.ParameterList[nn.Parameter] = nn.ParameterList([make_params_or_buffer(torch.rand(n_points, 3, device='cuda')) for i in range(n_frames)])  # just move them to GPU already
+            for i in range(n_frames):
+                self.pcds.append(make_params_or_buffer(torch.rand(n_points, 3, device='cuda')))
         else:
             data_root = OptimizableCamera.data_root
             points_dir = OptimizableCamera.vhulls_dir
@@ -180,13 +189,31 @@ class PointPlanesSampler(VolumetricVideoModule):
                 self.points_aligned = points_aligned
                 self.points_expanded = points_expanded
 
+            # Sometimes, e does not contain the full count
             b, e, s = PointPlanesSampler.frame_sample
             points_path = join(data_root, points_dir)
-            points_files = np.asarray(sorted(os.listdir(points_path)))[b:e:s]
-            self.pcds: nn.ParameterList[nn.Parameter] = nn.ParameterList([  # using module list instead of a constructed tensor for pruning and growing
-                make_params_or_buffer(load_ply(join(points_path, points_files[f]))[0])  # maybe make the points fixed in space
-                for f in tqdm(range(n_frames), desc=f'Loading init pcds from {blue(points_path)}')  # 0-1, is this ok?
-            ])
+
+            # Sometimes, the points folder does not contain every frames, how do we know that it's here?
+            # Most methods use file sorting
+            # points_files = np.asarray(sorted(os.listdir(points_path)))[b:e:s]
+            points_files = os.listdir(points_path)
+            points_int = [int(f.split('.')[0]) for f in points_files]
+
+            for f in tqdm(range(n_frames), desc=f'Loading init pcds from {blue(points_path)}'):
+                idx = b + f * s
+                idx = points_int.index(idx)
+                point_file = points_files[idx]
+
+                # Some initialization possibility
+                pcd, rgb, norm, scalars = load_pts(join(points_path, point_file))
+                self.pcds.append(make_params_or_buffer(pcd))
+
+                # Sometimes these special variables do not exist
+                if rgb is not None: self.rgbs.append(torch.as_tensor(rgb))
+                if norm is not None: self.nors.append(torch.as_tensor(norm))
+                if 'radius' in scalars: self.rads.append(torch.as_tensor(scalars.radius))
+                if 'alpha' in scalars: self.occs.append(torch.as_tensor(scalars.alpha))
+
             if self.points_expanded:
                 self.pcds.cuda()  # move to cuda if we're planning on using them later
         self._register_load_state_dict_pre_hook(self._load_state_dict_pre_hook)

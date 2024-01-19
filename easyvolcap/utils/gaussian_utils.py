@@ -234,6 +234,7 @@ class GaussianModel(nn.Module):
                  xyz: torch.Tensor = None,
                  colors: torch.Tensor = None,
                  init_occ: float = 0.1,
+                 init_scale: torch.Tensor = None,
                  sh_deg: int = 3,
                  scale_min: float = 1e-4,
                  scale_max: float = 1e1,
@@ -255,7 +256,7 @@ class GaussianModel(nn.Module):
         self.max_sh_degree = sh_deg
 
         # Initalize trainable parameters
-        self.create_from_pcd(xyz, colors, init_occ)
+        self.create_from_pcd(xyz, colors, init_occ, init_scale)
 
         # Densification related parameters
         self.max_radii2D = make_buffer(torch.zeros(self.get_xyz.shape[0]))
@@ -319,7 +320,7 @@ class GaussianModel(nn.Module):
         if self.active_sh_degree < self.max_sh_degree:
             self.active_sh_degree += 1
 
-    def create_from_pcd(self, xyz: torch.Tensor, colors: torch.Tensor, opacity: float = 0.1):
+    def create_from_pcd(self, xyz: torch.Tensor, colors: torch.Tensor = None, opacities: float = 0.1, scales: torch.Tensor = None):
         from simple_knn._C import distCUDA2
         if xyz is None:
             xyz = torch.empty(0, 3, device='cuda')  # by default, init empty gaussian model on CUDA
@@ -330,12 +331,18 @@ class GaussianModel(nn.Module):
             features[:, :3, 0] = SH
         features[:, 3: 1:] = 0
 
-        dist2 = torch.clamp_min(distCUDA2(xyz.float().cuda()), 0.0000001)
-        scales = self.scaling_inverse_activation(torch.sqrt(dist2))[..., None].repeat(1, 3)
+        if scales is None:
+            dist2 = torch.clamp_min(distCUDA2(xyz.float().cuda()), 0.0000001)
+            scales = self.scaling_inverse_activation(torch.sqrt(dist2))[..., None].repeat(1, 3)
+        else:
+            scales = self.scaling_inverse_activation(scales)
+
         rots = torch.rand((xyz.shape[0], 4))
         rots[:, 0] = 1
 
-        opacities = self.inverse_opacity_activation(opacity * torch.ones((xyz.shape[0], 1), dtype=torch.float))
+        if not isinstance(opacities, torch.Tensor) or len(opacities) != len(xyz):
+            opacities = opacities * torch.ones((xyz.shape[0], 1), dtype=torch.float)
+        opacities = self.inverse_opacity_activation(opacities)
 
         self._xyz = make_params(xyz)
         self._features_dc = make_params(features[:, :, :1].transpose(1, 2).contiguous())

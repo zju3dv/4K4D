@@ -24,6 +24,7 @@ def main():
     args.depth = '000000.hdr'  # camera + postfix = args.depth file name
     args.images_dir = 'images_calib'
     args.image = '000000.jpg'
+    args.cameras_dir = 'optimized'
     args.output = f'{args.image.replace(".jpg", ".ply")}'
     args.n_srcs = 4
     args.ratio = 0.5
@@ -33,7 +34,7 @@ def main():
     args.skip_depth_consistency = False
     args = dotdict(vars(build_parser(args).parse_args()))
 
-    cameras = to_tensor(read_camera(args.data_root))
+    cameras = to_tensor(read_camera(join(args.data_root, args.cameras_dir)))
     # nv = min(len(cameras), len(os.listdir(join(args.data_root, args.depth_dir))))
     # cameras = dotdict({k: v for k in sorted(cameras)[:nv]})
     names = os.listdir(join(args.data_root, args.depth_dir))
@@ -81,7 +82,7 @@ def main():
     dirs = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in dirs])  # V, H, W, 3
     rgbs = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in rgbs])  # V, H, W, 3
     Ks = torch.stack(Ks)  # V, 3, 3
-    breakpoint()
+
     xyzs_out = []
     rgbs_out = []
 

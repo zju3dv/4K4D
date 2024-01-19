@@ -9,11 +9,12 @@ from easyvolcap.utils.data_utils import load_depth, save_image
 
 @catch_throw
 def main():
+    args = dotdict()
     args.mvsnet_dir = '../cvp-mvsnet/outputs_pretrained/0023_06/depth_est'
     args.volcap_dir = 'data/renbody/0023_06/depths'
     args.image = '000000.jpg'
     args.convert = True
-    args.convert_ext = '.hdr'
+    args.convert_ext = '.exr'
     args = dotdict(vars(build_parser(args).parse_args()))
 
 

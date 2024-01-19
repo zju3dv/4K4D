@@ -1043,8 +1043,8 @@ def load_image_file(img_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-            (draft[1][2] != int(w * ratio) or
-         draft[1][3] != int(h * ratio)):
+        (draft[1][2] != int(w * ratio) or
+             draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         return img
     else:
@@ -1096,8 +1096,8 @@ def load_unchanged(img_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-            (draft[1][2] != int(w * ratio) or
-         draft[1][3] != int(h * ratio)):
+        (draft[1][2] != int(w * ratio) or
+             draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         return img
     else:
@@ -1122,8 +1122,8 @@ def load_mask(msk_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-            (draft[1][2] != int(w * ratio) or
-         draft[1][3] != int(h * ratio)):
+        (draft[1][2] != int(w * ratio) or
+             draft[1][3] != int(h * ratio)):
             msk = cv2.resize(msk.astype(np.uint8), (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_NEAREST)[..., None]
         return msk
     else:
@@ -1175,7 +1175,9 @@ def save_image(img_path: str, img: np.ndarray, jpeg_quality=75, png_compression=
         # should we try to discard alpha channel here?
         # exr could store alpha channel
         pass  # no transformation for other unspecified file formats
-    return cv2.imwrite(img_path, img, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])
+    return cv2.imwrite(img_path, img, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality,
+                                       cv2.IMWRITE_PNG_COMPRESSION, png_compression,
+                                       cv2.IMWRITE_EXR_COMPRESSION, cv2.IMWRITE_EXR_COMPRESSION_PIZ])
 
 
 def save_mask(msk_path: str, msk: np.ndarray, quality=75, compression=9):
@@ -1183,7 +1185,9 @@ def save_mask(msk_path: str, msk: np.ndarray, quality=75, compression=9):
         os.makedirs(os.path.dirname(msk_path), exist_ok=True)
     if msk.ndim == 2:
         msk = msk[..., None]
-    return cv2.imwrite(msk_path, msk[..., 0] * 255, [cv2.IMWRITE_JPEG_QUALITY, quality, cv2.IMWRITE_PNG_COMPRESSION, compression])
+    return cv2.imwrite(msk_path, msk[..., 0] * 255, [cv2.IMWRITE_JPEG_QUALITY, quality,
+                                                     cv2.IMWRITE_PNG_COMPRESSION, compression,
+                                                     cv2.IMWRITE_EXR_COMPRESSION, cv2.IMWRITE_EXR_COMPRESSION_PIZ])
 
 
 def list_to_numpy(x: list): return np.stack(x).transpose(0, 3, 1, 2)
@@ -1434,6 +1438,8 @@ def as_numpy_func(func):
 
 
 def load_image_bytes(im: str):
+    if im.endswith('.exr'):
+        os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
     with open(im, "rb") as fh:
         buffer = fh.read()
     return buffer

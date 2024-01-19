@@ -42,7 +42,7 @@ sudo swapoff -v /swapfile
 sudo rm /swapfile
 
 # Creating swapfile
-sudo fallocate -l 256G /swapfile
+sudo fallocate -l 512G /swapfile
 sudo chmod 600 /swapfile
 sudo mkswap /swapfile
 sudo swapon /swapfile
