@@ -1,6 +1,9 @@
 configs:
     - configs/base.yaml # default arguments for the whole codebase
     - configs/models/l3mhet.yaml # network model configuration
+    - configs/specs/blurry.yaml # empty temporal embedder
+    - configs/specs/optcam.yaml
+    - configs/specs/transient.yaml
 
 dataloader_cfg:
     dataset_cfg: &dataset_cfg

@@ -208,8 +208,8 @@ class VolumetricVideoDataset(Dataset):
         self.view_sample = view_sample
         if self.view_sample[1] is not None: self.n_view_total = self.view_sample[1]
         else: self.n_view_total = len(os.listdir(join(self.data_root, self.images_dir)))  # total number of cameras before filtering
-        if self.frame_sample[1] is not None: self.n_frame_total = self.frame_sample[1]
-        else: self.n_frame_total = min([len(glob(join(self.data_root, self.images_dir, cam, '*'))) for cam in os.listdir(join(self.data_root, self.images_dir))])  # total number of images before filtering
+        if self.frame_sample[1] is not None: self.n_frames_total = self.frame_sample[1]
+        else: self.n_frames_total = min([len(glob(join(self.data_root, self.images_dir, cam, '*'))) for cam in os.listdir(join(self.data_root, self.images_dir))])  # total number of images before filtering
         self.use_loaded_time = use_loaded_time
 
         # Rendering and space carving bounds
@@ -355,7 +355,7 @@ class VolumetricVideoDataset(Dataset):
     def load_paths(self):
         # Load image related stuff for reading from disk later
         # If number of images in folder does not match, here we'll get an error
-        ims = [[join(self.data_root, self.images_dir, cam, self.ims_pattern.format(frame=i)) for i in range(self.n_frame_total)] for cam in self.camera_names]
+        ims = [[join(self.data_root, self.images_dir, cam, self.ims_pattern.format(frame=i)) for i in range(self.n_frames_total)] for cam in self.camera_names]
         if not exists(ims[0][0]):
             ims = [[i.replace('.' + self.ims_pattern.split('.')[-1], '.JPG') for i in im] for im in ims]
         if not exists(ims[0][0]):
@@ -363,7 +363,7 @@ class VolumetricVideoDataset(Dataset):
         if not exists(ims[0][0]):
             ims = [[i.replace('.png', '.PNG') for i in im] for im in ims]
         if not exists(ims[0][0]):
-            ims = [sorted(glob(join(self.data_root, self.images_dir, cam, '*')))[:self.n_frame_total] for cam in self.camera_names]
+            ims = [sorted(glob(join(self.data_root, self.images_dir, cam, '*')))[:self.n_frames_total] for cam in self.camera_names]
         ims = [np.asarray(ims[i])[:min([len(i) for i in ims])] for i in range(len(ims))]  # deal with the fact that some weird dataset has different number of images
         self.ims = np.asarray(ims)  # V, N
         self.ims_dir = join(*split(dirname(self.ims[0, 0]))[:-1])  # logging only
@@ -656,7 +656,7 @@ class VolumetricVideoDataset(Dataset):
         if exists(join(self.data_root, self.intri_file)) and exists(join(self.data_root, self.extri_file)):
             self.cameras = read_camera(join(self.data_root, self.intri_file), join(self.data_root, self.extri_file))
             self.camera_names = np.asarray(sorted(list(self.cameras.keys())))  # NOTE: sorting camera names
-            self.cameras = dotdict({k: [self.cameras[k] for i in range(self.n_frame_total)] for k in self.camera_names})
+            self.cameras = dotdict({k: [self.cameras[k] for i in range(self.n_frames_total)] for k in self.camera_names})
             # TODO: Handle avg processing
 
         # Monocular dataset loading, each camera has a separate folder
@@ -932,7 +932,7 @@ class VolumetricVideoDataset(Dataset):
 
     @property
     def frame_max(self):
-        middle = (self.frame_sample[1] if self.frame_sample[1] else self.n_frame_total) - 1  # None -> all frames are loaded
+        middle = (self.frame_sample[1] if self.frame_sample[1] else self.n_frames_total) - 1  # None -> all frames are loaded
         return middle if len(self.frame_sample) == 3 else max(self.frame_sample)
 
     @property

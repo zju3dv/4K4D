@@ -25,7 +25,7 @@ class NoopDataset(Dataset):
         self.closest_using_t = closest_using_t
         self.n_views = (view_sample[1] - view_sample[0]) // view_sample[2] if view_sample[1] is not None else 1
         self.n_latents = (frame_sample[1] - frame_sample[0]) // frame_sample[2] if frame_sample[1] is not None else 1
-        self.n_frame_total = self.n_latents
+        self.n_frames_total = self.n_latents
         self.n_view_total = self.n_views
 
         self.Rv = torch.as_tensor([
