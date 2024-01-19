@@ -389,6 +389,11 @@ class Camera:
                  origin: torch.Tensor = torch.tensor([0.0, 0.0, 0.0]),
                  world_up: torch.Tensor = torch.tensor([0.0, 0.0, 1.0]),
                  movement_speed: float = 1.0,  # gui movement speed
+                 movement_force: float = 10.0,  # include some physiscs
+                 drag_coeff_mult: float = 10.0,  # include some physiscs
+                 constant_drag: float = 1.0,
+                 mass: float = 0.1,
+                 pause_physics: bool = False,
 
                  batch: dotdict = None,  # will ignore all other inputs
                  string: str = None,  # will ignore all other inputs
@@ -415,6 +420,31 @@ class Camera:
         self.about_origin = False  # about origin rotation
         self.is_panning = False  # translation
         self.lock_fx_fy = True
+
+        # Internal states to facilitate moving with mass
+        self.mass = mass
+        self.force = vec3(0.0)
+        self.speed = vec3(0.0)  # no movement
+        self.acc = vec3(0.0)
+        self.drag_coeff_mult = drag_coeff_mult
+        self.movement_force = movement_force
+        self.constant_drag = constant_drag
+        self.pause_physics = pause_physics
+
+    def step(self, interval: float):
+        if self.pause_physics: return
+        direction = mat3(self.right, -glm.normalize(glm.cross(self.right, self.world_up)), self.world_up)
+        movement = direction @ self.speed * interval
+
+        self.center += movement
+        self.speed += self.acc * interval
+
+        speed2 = glm.dot(self.speed, self.speed)
+        if speed2 > self.constant_drag ** 2:
+            drag = -speed2 * glm.normalize(self.speed) * self.drag_coeff_mult
+        else:
+            drag = -self.constant_drag * self.speed
+        self.acc = (self.force + drag) / self.mass
 
     @property
     def w2p(self):
