@@ -143,7 +143,7 @@ class CameraPath:
     def __init__(self,
                  playing: bool = False,
                  playing_time: float = 0.5,
-                 playing_speed: float = 0.005,
+                 playing_speed: float = 0.0005,
 
                  n_render_views: int = 100,
                  render_plots: bool = True,
@@ -248,7 +248,7 @@ class CameraPath:
         self.lin_func = gen_linear_interp_func(lins, smoothing_term=0.0 if self.periodic else 10.0)  # smoothness: 0 -> period, >0 -> non-period, -1 orbit (not here)
         self.c2w_func = gen_cubic_spline_interp_func(c2ws, smoothing_term=0.0 if self.periodic else 10.0)
 
-    def interp(self, us: float):
+    def interp(self, us: float, **kwargs):
         K = len(self.keyframes)
         if K <= 3: return
 
@@ -272,7 +272,7 @@ class CameraPath:
         R = w2c[:3, :3]
         T = w2c[:3, 3:]
 
-        return Camera(H, W, K, R, T, n, f, t, v, bounds)
+        return H, W, K, R, T, n, f, t, v, bounds
 
     def export_keyframes(self, path: str):
         # Store keyframes to path
@@ -389,10 +389,16 @@ class Camera:
                  origin: torch.Tensor = torch.tensor([0.0, 0.0, 0.0]),
                  world_up: torch.Tensor = torch.tensor([0.0, 0.0, 1.0]),
                  movement_speed: float = 1.0,  # gui movement speed
-                 movement_force: float = 10.0,  # include some physiscs
-                 drag_coeff_mult: float = 10.0,  # include some physiscs
+                 movement_force: float = 1.0,  # include some physiscs
+                 drag_coeff_mult: float = 1.0,  # include some physiscs
                  constant_drag: float = 1.0,
                  mass: float = 0.1,
+                 moment_of_inertia: float = 0.1,
+                 movement_torque: float = 1.0,
+                 angular_friction: float = 2.0,
+                 constant_torque: float = 1.0,
+
+                 min_interval: float = 0.0334,  # simulate at at least 30 fps
                  pause_physics: bool = False,
 
                  batch: dotdict = None,  # will ignore all other inputs
@@ -409,6 +415,7 @@ class Camera:
 
             # Other configurables
             self.origin = vec3(*origin)
+            # self.origin = self.center  # rotate about center
             self.world_up = vec3(*world_up)
             self.movement_speed = movement_speed
             # self.front = self.front  # will trigger an update
@@ -420,6 +427,7 @@ class Camera:
         self.about_origin = False  # about origin rotation
         self.is_panning = False  # translation
         self.lock_fx_fy = True
+        self.drag_start = vec2(0.0)
 
         # Internal states to facilitate moving with mass
         self.mass = mass
@@ -430,21 +438,77 @@ class Camera:
         self.movement_force = movement_force
         self.constant_drag = constant_drag
         self.pause_physics = pause_physics
+        self.min_interval = min_interval
+
+        self.torque = vec3(0.0)
+        self.moment_of_inertia = moment_of_inertia
+        self.angular_speed = vec3(0.0)  # relative angular speed on three euler angles
+        self.angular_acc = vec3(0.0)
+        self.angular_friction = angular_friction
+        self.constant_torque = constant_torque
+        self.movement_torque = movement_torque
 
     def step(self, interval: float):
         if self.pause_physics: return
-        direction = mat3(self.right, -glm.normalize(glm.cross(self.right, self.world_up)), self.world_up)
-        movement = direction @ self.speed * interval
 
-        self.center += movement
+        # Limit interval to make the simulation more stable
+        interval = min(interval, self.min_interval)
+
+        # Compute the drag force
+        speed2 = glm.dot(self.speed, self.speed)
+        if speed2 > 1.0:
+            # Drag at opposite direction of movement
+            drag = -speed2 * (self.speed / speed2) * self.drag_coeff_mult
+        elif speed2 > 0:
+            # Constant drag if speed is blow a threshold to make it stop faster
+            drag = -self.constant_drag * self.speed
+        else:
+            drag = vec3(0.0)
+
+        # Compute acceleration and final speed
+        self.acc = (self.force + drag) / self.mass
         self.speed += self.acc * interval
 
+        # Compute displacement in this interval
         speed2 = glm.dot(self.speed, self.speed)
-        if speed2 > self.constant_drag ** 2:
-            drag = -speed2 * glm.normalize(self.speed) * self.drag_coeff_mult
+        if speed2 > 0:
+            direction = mat3(self.right, -glm.normalize(glm.cross(self.right, self.world_up)), self.world_up)
+            movement = direction @ (self.speed - self.acc * interval / 2) * interval
+            self.center += movement
+
+        # Compute rotation change
+
+        # Compute the drag torque
+        speed2 = glm.dot(self.angular_speed, self.angular_speed)
+        if speed2 > 0.1:
+            # Drag at opposite direction of movement
+            drag = -speed2 * (self.angular_speed / speed2) * self.angular_friction
+        elif speed2 > 0.0:
+            # Constant drag if speed is blow a threshold to make it stop faster
+            drag = -self.constant_torque * self.angular_speed
         else:
-            drag = -self.constant_drag * self.speed
-        self.acc = (self.force + drag) / self.mass
+            drag = vec3(0.0)
+
+        # Compute angular acceleration and final angular speed
+        self.angular_acc = (self.torque + drag) / self.moment_of_inertia
+        self.angular_speed += self.angular_acc * interval
+
+        # Angular movement direction
+        delta = self.angular_speed * interval  # about x, y and z axis (euler angle)
+
+        # Limit look up
+        dot = glm.dot(self.world_up, self.front)
+        self.drag_ymin = -np.arccos(-dot) + 0.01  # drag up, look down
+        self.drag_ymax = np.pi + self.drag_ymin - 0.02  # remove the 0.01 of drag_ymin
+
+        # Rotate about euler angle
+        m = mat4(1.0)
+        m = glm.rotate(m, np.clip(delta.x, self.drag_ymin, self.drag_ymax), self.right)
+        m = glm.rotate(m, delta.y, -self.world_up)
+        m = glm.rotate(m, delta.z, self.front)
+        center = self.center
+        self.front = m @ self.front  # might overshoot and will update center
+        self.center = center
 
     @property
     def w2p(self):
@@ -462,7 +526,7 @@ class Camera:
     @property
     def gl_ext(self):
         gl_c2w = self.c2w
-        gl_c2w[0] *= 1  # flip x
+        gl_c2w[0] *= 1  # do notflip x
         gl_c2w[1] *= -1  # flip y
         gl_c2w[2] *= -1  # flip z
         gl_ext = glm.affineInverse(gl_c2w)
@@ -573,19 +637,6 @@ class Camera:
         self.about_origin = about_origin
         self.drag_start = vec2([x, y])
 
-        # Record internal states # ? Will this make a copy?
-        self.drag_start_front = self.front  # a recording
-        self.drag_start_down = self.down
-        self.drag_start_right = self.right
-        self.drag_start_center = self.center
-        self.drag_start_origin = self.origin
-        self.drag_start_world_up = self.world_up
-
-        # Need to find the max or min delta y to align with world_up
-        dot = glm.dot(self.world_up, self.drag_start_front)
-        self.drag_ymin = -np.arccos(-dot) + 0.01  # drag up, look down
-        self.drag_ymax = np.pi + self.drag_ymin - 0.02  # remove the 0.01 of drag_ymin
-
     def end_dragging(self):
         self.is_dragging = False
 
@@ -597,6 +648,19 @@ class Camera:
         delta = current - self.drag_start
         delta /= max(self.H, self.W)
         delta *= -1
+
+        self.drag_start = vec2([x, y])
+        self.drag_start_front = self.front  # a recording
+        self.drag_start_down = self.down
+        self.drag_start_right = self.right
+        self.drag_start_center = self.center
+        self.drag_start_origin = self.origin
+        self.drag_start_world_up = self.world_up
+
+        # Need to find the max or min delta y to align with world_up
+        dot = glm.dot(self.world_up, self.front)
+        self.drag_ymin = -np.arccos(-dot) + 0.01  # drag up, look down
+        self.drag_ymax = np.pi + self.drag_ymin - 0.02  # remove the 0.01 of drag_ymin
 
         if self.is_panning:
             delta *= self.movement_speed
@@ -636,6 +700,10 @@ class Camera:
         meta.bounds = torch.as_tensor(self.bounds.to_list(), dtype=torch.float)  # no transpose for bounds
 
         # GUI related elements
+        meta.mass = torch.as_tensor(self.mass, dtype=torch.float)
+        meta.moment_of_inertia = torch.as_tensor(self.moment_of_inertia, dtype=torch.float)
+        meta.movement_force = torch.as_tensor(self.movement_force, dtype=torch.float)
+        meta.movement_torque = torch.as_tensor(self.movement_torque, dtype=torch.float)
         meta.movement_speed = torch.as_tensor(self.movement_speed, dtype=torch.float)
         meta.origin = torch.as_tensor(self.origin.to_list(), dtype=torch.float)
         meta.world_up = torch.as_tensor(self.world_up.to_list(), dtype=torch.float)
@@ -678,6 +746,10 @@ class Camera:
         self.v = float(v)
         self.bounds = mat2x3(*bounds.ravel())  # 2, 3
 
+        if 'mass' in batch: self.mass = float(batch.mass)
+        if 'moment_of_inertia' in batch: self.moment_of_inertia = float(batch.moment_of_inertia)
+        if 'movement_force' in batch: self.movement_force = float(batch.movement_force)
+        if 'movement_torque' in batch: self.movement_torque = float(batch.movement_torque)
         if 'movement_speed' in batch: self.movement_speed = float(batch.movement_speed)
         if 'origin' in batch: self.origin = vec3(*batch.origin.ravel())  # 3,
         if 'world_up' in batch: self.world_up = vec3(*batch.world_up.ravel())  # 3,
