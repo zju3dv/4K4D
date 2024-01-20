@@ -80,7 +80,7 @@ class VolumetricVideoDataset(Dataset):
                  imsize_overwrite: List[int] = [-1, -1],  # overwrite the image size
 
                  # Camera alignment
-                 use_aligned_cameras: bool = True,
+                 use_aligned_cameras: bool = False,
                  avg_using_all: bool = False,  # ok enough for now
                  avg_max_count: int = 100,  # prevent slow center of attention computation
                  init_viewer_index: int = 0,
