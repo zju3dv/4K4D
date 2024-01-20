@@ -5,6 +5,7 @@ if TYPE_CHECKING:
     from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
 
 import os
+import sys
 import glm
 import torch
 import ctypes
@@ -31,19 +32,30 @@ from easyvolcap.utils.cuda_utils import CHECK_CUDART_ERROR, FORMAT_CUDART_ERROR
 from easyvolcap.utils.net_utils import typed, torch_dtype_to_numpy_dtype, load_pretrained
 from easyvolcap.utils.fcds_utils import prepare_feedback_transform, get_opencv_camera_params
 
+
 # fmt: off
 # Environment variable messaging
 # Need to export EGL_DEVICE_ID before trying to import egl
 # And we need to consider the case when we're performing distributed training
 # from easyvolcap.engine import cfg, args  # FIXME: GLOBAL IMPORTS
-import sys
-if 'easyvolcap.engine' in sys.modules and (sys.modules['easyvolcap.engine'].args.type != 'gui' or sys.modules['easyvolcap.engine'].cfg.viewer_cfg.type == 'UnitySocketViewer'): # FIXME: GLOBAL VARIABLES
+if 'easyvolcap.engine' in sys.modules and \
+    (sys.modules['easyvolcap.engine'].args.type != 'gui' or \
+        sys.modules['easyvolcap.engine'].cfg.viewer_cfg.type != 'VolumetricVideoViewer'): # FIXME: GLOBAL VARIABLES
     try:
         from easyvolcap.utils.egl_utils import create_opengl_context, eglContextManager
     except Exception as e:
         log(yellow(f'Could not import EGL related modules. {type(e).__name__}: {e}'))
         os.environ['PYOPENGL_PLATFORM'] = ''
+
+def is_wsl2():
+    """Returns True if the current environment is WSL2, False otherwise."""
+    return exists("/etc/wsl.conf") and os.environ.get("WSL_DISTRO_NAME")
+
+if is_wsl2():
+    os.environ['PYOPENGL_PLATFORM'] = 'glx'
+
 import OpenGL.GL as gl
+
 try:
     from OpenGL.GL import shaders
 except Exception as e:
@@ -68,7 +80,9 @@ def common_opengl_options():
     gl.glCullFace(gl.GL_BACK)
 
     # Performs alpha trans testing
-    gl.glEnable(gl.GL_ALPHA_TEST)
+    # gl.glEnable(gl.GL_ALPHA_TEST)
+    try: gl.glEnable(gl.GL_ALPHA_TEST)
+    except gl.GLError as e: pass
 
     # Performs z-buffer testing
     gl.glEnable(gl.GL_DEPTH_TEST)
@@ -82,7 +96,9 @@ def common_opengl_options():
 
     # Enable this to correctly render points
     # https://community.khronos.org/t/gl-point-sprite-gone-in-3-2/59310
-    gl.glEnable(gl.GL_POINT_SPRITE)  # MARK: ONLY SPRITE IS WORKING FOR NOW
+    # gl.glEnable(gl.GL_POINT_SPRITE)  # MARK: ONLY SPRITE IS WORKING FOR NOW
+    try: gl.glEnable(gl.GL_POINT_SPRITE)  # MARK: ONLY SPRITE IS WORKING FOR NOW
+    except gl.GLError as e: pass
     # gl.glEnable(gl.GL_POINT_SMOOTH) # MARK: ONLY SPRITE IS WORKING FOR NOW
 
     # # Configure how we store the pixels in memory for our subsequent reading of the FBO to store the rendering into memory.
@@ -468,8 +484,8 @@ class Mesh:
 class Quad(Mesh):
     # A shared texture for CUDA (pytorch) and OpenGL
     # Could be rendererd to screen using blitting or just drawing a quad
-    def __init__(self, H: int = 256, W: int = 256, use_cudagl: bool = True, compose: bool = False, compose_power: float = 1.0):  # the texture to blip
-        self.use_cudagl = use_cudagl
+    def __init__(self, H: int = 256, W: int = 256, use_quad_cuda: bool = True, compose: bool = False, compose_power: float = 1.0):  # the texture to blip
+        self.use_quad_cuda = use_quad_cuda
         self.vert_sizes = [3]  # only position
         self.vert_gl_types = [gl.GL_FLOAT]  # only position
         self.render_type = Mesh.RenderType.STRIPS  # remove side effects of settings _type
@@ -535,7 +551,7 @@ class Quad(Mesh):
         gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, self.tex, 0)
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, old_fbo)
 
-        if self.use_cudagl:
+        if self.use_quad_cuda:
             from cuda import cudart
             if self.compose:
                 # Both reading and writing of this resource is required
@@ -545,7 +561,7 @@ class Quad(Mesh):
             self.cu_tex = CHECK_CUDART_ERROR(cudart.cudaGraphicsGLRegisterImage(self.tex, gl.GL_TEXTURE_2D, flags))
 
     def copy_to_texture(self, image: torch.Tensor, x: int = 0, y: int = 0, w: int = 0, h: int = 0):
-        assert self.use_cudagl, "Need to enable cuda-opengl interop to copy from device to device, check creation of this Quad"
+        assert self.use_quad_cuda, "Need to enable cuda-opengl interop to copy from device to device, check creation of this Quad"
         w = w or self.W
         h = h or self.H
         if image.shape[-1] == 3:
