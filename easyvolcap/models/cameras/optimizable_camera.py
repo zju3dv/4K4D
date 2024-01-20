@@ -2,6 +2,7 @@
 # Implemented in SO3xR3, exponential map of rotation and translation from screw rt motion
 
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -21,6 +22,12 @@ class OptimizableCamera(nn.Module):
     # TODO: Implement intrinsics optimization
     # MARK: EVIL GLOBAL CONFIG
     bounds = cfg.dataloader_cfg.dataset_cfg.bounds if 'bounds' in cfg.dataloader_cfg.dataset_cfg else [[-1, -1, -1], [1, 1, 1]]  # only used for initialization
+    bounds = torch.as_tensor(bounds, dtype=torch.float)
+
+    center = bounds.sum(-2) / 2
+    radius = (bounds[1] - bounds[0]).max() / 2
+    square_bounds = torch.stack([center - radius, center + radius])
+
     data_root = cfg.dataloader_cfg.dataset_cfg.data_root if 'data_root' in cfg.dataloader_cfg.dataset_cfg else ''
     vhulls_dir = cfg.dataloader_cfg.dataset_cfg.vhulls_dir if 'vhulls_dir' in cfg.dataloader_cfg.dataset_cfg else 'vhulls'
     images_dir = cfg.dataloader_cfg.dataset_cfg.images_dir if 'images_dir' in cfg.dataloader_cfg.dataset_cfg else 'images'
@@ -31,7 +38,7 @@ class OptimizableCamera(nn.Module):
     cams = os.listdir(join(data_root, images_dir)) if exists(join(data_root, images_dir)) else []
     view_sample, frame_sample = copy(view_sample), copy(frame_sample)
     if len(frame_sample) == 3:
-        frame_sample[1] = frame_sample[1] or (len(os.listdir(join(data_root, images_dir, cams[0]))) if len(cams) else -1)  # will error out if using this module
+        frame_sample[1] = frame_sample[1] or (len(os.listdir(join(data_root, images_dir, cams[0]))) if len(cams) else 1)  # will error out if using this module
         n_frames = (frame_sample[1] - frame_sample[0]) // frame_sample[2]
     else:
         n_frames = len(frame_sample)

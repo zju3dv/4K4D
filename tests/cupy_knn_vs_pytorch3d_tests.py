@@ -1,6 +1,7 @@
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.test_utils import my_tests
 from easyvolcap.utils.data_utils import load_pts
+from easyvolcap.utils.timer_utils import timer
 
 import cupy
 import torch
@@ -15,6 +16,7 @@ device = 'cuda'
 pts = load_pts('assets/meshes/bunny.ply')[0]  # only the vertices matter
 pts = torch.as_tensor(pts, device=device)[None]
 K = 10
+timer.disabled = False
 
 
 def test_torch_cupy_interop():

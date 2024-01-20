@@ -19,11 +19,11 @@ def main():
     images_dir = join(args.data_root, args.images_dir)
 
     for bg in sorted(os.listdir(bkgd_dir)):
-        base, ext = os.path.splitext(bg)
+        base, ext = splitext(bg)
         cam_dir = join(images_dir, base)
         img_name = args.image_base + ext
         os.makedirs(cam_dir, exist_ok=True)
-        os.symlink(os.path.relpath(join(bkgd_dir, bg), cam_dir), join(cam_dir, img_name))
+        os.symlink(relpath(join(bkgd_dir, bg), cam_dir), join(cam_dir, img_name))
 
     log(yellow(f'Linked background images to {blue(bkgd_dir)}'))
 

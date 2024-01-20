@@ -56,6 +56,33 @@ def crop_using_xywh(x, y, w, h, K, *list_of_imgs):
     return K, *list_of_imgs
 
 
+def pad_image_to_divisor(img: torch.Tensor, div: List[int], mode='replicate', value=None):
+    H, W = img.shape[-2:]
+    H = (H + div[0] - 1) // div[0] * div[0]
+    W = (W + div[0] - 1) // div[0] * div[0]
+    return pad_image(img, (H, W), mode, value)
+
+
+def pad_image(img: torch.Tensor, size: List[int], mode='replicate', value=None):
+    bs = img.shape[:-3]  # batch size
+    img = img.reshape(-1, *img.shape[-3:])
+    H, W = img.shape[-2:]  # H, W
+    Ht, Wt = size
+    pad = (0, Wt - W, 0, Ht - H)
+
+    if Wt >= W and Ht >= H:
+        img = F.pad(img, pad, mode, value)
+    else:
+        if Wt < W and Ht >= H:
+            img = F.pad(img, (0, 0, 0, Ht - H), mode, value)
+        if Wt >= W and Ht < H:
+            img = F.pad(img, (0, Wt - W, 0, 0), mode, value)
+        img = img[..., :Ht, :Wt]
+
+    img = img.reshape(*bs, *img.shape[-3:])
+    return img
+
+
 def fill_nchw_image(img: torch.Tensor, size: List[int], value: float = 0.0, center: bool = False):
     bs = img.shape[:-3]  # -3, -2, -1
     cs = img.shape[-3:-2]

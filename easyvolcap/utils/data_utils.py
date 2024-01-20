@@ -505,12 +505,12 @@ def load_pts(filename: str):
         r = np.asarray(cloud.points['red'])
         g = np.asarray(cloud.points['green'])
         b = np.asarray(cloud.points['blue'])
-        colors = np.stack([r, g, b], axis=-1) / 255
+        colors = (np.stack([r, g, b], axis=-1) / 255).astype(np.float32)
     elif 'r' in cloud.points and 'g' in cloud.points and 'b' in cloud.points:
         r = np.asarray(cloud.points['r'])
         g = np.asarray(cloud.points['g'])
         b = np.asarray(cloud.points['b'])
-        colors = np.stack([r, g, b], axis=-1) / 255
+        colors = (np.stack([r, g, b], axis=-1) / 255).astype(np.float32)
     else:
         colors = None
 
@@ -522,8 +522,8 @@ def load_pts(filename: str):
     else:
         norms = None
 
-    if 'alpha' in cloud.points:
-        cloud.points['alpha'] = cloud.points['alpha'] / 255
+    # if 'alpha' in cloud.points:
+    #     cloud.points['alpha'] = cloud.points['alpha'] / 255
 
     reserved = ['x', 'y', 'z', 'red', 'green', 'blue', 'r', 'g', 'b', 'nx', 'ny', 'nz']
     scalars = dotdict({k: np.asarray(cloud.points[k])[..., None] for k in cloud.points if k not in reserved})  # one extra dimension at the back added
@@ -552,8 +552,8 @@ def export_pts(pts: torch.Tensor, color: torch.Tensor = None, normal: torch.Tens
         data.green = (pts[:, 1] * 255).astype(np.uint8)
         data.blue = (pts[:, 2] * 255).astype(np.uint8)
 
-    if 'alpha' in scalars:
-        data.alpha = (scalars.alpha * 255).astype(np.uint8)
+    # if 'alpha' in scalars:
+    #     data.alpha = (scalars.alpha * 255).astype(np.uint8)
 
     if normal is not None:
         normal = to_numpy(normal)
@@ -1035,14 +1035,16 @@ def load_image_file(img_path: str, ratio=1.0):
         im = Image.open(img_path)
         w, h = im.width, im.height
         draft = im.draft('RGB', (int(w * ratio), int(h * ratio)))
-        img = np.asarray(im).astype(np.float32) / 255
+        img = np.asarray(im)
+        if np.issubdtype(img.dtype, np.integer):
+            img = img.astype(np.float32) / np.iinfo(img.dtype).max  # normalize
         if img.ndim == 2:
             img = img[..., None]
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-            (draft[1][2] != int(w * ratio) or
-         draft[1][3] != int(h * ratio)):
+        (draft[1][2] != int(w * ratio) or
+             draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         return img
     else:
@@ -1051,11 +1053,29 @@ def load_image_file(img_path: str, ratio=1.0):
             img[..., :3] = img[..., [2, 1, 0]]  # BGR to RGB
         if img.ndim == 2:
             img = img[..., None]
-        img = img.astype(np.float32) / np.iinfo(img.dtype).max  # normalize
+        if np.issubdtype(img.dtype, np.integer):
+            img = img.astype(np.float32) / np.iinfo(img.dtype).max  # normalize
         if ratio != 1.0:
             height, width = img.shape[:2]
             img = cv2.resize(img, (int(width * ratio), int(height * ratio)), interpolation=cv2.INTER_AREA)
         return img
+
+
+def load_depth(depth_file: str):
+    if depth_file.endswith('.npy'):
+        depth = np.load(depth_file)[..., None]  # H, W, 1
+    elif depth_file.endswith('.pfm'):
+        depth, scale = read_pfm(depth_file)
+        depth = depth / scale
+        if depth.ndim == 2:
+            depth = depth[..., None]  # H, W, 1
+        depth = depth[..., :1]
+    elif depth_file.endswith('.hdr') or depth_file.endswith('.exr'):
+        depth = load_image(depth_file)
+        depth = depth[..., :1]
+    else:
+        raise NotImplementedError
+    return depth  # H, W, 1
 
 
 def load_image(path: Union[str, np.ndarray], ratio: int = 1.0):
@@ -1076,8 +1096,8 @@ def load_unchanged(img_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-            (draft[1][2] != int(w * ratio) or
-         draft[1][3] != int(h * ratio)):
+        (draft[1][2] != int(w * ratio) or
+             draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         return img
     else:
@@ -1102,8 +1122,8 @@ def load_mask(msk_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-            (draft[1][2] != int(w * ratio) or
-         draft[1][3] != int(h * ratio)):
+        (draft[1][2] != int(w * ratio) or
+             draft[1][3] != int(h * ratio)):
             msk = cv2.resize(msk.astype(np.uint8), (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_NEAREST)[..., None]
         return msk
     else:
@@ -1155,7 +1175,9 @@ def save_image(img_path: str, img: np.ndarray, jpeg_quality=75, png_compression=
         # should we try to discard alpha channel here?
         # exr could store alpha channel
         pass  # no transformation for other unspecified file formats
-    return cv2.imwrite(img_path, img, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality, cv2.IMWRITE_PNG_COMPRESSION, png_compression])
+    return cv2.imwrite(img_path, img, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality,
+                                       cv2.IMWRITE_PNG_COMPRESSION, png_compression,
+                                       cv2.IMWRITE_EXR_COMPRESSION, cv2.IMWRITE_EXR_COMPRESSION_PIZ])
 
 
 def save_mask(msk_path: str, msk: np.ndarray, quality=75, compression=9):
@@ -1163,7 +1185,9 @@ def save_mask(msk_path: str, msk: np.ndarray, quality=75, compression=9):
         os.makedirs(os.path.dirname(msk_path), exist_ok=True)
     if msk.ndim == 2:
         msk = msk[..., None]
-    return cv2.imwrite(msk_path, msk[..., 0] * 255, [cv2.IMWRITE_JPEG_QUALITY, quality, cv2.IMWRITE_PNG_COMPRESSION, compression])
+    return cv2.imwrite(msk_path, msk[..., 0] * 255, [cv2.IMWRITE_JPEG_QUALITY, quality,
+                                                     cv2.IMWRITE_PNG_COMPRESSION, compression,
+                                                     cv2.IMWRITE_EXR_COMPRESSION, cv2.IMWRITE_EXR_COMPRESSION_PIZ])
 
 
 def list_to_numpy(x: list): return np.stack(x).transpose(0, 3, 1, 2)
@@ -1414,6 +1438,8 @@ def as_numpy_func(func):
 
 
 def load_image_bytes(im: str):
+    if im.endswith('.exr'):
+        os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
     with open(im, "rb") as fh:
         buffer = fh.read()
     return buffer
@@ -1940,7 +1966,7 @@ def random_crop_image(img, msk, K, min_size, max_size):
 def get_bound_corners(bounds):
     min_x, min_y, min_z = bounds[0]
     max_x, max_y, max_z = bounds[1]
-    corners_3d = np.array([
+    corners_3d = np.asarray([
         [min_x, min_y, min_z],
         [min_x, min_y, max_z],
         [min_x, max_y, min_z],
@@ -1949,7 +1975,7 @@ def get_bound_corners(bounds):
         [max_x, min_y, max_z],
         [max_x, max_y, min_z],
         [max_x, max_y, max_z],
-    ])
+    ], dtype=np.float32)
     return corners_3d
 
 

@@ -23,7 +23,7 @@ class TcnnHashEmbedder(nn.Module):
                  base_resolution=16,
                  interpolation='Linear',
 
-                 bounds: List[List[int]] = OptimizableCamera.bounds,  # MARK: GLOBAL
+                 bounds: List[List[int]] = OptimizableCamera.square_bounds,  # MARK: GLOBAL
                  in_dim: int = 3,
                  predefined_sizes: List[int] = None,
                  dtype=torch.float,  # MARK: Using float as default (but tcnn performs the best when using half)
@@ -81,7 +81,8 @@ class TcnnHashEmbedder(nn.Module):
         bash = xyz.shape  # batch shape
         xyz = xyz.view(-1, xyz.shape[-1])
         xyz = (xyz - self.bounds[0]) / (self.bounds[1] - self.bounds[0])  # normalized, N, 3
-
+        # log(xyz.min(-2)[0], xyz.max(-2)[0])
+        # https://github.com/NVlabs/tiny-cuda-nn/issues/286
         # The meat of the operation
         val: torch.Tensor = self.tcnn_encoding(xyz)
         val = val.view(*bash[:-1], val.shape[-1])

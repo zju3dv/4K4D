@@ -205,15 +205,15 @@ def main():
         target_rgb_root = join(data_root, "images", cam_idx_str)
         target_mask_root = join(data_root, "masks", cam_idx_str)
 
-        if not os.path.isdir(mask_root):
+        if not isdir(mask_root):
             mask_init = join(data_root, "masks")
             mask_moved = join(data_root, "masks_orig")
             run(f"mv {mask_init} {mask_moved}")
 
-        if os.path.isdir(target_mask_root):
+        if isdir(target_mask_root):
             run(f'rm -r {target_mask_root}')
 
-        if os.path.isdir(target_rgb_root):
+        if isdir(target_rgb_root):
             run(f'rm -r {target_rgb_root}')
 
         extrinsic = np.linalg.inv(camera.extrinsic_matrix_cam2world())
@@ -254,12 +254,12 @@ def main():
         target_masks = data_dict[cam_name].target_masks
 
         for source_rgb, target_rgb in zip(source_rgbs, target_rgbs):
-            # run(f'ln -s {os.path.relpath(source_rgb, target_rgb)} {target_rgb}', quite=True)
-            os.symlink(os.path.relpath(source_rgb, os.path.dirname(target_rgb)), target_rgb)  # FIXME: This is much faster than the 'run' alternative TODO: Check and swap in 'run'
+            # run(f'ln -s {relpath(source_rgb, target_rgb)} {target_rgb}', quite=True)
+            os.symlink(relpath(source_rgb, dirname(target_rgb)), target_rgb)  # FIXME: This is much faster than the 'run' alternative TODO: Check and swap in 'run'
 
         for source_mask, target_mask in zip(source_masks, target_masks):
-            # run(f'ln -s {os.path.relpath(source_mask, target_mask)} {target_mask}', quite=True)
-            os.symlink(os.path.relpath(source_mask, os.path.dirname(target_mask)), target_mask)  # FIXME: This is much faster than the 'run' alternative TODO: Check and swap in 'run'
+            # run(f'ln -s {relpath(source_mask, target_mask)} {target_mask}', quite=True)
+            os.symlink(relpath(source_mask, dirname(target_mask)), target_mask)  # FIXME: This is much faster than the 'run' alternative TODO: Check and swap in 'run'
 
         K = data_dict[cam_name].intrinsic
         extrinsic = data_dict[cam_name].extrinsic

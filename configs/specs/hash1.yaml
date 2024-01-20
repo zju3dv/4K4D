@@ -1,0 +1,15 @@
+_: &mlp_size
+    xyzt_embedder_cfg:
+        xyz_embedder_cfg:
+            bounds: [[-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]]
+
+model_cfg:
+    network_cfg:
+        # <<: *mlp_size
+        network_cfgs:
+            '0': # coarse network config
+                <<: *mlp_size
+            '1': # coarse network config
+                <<: *mlp_size
+            '2': # fine network config
+                <<: *mlp_size

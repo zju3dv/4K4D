@@ -70,6 +70,7 @@ class VolumetricVideoViewer:
                  update_fps_time: float = 0.1,  # be less stressful
                  update_mem_time: float = 0.1,  # be less stressful
                  use_quad_draw: bool = False,  # different rendering solution
+                 use_quad_cuda: bool = True,
 
                  # This is important for works like K-planes or IBR (or stableenerf), since it's not easy to perform interpolation (slow motion)
                  # For point clouds, only a fixed number of point clouds are produces since we performed discrete training (no interpolation)
@@ -83,6 +84,7 @@ class VolumetricVideoViewer:
                  compose: bool = False,
                  compose_power: float = 1.0,
                  render_ratio: float = 1.0,
+                 use_window_focal: bool = False,
 
                  fullscreen: bool = False,
                  camera_cfg: dotdict = dotdict(type=Camera.__name__),
@@ -92,22 +94,28 @@ class VolumetricVideoViewer:
                  show_metrics_window: bool = False,
                  show_demo_window: bool = False,
                  ) -> None:
-        # GUI related initialization
-        from easyvolcap.utils.gl_utils import Mesh, Splat
+        # Camera related configurations
+        self.camera_cfg = camera_cfg
+        self.fullscreen = fullscreen
         self.window_size = window_size
         self.window_title = window_title
-        self.fullscreen = fullscreen
+        self.use_window_focal = use_window_focal
+
+        # Quad related configurations
+        self.use_quad_draw = use_quad_draw
+        self.use_quad_cuda = use_quad_cuda
         self.compose = compose  # composing only works with cudagl for now
         self.compose_power = compose_power
-        self.exp_name = exp_name
 
+        # Font related config
         self.font_default = font_default
         self.font_italic = font_italic
         self.font_bold = font_bold
         self.font_size = font_size
         self.icon_file = icon_file
 
-        # Initialize things from the runner like loading models
+        # Runner initialization
+        self.exp_name = exp_name
         self.runner = runner
         self.runner.visualizer.store_alpha_channel = True  # disable alpha channel for rendering on viewer
         self.runner.visualizer.uncrop_output_images = False  # manual uncropping
@@ -116,25 +124,24 @@ class VolumetricVideoViewer:
         self.model = self.runner.model
         self.model.eval()
 
-        self.camera_cfg = camera_cfg
         self.init_camera(camera_cfg)  # prepare for the actual rendering now, needs dataset -> needs runner
         self.init_glfw()  # ?: this will open up the window and let the user wait, should we move this up?
         self.init_imgui()
         self.init_opengl()
-        self.init_texture()
+        self.init_quad()
         self.bind_callbacks()
-
-        # Initialize animation related stuff
-        self.camera_paths = CameraPath()
-        if load_keyframes_at_init:
-            try:
-                self.camera_paths.load_keyframes(self.dataset.data_root)
-            except:
-                log(yellow('Unable to load training cameras as keyframes, skipping...'))
 
         # Initialize FPS counter
         self.update_fps_time = update_fps_time
         self.update_mem_time = update_mem_time
+
+        # Initialize animation related stuff
+        self.camera_path = CameraPath()
+        if load_keyframes_at_init:
+            try:
+                self.camera_path.load_keyframes(self.dataset.data_root)
+            except:
+                log(yellow('Unable to load training cameras as keyframes, skipping...'))
 
         # Initialize temporal controls
         self.playing_speed = autoplay_speed
@@ -153,6 +160,7 @@ class VolumetricVideoViewer:
         self.exposure = 1.0
         self.offset = 0.0
         self.iter = self.epoch * self.runner.ep_iter  # loaded iter
+        from easyvolcap.utils.gl_utils import Mesh, Splat
 
         self.meshes: List[Mesh] = [
             *[Mesh(filename=mesh, visible=show_preloading) for mesh in mesh_preloading],
@@ -162,7 +170,6 @@ class VolumetricVideoViewer:
         self.render_alpha = render_alpha
         self.render_meshes = render_meshes
         self.render_network = render_network
-        self.use_quad_draw = use_quad_draw
         self.discrete_t = discrete_t
 
         # Timinigs
@@ -200,7 +207,7 @@ class VolumetricVideoViewer:
 
     @property
     def camera(self):
-        if not hasattr(self, 'render_camera'): self.render_camera = Camera()  # create the camera object only once
+        if not hasattr(self, 'render_camera'): self.render_camera = Camera(**self.camera_cfg)  # create the camera object only once
         return self.render_camera
 
     @camera.setter
@@ -296,10 +303,8 @@ class VolumetricVideoViewer:
 
         # The blitting or quad drawing to move texture onto screen
         self.quad.copy_to_texture(image, x, self.H - h - y, w, h)
-        if self.use_quad_draw:
-            self.quad.draw(x, self.H - h - y, w, h)
-        else:
-            self.quad.blit(x, self.H - h - y, w, h)  # draw is typically faster by 0.5ms
+        self.quad.draw(x, self.H - h - y, w, h)
+
         gtos_time = timer.record()
 
         batch.gui_time = gui_time  # gui time of previous frame
@@ -340,137 +345,91 @@ class VolumetricVideoViewer:
             visualize_cameras(proj, ixt, c2w, col=col, thickness=thickness, name=str(i))
         imgui.pop_font()
 
-    def draw_imgui(self, batch: dotdict, output: dotdict):  # need to explicitly handle empty input
-        from easyvolcap.utils.gl_utils import Mesh, Splat, Gaussian
-        # Initialization
-        glfw.poll_events()  # process pending events, keyboard and stuff
-        imgui.backends.opengl3_new_frame()
-        imgui.backends.glfw_new_frame()
-        imgui.new_frame()
-        imgui.push_font(self.default_font)
-
-        # States
-        playing_time = self.camera_paths.playing_time  # Remember this, if changed, update camera
-        slider_width = imgui.get_window_width() * 0.65  # https://github.com/ocornut/imgui/issues/267
-        toggle_ios_style = imgui_toggle.ios_style(size_scale=0.2)
-
-        # Titles
-        fps, frame_time = self.get_fps_and_frame_time()
-        name, device, memory = self.get_device_and_memory()
-        # glfw.set_window_title(self.window, self.window_title.format(FPS=fps)) # might confuse window managers
-
-        # Being the main window
-        imgui.begin(f'{self.W}x{self.H} {fps:.3f} fps###main', flags=imgui.WindowFlags_.menu_bar)
-        if imgui.begin_menu_bar():
-            if imgui.begin_menu('File', True):
-                imgui.end_menu()
-
-            if imgui.begin_menu('Edit', True):
-                if imgui.menu_item('Quit Viewer', 'Ctrl+Q', False, True)[0]:
-                    exit(1)
-
-                if imgui.menu_item('Toggle Fullscreen', 'F11', False, True)[0]:
-                    self.toggle_fullscreen()
-
-                if imgui.menu_item('Toggle Help Window', 'F1', False, True)[0]:
-                    pass  # TODO: finish help window
-
-                if imgui.menu_item('Toggle ImGUI Metrics', 'F10', False, True)[0]:
-                    self.show_metrics_window = not self.show_metrics_window
-
-                if imgui.menu_item('Toggle ImGUI Demo', 'F12', False, True)[0]:
-                    self.show_demo_window = not self.show_demo_window
-
-                imgui.end_menu()
-            imgui.end_menu_bar()
-
-        if self.show_metrics_window:
-            imgui.show_metrics_window()
-
-        if self.show_demo_window:
-            imgui.show_demo_window()
-
-        # Misc information
-        imgui.push_font(self.bold_font)
-        imgui.text(f'EasyVolcap Framework -- by zju3dv')
-        imgui.text(f'Running on {name}: {device}')
-        imgui.text(f'FPS       : {fps:7.3f} FPS')
-        tooltip('This is the 20 frame average fps instead of per frame')
-        imgui.text(f'torch VRAM: {memory / 2**20:7.2f} MB ')
-        tooltip('For now, we only show VRAM used by the torch engine. OpenGL VRAM is not counted')
-        imgui.text(f'frame time: {frame_time * 1000:7.3f} ms ')
-        tooltip('This is the 20 frame average frame_time instead of per frame')
-        imgui.pop_font()
-
-        # Full frame timings
-        timer.disabled = not imgui_toggle.toggle('Collect timings', not timer.disabled, config=toggle_ios_style)[1]
-        if not timer.disabled:
-            if imgui.collapsing_header('Timing'):
-                imgui.text(f'gui  : {batch.gui_time * 1000:7.3f}ms')
-                tooltip('Time for every other GUI elements (imgui & meshes & cameras & bounds) of previous frame')
-                imgui.text(f'data : {batch.data_time * 1000:7.3f}ms')
-                tooltip('Time for extracting data from GUI & pass through dataset wrapper')
-                imgui.text(f'ctog : {batch.ctog_time * 1000:7.3f}ms')
-                tooltip('Time for move batch data from CPU RAM to GPU VRAM (limited by PCIe bandwidth)')
-                imgui.text(f'model: {batch.model_time * 1000:7.3f}ms')
-                tooltip('Time for forwarding the underlying model, this should dominate')
-                imgui.text(f'post : {batch.post_time * 1000:7.3f}ms')
-                tooltip('Time for post processing of the rendered image got from the model')
-                imgui.text(f'gtos : {batch.gtos_time * 1000:7.3f}ms')
-                tooltip('Time for blitting the rendered content from torch.Tensor to screen of previous frame')
+    def draw_camera_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
 
         # Camera controls
+
         if imgui.collapsing_header('Camera'):
+            self.camera.mass = imgui.slider_float('Mass', self.camera.mass, 0.01, 1.0)[1]  # temporal interpolation
+            self.camera.moment_of_inertia = imgui.slider_float('Moment of inertia', self.camera.moment_of_inertia, 0.01, 1.0)[1]  # temporal interpolation
+            self.camera.movement_force = imgui.slider_float('Movement force', self.camera.movement_force, 1.0, 10.0)[1]  # temporal interpolation
+            self.camera.movement_torque = imgui.slider_float('Movement torque', self.camera.movement_torque, 1.0, 10.0)[1]  # temporal interpolation
+            self.camera.movement_speed = imgui.slider_float('Mouse speed', self.camera.movement_speed, 0.001, 10.0)[1]  # temporal interpolation
+            self.camera.pause_physics = imgui_toggle.toggle('Pause physics', self.camera.pause_physics, config=self.static.toggle_ios_style)[1]
             if imgui.tree_node_ex('Intrinsics'):
-                imgui.push_item_width(slider_width * 0.5)
-                changed, value = imgui.slider_float('fx', self.camera.fx, 1.0, self.W * 3)
+                imgui.push_item_width(self.static.slider_width * 0.5)
+                changed, value = imgui.slider_float('fx', self.camera.fx, 1.0, self.W * 3, format='%.6f')
                 imgui.same_line()  # near bound
                 if changed: self.camera.fx = value
-                changed, value = imgui.slider_float('fy', self.camera.fx, 1.0, self.H * 3)
+                changed, value = imgui.slider_float('fy', self.camera.fx, 1.0, self.H * 3, format='%.6f')
                 if changed: self.camera.fy = value
-                self.camera.cx = imgui.slider_float('cx', self.camera.cx, 0.0, self.W * 1)[1]
+                self.camera.cx = imgui.slider_float('cx', self.camera.cx, 0.0, self.W * 1, format='%.6f')[1]
                 imgui.same_line()  # near bound
-                self.camera.cy = imgui.slider_float('cy', self.camera.cy, 0.0, self.H * 1)[1]
+                self.camera.cy = imgui.slider_float('cy', self.camera.cy, 0.0, self.H * 1, format='%.6f')[1]
                 imgui.pop_item_width()
                 imgui.tree_pop()
 
             if imgui.tree_node_ex('Extrinsics'):
-                imgui.input_float3('Right', self.camera.right, flags=imgui.InputTextFlags_.read_only)
-                imgui.input_float3('Down', self.camera.down, flags=imgui.InputTextFlags_.read_only)
-                self.camera.front = vec3(imgui.input_float3('Front', self.camera.front)[1])  # changed, value
-                self.camera.center = vec3(imgui.input_float3('Center', self.camera.center)[1])
+                imgui.input_float3('Right', self.camera.right, flags=imgui.InputTextFlags_.read_only, format='%.6f')
+                imgui.input_float3('Down', self.camera.down, flags=imgui.InputTextFlags_.read_only, format='%.6f')
+                changed, front = imgui.input_float3('Front', self.camera.front, format='%.6f')  # changed, value
+                if changed: self.camera.front = vec3(front)
+                changed, center = imgui.input_float3('Center', self.camera.center, format='%.6f')
+                if changed: self.camera.center = vec3(center)
                 imgui.tree_pop()
 
             if imgui.tree_node_ex('Alignment'):
-                self.camera.origin = vec3(imgui.input_float3('Origin', self.camera.origin)[1])
-                self.camera.world_up = vec3(imgui.input_float3('World up', self.camera.world_up)[1])
+                self.camera.origin = vec3(imgui.input_float3('Origin', self.camera.origin, format='%.6f')[1])
+                self.camera.world_up = vec3(imgui.input_float3('World up', self.camera.world_up, format='%.6f')[1])
                 imgui.tree_pop()
 
             if imgui.tree_node_ex('Bounds & range'):
                 if 'log10_size' not in self.static: self.static.log10_size = 1.0  # 10m range
                 self.static.log10_size = imgui.slider_float('Bound log10 size (slider range)', self.static.log10_size, -2.0, 5.0)[1]
                 size = 10 ** self.static.log10_size
-                self.camera.bounds[0] = vec3(imgui.slider_float3('Min x, y, z', self.camera.bounds[0], -size, size)[1])
-                self.camera.bounds[1] = vec3(imgui.slider_float3('Max x, y, z', self.camera.bounds[1], -size, size)[1])
+                self.camera.bounds[0] = vec3(imgui.slider_float3('Min x, y, z', self.camera.bounds[0], -size, size, format='%.6f')[1])
+                self.camera.bounds[1] = vec3(imgui.slider_float3('Max x, y, z', self.camera.bounds[1], -size, size, format='%.6f')[1])
 
-                imgui.push_item_width(slider_width * 0.5)
-                self.camera.n = imgui.slider_float('Near', self.camera.n, 0.002, self.camera.f - 0.01)[1]
+                imgui.push_item_width(self.static.slider_width * 0.5)
+                self.camera.n = imgui.slider_float('Near', self.camera.n, 0.002, self.camera.f - 0.01, format='%.6f')[1]
                 imgui.same_line()  # near bound
-                self.camera.f = imgui.slider_float('Far', self.camera.f, self.camera.n + 0.01, 100)[1]  # far bound
+                self.camera.f = imgui.slider_float('Far', self.camera.f, self.camera.n + 0.01, 100, format='%.6f')[1]  # far bound
                 imgui.pop_item_width()
                 imgui.tree_pop()
 
             if imgui.tree_node_ex('Temporal'):
-                self.camera.v = imgui.slider_float('v', self.camera.v, 0, 1)[1]  # spacial interpolation
-                self.camera.t = imgui.slider_float('t', self.camera.t, 0, 1)[1]  # temporal interpolation
-                imgui.push_item_width(slider_width * 0.33)
-                self.playing = imgui_toggle.toggle('Autoplay', self.playing, config=toggle_ios_style)[1]
+                self.camera.v = imgui.slider_float('v', self.camera.v, 0, 1, format='%.6f')[1]  # spacial interpolation
+                self.camera.t = imgui.slider_float('t', self.camera.t, 0, 1, format='%.6f')[1]  # temporal interpolation
+                imgui.push_item_width(self.static.slider_width * 0.33)
+                self.playing = imgui_toggle.toggle('Autoplay', self.playing, config=self.static.toggle_ios_style)[1]
                 imgui.same_line()
-                self.discrete_t = imgui_toggle.toggle('Discrete time', self.discrete_t, config=toggle_ios_style)[1]
+                self.discrete_t = imgui_toggle.toggle('Discrete time', self.discrete_t, config=self.static.toggle_ios_style)[1]
                 imgui.pop_item_width()
                 if self.discrete_t: self.playing_fps = imgui.slider_int('Video FPS', self.playing_fps, 10, 120)[1]  # temporal interpolation
                 else: self.playing_speed = imgui.slider_float('Video Speed', self.playing_speed, 0.0001, 0.1)[1]  # temporal interpolation
                 imgui.tree_pop()
+
+        # Other updates
+        curr_time = time.perf_counter()
+        if 'last_time' not in self.static: frame_time = 0
+        else: frame_time = curr_time - self.static.last_time
+        self.static.last_time = curr_time
+        self.camera.step(frame_time)
+
+        # Other updates
+        if self.playing:  # automatic update of temporal information
+            if self.discrete_t:
+                old_prev_time = self.prev_time
+                self.prev_time = time.perf_counter()
+                self.acc_time += self.prev_time - old_prev_time  # time passed
+                frame_time = 1 / self.playing_fps
+                if self.acc_time >= frame_time:
+                    self.acc_time = 0
+                    self.camera.t = (self.camera.t + 1 / self.dataset.frame_range) % 1
+            else:
+                self.camera.t = (self.camera.t + self.playing_speed) % 1
+
+    def draw_rendering_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
 
         # Other rendering options like visualization type
         if imgui.collapsing_header('Rendering'):
@@ -493,36 +452,38 @@ class VolumetricVideoViewer:
                         imgui.set_item_default_focus()
                 imgui.end_combo()
 
-            self.visualize_axes = imgui_toggle.toggle('Visualize axes', self.visualize_axes, config=toggle_ios_style)[1]
-            self.visualize_bounds = imgui_toggle.toggle('Visualize bounds', self.visualize_bounds, config=toggle_ios_style)[1]
-            if hasattr(self.dataset, 'Ks'): self.visualize_cameras = imgui_toggle.toggle('Visualize cameras', self.visualize_cameras, config=toggle_ios_style)[1]
-            if network_available: self.render_network = imgui_toggle.toggle('Render network', self.render_network, config=toggle_ios_style)[1]
-            self.render_meshes = imgui_toggle.toggle('Render meshes', self.render_meshes, config=toggle_ios_style)[1]
-            if network_available: self.render_alpha = imgui_toggle.toggle('Render alpha', self.render_alpha, config=toggle_ios_style)[1]
-            if network_available: self.quad.compose = imgui_toggle.toggle('Compose them', self.quad.compose, config=toggle_ios_style)[1]
-            if network_available: self.use_quad_draw = imgui_toggle.toggle('Drawing quad', self.use_quad_draw, config=toggle_ios_style)[1]  # 1-2ms faster on wsl
-
-            # unsafe_message = f'Unsafe uploading will trade latency with frame rates -> and might lead to crash if the deque size is too small, currently {len(self.frame_buffer_deque)} frames'
-            # colored_wrapped_text(0xff3355ff, unsafe_message)
-            # self.enable_unsafe_upload = imgui_toggle.toggle('Blit with quad', self.enable_unsafe_upload, config=toggle_ios_style)[1]  # -3ms
-            # tooltip(unsafe_message)
+            self.visualize_axes = imgui_toggle.toggle('Visualize axes', self.visualize_axes, config=self.static.toggle_ios_style)[1]
+            self.visualize_bounds = imgui_toggle.toggle('Visualize bounds', self.visualize_bounds, config=self.static.toggle_ios_style)[1]
+            self.visualize_cameras = imgui_toggle.toggle('Visualize cameras', self.visualize_cameras, config=self.static.toggle_ios_style)[1]
+            if network_available: self.render_network = imgui_toggle.toggle('Render network', self.render_network, config=self.static.toggle_ios_style)[1]
+            self.render_meshes = imgui_toggle.toggle('Render meshes', self.render_meshes, config=self.static.toggle_ios_style)[1]
+            if network_available: self.render_alpha = imgui_toggle.toggle('Render alpha', self.render_alpha, config=self.static.toggle_ios_style)[1]
+            if network_available: self.quad.compose = imgui_toggle.toggle('Compose them', self.quad.compose, config=self.static.toggle_ios_style)[1]
+            if network_available: self.quad.use_quad_draw = imgui_toggle.toggle('Drawing quad', self.use_quad_draw, config=self.static.toggle_ios_style)[1]  # 1-2ms faster on wsl
+            if network_available:
+                self.quad.use_quad_cuda = imgui_toggle.toggle('##cuda_gl_interop', self.quad.use_quad_cuda, config=self.static.toggle_ios_style)[1]
+                imgui.same_line()
+                imgui.push_font(self.bold_font)
+                colored_wrapped_text(0x55cc33ff, 'Use CUDA-GL interop')
+                tooltip('If your system does not support CUDA-GL interop (WSL2), please disable this option.')
+                imgui.pop_font()
 
             # Model specific rendering options
             # TODO: Move these to the render_imgui method of 4K4D's samplers
             if hasattr(self.model.sampler, 'volume_rendering'):
-                self.model.sampler.volume_rendering = imgui_toggle.toggle('Volume rendering', self.model.sampler.volume_rendering, config=toggle_ios_style)[1]
+                self.model.sampler.volume_rendering = imgui_toggle.toggle('Volume rendering', self.model.sampler.volume_rendering, config=self.static.toggle_ios_style)[1]
             if hasattr(self.model.sampler, 'use_cudagl'):
-                self.model.sampler.use_cudagl = imgui_toggle.toggle('Use CUDAGL', self.model.sampler.use_cudagl, config=toggle_ios_style)[1]
+                self.model.sampler.use_cudagl = imgui_toggle.toggle('Use CUDAGL', self.model.sampler.use_cudagl, config=self.static.toggle_ios_style)[1]
             if hasattr(self.model.sampler, 'use_diffgl'):
-                self.model.sampler.use_diffgl = imgui_toggle.toggle('Use DIFFGL', self.model.sampler.use_diffgl, config=toggle_ios_style)[1]
+                self.model.sampler.use_diffgl = imgui_toggle.toggle('Use DIFFGL', self.model.sampler.use_diffgl, config=self.static.toggle_ios_style)[1]
 
             # Special care for realtime4dv rendering
             if hasattr(self.model.sampler, 'cudagl'):
                 if self.model.sampler.volume_rendering:
                     # Control the shape of the points
-                    self.model.sampler.cudagl.point_smooth = imgui_toggle.toggle('Point smooth', self.model.sampler.cudagl.point_smooth, config=toggle_ios_style)[1]
+                    self.model.sampler.cudagl.point_smooth = imgui_toggle.toggle('Point smooth', self.model.sampler.cudagl.point_smooth, config=self.static.toggle_ios_style)[1]
                     # Control the blending mode of the points
-                    self.model.sampler.cudagl.alpha_blending = imgui_toggle.toggle('Alpha blending', self.model.sampler.cudagl.alpha_blending, config=toggle_ios_style)[1]
+                    self.model.sampler.cudagl.alpha_blending = imgui_toggle.toggle('Alpha blending', self.model.sampler.cudagl.alpha_blending, config=self.static.toggle_ios_style)[1]
 
             # Handle background color change (and with a random bg color switch)
             if hasattr(self.model.renderer, 'bg_brightness') or hasattr(self.model.sampler, 'bg_brightness'):
@@ -535,7 +496,7 @@ class VolumetricVideoViewer:
                     def set_bg_brightness(val: float): self.model.sampler.bg_brightness = val  # a type of pointer & reference
 
                 # Check if we are using random background
-                is_random_bkgd = imgui_toggle.toggle('Random bkgd', bg_brightness < 0, config=toggle_ios_style)[1]
+                is_random_bkgd = imgui_toggle.toggle('Random bkgd', bg_brightness < 0, config=self.static.toggle_ios_style)[1]
 
                 # Tet the user's choice of background color
                 bg_brightness = -1.0 if is_random_bkgd else (bg_brightness if bg_brightness >= 0 else 0.0)  # 1-2ms faster on wsl
@@ -581,276 +542,19 @@ class VolumetricVideoViewer:
             if hasattr(self.model.sampler, 'pts_per_pix'):
                 self.model.sampler.pts_per_pix = imgui.slider_int('Splatting pts_per_pix', self.model.sampler.pts_per_pix, 1, 60)[1]
 
-        if imgui.collapsing_header(f'Model & network'):
-            if imgui.button('Reload model'):
-                try:
-                    self.epoch = self.runner.load_network()
-                    if 'optimized_camera' in self.static: del self.static.optimized_camera
-                    self.iter = self.epoch * self.runner.ep_iter  # loaded iter
-                except: pass  # sometimes the training process is still saving data
+        if not self.quad.use_quad_cuda:
+            gpu_cpu_gpu_msg = f'Not using CUDA-GL interop for low-latency upload, will lead to degraded performance. Try using native Windows or Linux for CUDA-GL interop'
 
-            imgui.same_line()
-            push_button_color(0xff3355ff)
-            if (imgui.button('Reset viewer')): self.reset()
-            pop_button_color()
-
-            imgui.text(f'Current epoch: {self.epoch}')
-            self.iter = imgui.slider_int('Iteration override', self.iter, 0, self.runner.total_iter)[1]  # temporal interpolation
-
-        # Export animation (camera paths)
-        # imgui.set_next_item_open(True)
-        if imgui.collapsing_header(f'Animation (keyframes: {len(self.camera_paths)})###animation', ):
-
-            push_button_color(0x55cc33ff)
-            if imgui.button('Insert'):
-                self.camera_paths.insert(self.camera)
-            pop_button_color()
-
-            if len(self.camera_paths):  # if exists, can delete or replace
-                # Update the keyframes
-                imgui.same_line()
-                push_button_color(0xff5533ff)
-                if imgui.button('Replace'): self.camera_paths.replace(self.camera)
-                pop_button_color()
-
-                # Update the keyframes
-                imgui.same_line()
-                push_button_color(0xff3355ff)
-                if imgui.button('Delete'): self.camera_paths.delete(self.camera_paths.selected)
-                pop_button_color()
-
-                # Update the keyframes
-                imgui.same_line()
-                push_button_color(0xff3355ff)
-                if imgui.button('Clear'): self.camera_paths.clear()
-                pop_button_color()
-
-            # push_button_color(0xff5533ff)
-            if imgui.button('Load'):
-                self.static.load_keyframes_dialog = pfd.select_folder("Select folder")
-            # pop_button_color()
-            if 'load_keyframes_dialog' in self.static and \
-                    self.static.load_keyframes_dialog is not None and \
-                    self.static.load_keyframes_dialog.ready(timeout=1):  # this is not moved up since it spans frames # MARK: SLOW
-                directory = self.static.load_keyframes_dialog.result()
-                if directory:
-                    self.camera_paths.load_keyframes(directory)
-                    self.static.keyframes_path = directory
-                self.static.load_keyframes_dialog = None
-
-            # Timelines
-            if len(self.camera_paths):  # need at least 3 components to interpolate
-                imgui.same_line()
-                if imgui.button('Export'):
-                    self.static.export_keyframes_dialog = pfd.select_folder("Select folder")
-                if 'export_keyframes_dialog' in self.static and \
-                        self.static.export_keyframes_dialog is not None and \
-                        self.static.export_keyframes_dialog.ready(timeout=1):  # this is not moved up since it spans frames # MARK: SLOW
-                    directory = self.static.export_keyframes_dialog.result()
-                    if directory:
-                        self.camera_paths.export_keyframes(directory)
-                        self.static.keyframes_path = directory
-                    self.static.export_keyframes_dialog = None
-
-                imgui.same_line()
-                if imgui.button('Interpolate'):
-                    self.static.export_interp_dialog = pfd.select_folder("Select folder")
-                if 'export_interp_dialog' in self.static and \
-                        self.static.export_interp_dialog is not None and \
-                        self.static.export_interp_dialog.ready(timeout=1):  # this is not moved up since it spans frames # MARK: SLOW
-                    directory = self.static.export_interp_dialog.result()
-                    if directory:
-                        self.camera_paths.export_interps(directory)
-                        self.static.keyframes_path = directory
-                    self.static.export_interp_dialog = None
-
-                self.camera_paths.n_render_views = imgui.slider_int('N Interps', self.camera_paths.n_render_views, 100, 10000)[1]  # temporal interpolation
-
-            if len(self.camera_paths):  # if exists, can delete or replace
-                imgui.text('Timeline control')
-                space = (len(self.camera_paths) - 1) / len(self.camera_paths)  # to fill them up
-                width = slider_width / len(self.camera_paths) - space
-                for i in range(len(self.camera_paths)):
-                    if i != 0:
-                        imgui.same_line(0, 1)
-                    sel = i == self.camera_paths.selected  # might get updated during this
-                    if sel:
-                        push_button_color(0x8855aaff)  #
-                    if imgui.button(f'###{i}', ImVec2(width, 0)):
-                        self.camera_paths.selected = i  # will not change playing_time after inserting the first keyframe
-                        playing_time = self.camera_paths.playing_time  # Do not change playing time, instead load the stored camera, this variable controls wherther to interp
-                        self.camera = deepcopy(self.camera_paths.keyframes[i])  # change the current camera
-                    if sel:
-                        pop_button_color()
-
-            # Timelines
-            if len(self.camera_paths) > 3:  # need at least 3 components to interpolate
-
-                # Player control
-                imgui.text('Player control')
-                if imgui.button(f'{"|<"}'):  # centered
-                    self.camera_paths.selected = 0
-                imgui.same_line()
-                if imgui.button(f'{"<"}'):
-                    self.camera_paths.selected = max(0, self.camera_paths.selected - 1)
-
-                imgui.same_line()
-                push_button_color(0xff5533ff if self.camera_paths.playing else 0x55cc33ff)
-                if imgui.button(f'{"Stop": ^4}' if self.camera_paths.playing else f'{"Play": ^4}'):
-                    self.camera_paths.playing = not self.camera_paths.playing
-                pop_button_color()
-
-                imgui.same_line()
-                if imgui.button(f'{">"}'):
-                    self.camera_paths.selected = min(len(self.camera_paths) - 1, self.camera_paths.selected + 1)
-
-                imgui.same_line()
-                if imgui.button(f'{">|"}'):
-                    self.camera_paths.selected = len(self.camera_paths) - 1
-
-                # if self.camera_paths.playing:
-                imgui.same_line()
-                self.camera_paths.playing_speed = imgui.slider_float('Speed', self.camera_paths.playing_speed, 0.0001, 0.1)[1]  # temporal interpolation
-
-                # Timeline slider
-                self.camera_paths.playing_time = imgui.slider_float('Playing time', self.camera_paths.playing_time, 0, 1)[1]  # temporal interpolation
-                self.camera_paths.loop_interp = imgui_toggle.toggle('Loop interpolations', self.camera_paths.loop_interp, config=toggle_ios_style)[1]
-                self.visualize_paths = imgui_toggle.toggle('Visualize paths', self.visualize_paths, config=toggle_ios_style)[1]
-
-                if 'keyframes_path' in self.static:
-                    offline_title = 'Keyframes offline rendering script:'
-                    imgui.text(offline_title)
-                    backslash, slash = '\\', '/'  # windows supports both forward and backward slash
-                    args = sys.argv
-                    args[0] = os.path.basename(args[0])  # hope this can be called at whereever place
-                    source = f"{' '.join(args)}".replace('gui', 'test')
-                    source += " " + f"val_dataloader_cfg.dataset_cfg.camera_path_intri={join(self.static.keyframes_path, 'intri.yml').replace(backslash, slash)}"
-                    source += " " + f"val_dataloader_cfg.dataset_cfg.camera_path_extri={join(self.static.keyframes_path, 'extri.yml').replace(backslash, slash)}"
-                    source += " " + f"val_dataloader_cfg.dataset_cfg.temporal_range=None"
-                    source += " " + f"configs=configs/specs/cubic.yaml,configs/specs/ibr.yaml,configs/specs/cubic.yaml,configs/specs/interp.yaml" if 'ImageBased' in self.dataset.__class__.__name__ else " " + f"configs=configs/specs/interp.yaml"
-                    source += " " + f"val_dataloader_cfg.dataset_cfg.interp_cfg.smoothing_term=0.0" if self.camera_paths.loop_interp else " " + f"val_dataloader_cfg.dataset_cfg.interp_cfg.smoothing_term=10.0"
-
-                    if 'editor' not in self.static:
-                        editor = ed.TextEditor()
-                        editor.set_language_definition(ed.TextEditor.LanguageDefinition.python())
-                        editor.set_read_only(True)
-                        editor.set_show_whitespaces(True)
-                        self.static.editor = editor
-
-                    line_height = imgui.get_font_size()
-                    editor_size = ImVec2()
-                    editor_size.x = (imgui.get_content_region_max().x - imgui.get_window_content_region_min().x - imgui.get_style().item_spacing.x)
-                    editor_size.y = line_height * (len(source.split('\n')) + 1.5)
-
-                    if (imgui.button('Copy')):
-                        imgui.set_clipboard_text(source)
-
-                    imgui.same_line()
-                    self.static.editor.set_text(source)
-                    self.static.editor.render(a_title='Code', a_size=editor_size, a_border=False)  # id, size, border
-
-                    if 'offline' in self.static and self.static.offline is not None:  # exists and started
-                        if self.static.offline.poll() is None:
-                            # Still running
-                            push_button_color(0xff3355ff)
-                            if (imgui.button('Kill offline rendering')):
-                                self.static.offline.kill()
-                            pop_button_color()
-                            imgui.text(f'Offline rendering running... (PID: {self.static.offline.pid})')
-                            imgui.text(f'Please check the terminal output for details')
-                        else:
-                            # Finished
-                            self.static.offline = None
-                    else:
-                        if (imgui.button('Run offline rendering')):
-                            self.static.offline = subprocess.Popen(source.split(' '))
-
-        if imgui.collapsing_header('Meshes & splats'):
-            if imgui.button('Add triangle mesh from file'):
-                self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
-                self.static.render_type = Mesh.RenderType.TRIS
-                self.static.mesh_class = Mesh
-            if imgui.button('Add point cloud from file'):
-                self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
-                self.static.render_type = Mesh.RenderType.POINTS
-                self.static.mesh_class = Mesh
-            if imgui.button('Add point splat from file'):
-                self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
-                self.static.mesh_class = Splat
-            if imgui.button('Add gaussian splat from file'):
-                self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['3DGS Files', '*.ply *.npz *.pt *.pth'])
-                self.static.mesh_class = Gaussian
-            if imgui.button('Add camera path visualization'):
-                self.static.add_mesh_dialog = pfd.select_folder('Select folder')
-                self.static.mesh_class = CameraPath
-            if 'add_mesh_dialog' in self.static and \
-               self.static.add_mesh_dialog is not None and \
-               self.static.add_mesh_dialog.ready(timeout=1):  # this is not moved up since it spans frames # MARK: SLOW
-
-                directory = self.static.add_mesh_dialog.result()
-                if directory:
-                    # Prepare arguments for mesh creation
-                    kwargs = dotdict()
-                    if 'render_type' in self.static: kwargs.render_type = self.static.render_type
-                    if 'vert_sizes' in self.static: kwargs.vert_sizes = self.static.vert_sizes
-
-                    # Construct and store the mesh
-                    filename = directory[0] if isinstance(directory, list) else directory
-                    mesh = self.static.mesh_class(filename=filename, H=self.H, W=self.W, **kwargs)
-                    self.meshes.append(mesh)
-                self.static.add_mesh_dialog = None
-
-            will_delete = []
-            for i, mesh in enumerate(self.meshes):
-                mesh.render_imgui(viewer=self, batch=dotdict(i=i, will_delete=will_delete, slider_width=slider_width))
-
-            for i in will_delete:
-                del self.meshes[i]
-
-        if imgui.collapsing_header('Debugging'):
-            imgui.text('The UI will freeze to switch control to pdbr')
-            imgui.text('Use "c" in pdbr to continue normal execution')
-            push_button_color(0xff3355ff)
-            if imgui.button('Invoke pdbr (go see the terminal)'):
-                breakpoint()  # preserve tqdm (do not use debugger())
-            if imgui.button('Enable breakpoint (if defined in code)'):
-                enable_breakpoint()  # preserve tqdm (do not use debugger())
-            pop_button_color()
-
-        # Other updates
-        if self.playing:  # automatic update of temporal information
-            if self.discrete_t:
-                old_prev_time = self.prev_time
-                self.prev_time = time.perf_counter()
-                self.acc_time += self.prev_time - old_prev_time  # time passed
-                frame_time = 1 / self.playing_fps
-                if self.acc_time >= frame_time:
-                    self.acc_time = 0
-                    self.camera.t = (self.camera.t + 1 / self.dataset.frame_range) % 1
-            else:
-                self.camera.t = (self.camera.t + self.playing_speed) % 1
-
-        if self.camera_paths.playing:  # automatic update of playing time
-            self.camera_paths.playing_time = (self.camera_paths.playing_time + self.camera_paths.playing_speed) % 1
-
-        if self.camera_paths.playing_time != playing_time and len(self.camera_paths) > 3:  # ok to interpolate
-            # Update main camera
-            us = self.camera_paths.playing_time
-            self.camera = self.camera_paths.interp(us) or self.camera  # may return None
-
-            # Update cursor when dragging the slider
-            K = len(self.camera_paths)
-            self.camera_paths.cursor_index = min(int(np.floor(us * (K - 1))), K - 1)  # do not interp or change playtime
+            imgui.push_font(self.bold_font)
+            colored_wrapped_text(0xff3355ff, gpu_cpu_gpu_msg)
+            add_debug_text_2d(ImVec2(0, 0), gpu_cpu_gpu_msg, 0xff3355ff)
+            imgui.pop_font()
 
         # Render debug cameras out (this should not be affected bu guis)
-        if self.visualize_axes or self.visualize_cameras or self.visualize_bounds or self.camera_paths.keyframes:
+        if self.visualize_axes or self.visualize_cameras or self.visualize_bounds or self.camera_path.keyframes:
             proj = self.camera.w2p  # 3, 4
 
-        # Render user added camera path
-        if self.visualize_cameras:
-            self.camera_paths.draw(self.camera)  # do the projection
-
-        if self.visualize_cameras:
+        if self.visualize_cameras and hasattr(self.dataset, 'Ks'):
             # Prepare tensors to render
             dataset = self.dataset
             if hasattr(dataset, 'closest_using_t') and dataset.closest_using_t:
@@ -908,10 +612,367 @@ class VolumetricVideoViewer:
             visualize_axes(proj, vec3(0, 0, 0), vec3(0.1, 0.1, 0.1), thickness=6.0, name='World')  # bounding box
             visualize_axes(proj, self.camera.origin, self.camera.origin + vec3(0.1, 0.1, 0.1), thickness=6.0, name='Rotation')  # bounding box
 
-        # if self.enable_unsafe_upload:
-        #     add_debug_text_2d(ImVec2(0, 0), 'Unsafe torch -> opengl uploading enabled', 0xff3355ff)
-        #     add_debug_text_2d(ImVec2(0, 10), 'Renders faster (pipelined) but might lead to crash', 0xff3355ff)
-        #     add_debug_text_2d(ImVec2(0, 20), 'Modify in `Rendering` tab for high resolution rendering', 0xff3355ff)
+    def draw_model_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
+
+        if imgui.collapsing_header(f'Model & network'):
+            if imgui.button('Reload model'):
+                try:
+                    self.epoch = self.runner.load_network()
+                    if 'optimized_camera' in self.static: del self.static.optimized_camera
+                    self.iter = self.epoch * self.runner.ep_iter  # loaded iter
+                except: pass  # sometimes the training process is still saving data
+
+            imgui.same_line()
+            push_button_color(0xff3355ff)
+            if (imgui.button('Reset viewer')): self.reset()
+            pop_button_color()
+
+            imgui.text(f'Current epoch: {self.epoch}')
+            self.iter = imgui.slider_int('Iteration override', self.iter, 0, self.runner.total_iter)[1]  # temporal interpolation
+
+    def draw_keyframes_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
+
+        # Export animation (camera paths)
+        # imgui.set_next_item_open(True)
+        if imgui.collapsing_header(f'Animation (keyframes: {len(self.camera_path)})###animation', ):
+
+            push_button_color(0x55cc33ff)
+            if imgui.button('Insert'):
+                self.camera_path.insert(self.camera)
+            pop_button_color()
+
+            if len(self.camera_path):  # if exists, can delete or replace
+                # Update the keyframes
+                imgui.same_line()
+                push_button_color(0xff5533ff)
+                if imgui.button('Replace'): self.camera_path.replace(self.camera)
+                pop_button_color()
+
+                # Update the keyframes
+                imgui.same_line()
+                push_button_color(0xff3355ff)
+                if imgui.button('Delete'): self.camera_path.delete(self.camera_path.selected)
+                pop_button_color()
+
+                # Update the keyframes
+                imgui.same_line()
+                push_button_color(0xff3355ff)
+                if imgui.button('Clear'): self.camera_path.clear()
+                pop_button_color()
+
+            # push_button_color(0xff5533ff)
+            if imgui.button('Load'):
+                self.static.load_keyframes_dialog = pfd.select_folder("Select folder")
+            # pop_button_color()
+            if 'load_keyframes_dialog' in self.static and \
+                    self.static.load_keyframes_dialog is not None and \
+                    self.static.load_keyframes_dialog.ready(timeout=1):  # this is not moved up since it spans frames # MARK: SLOW
+                directory = self.static.load_keyframes_dialog.result()
+                if directory:
+                    self.camera_path.load_keyframes(directory)
+                    self.static.keyframes_path = directory
+                self.static.load_keyframes_dialog = None
+
+            # Timelines
+            if len(self.camera_path):  # need at least 3 components to interpolate
+                imgui.same_line()
+                if imgui.button('Export'):
+                    self.static.export_keyframes_dialog = pfd.select_folder("Select folder")
+                if 'export_keyframes_dialog' in self.static and \
+                        self.static.export_keyframes_dialog is not None and \
+                        self.static.export_keyframes_dialog.ready(timeout=1):  # this is not moved up since it spans frames # MARK: SLOW
+                    directory = self.static.export_keyframes_dialog.result()
+                    if directory:
+                        self.camera_path.export_keyframes(directory)
+                        self.static.keyframes_path = directory
+                    self.static.export_keyframes_dialog = None
+
+                imgui.same_line()
+                if imgui.button('Interpolate'):
+                    self.static.export_interp_dialog = pfd.select_folder("Select folder")
+                if 'export_interp_dialog' in self.static and \
+                        self.static.export_interp_dialog is not None and \
+                        self.static.export_interp_dialog.ready(timeout=1):  # this is not moved up since it spans frames # MARK: SLOW
+                    directory = self.static.export_interp_dialog.result()
+                    if directory:
+                        self.camera_path.export_interps(directory)
+                        self.static.keyframes_path = directory
+                    self.static.export_interp_dialog = None
+
+                self.camera_path.n_render_views = imgui.slider_int('N Interps', self.camera_path.n_render_views, 100, 10000)[1]  # temporal interpolation
+
+            if len(self.camera_path):  # if exists, can delete or replace
+                imgui.text('Timeline control')
+                space = (len(self.camera_path) - 1) / len(self.camera_path)  # to fill them up
+                width = self.static.slider_width / len(self.camera_path) - space
+                for i in range(len(self.camera_path)):
+                    if i != 0:
+                        imgui.same_line(0, 1)
+                    sel = i == self.camera_path.selected  # might get updated during this
+                    if sel:
+                        push_button_color(0x8855aaff)  #
+                    if imgui.button(f'###{i}', ImVec2(width, 0)):
+                        self.camera_path.selected = i  # will not change playing_time after inserting the first keyframe
+                        self.static.playing_time = self.camera_path.playing_time  # Do not change playing time, instead load the stored camera, this variable controls wherther to interp
+                        self.camera = deepcopy(self.camera_path.keyframes[i])  # change the current camera
+                    if sel:
+                        pop_button_color()
+
+            # Timelines
+            if len(self.camera_path) > 3:  # need at least 3 components to interpolate
+
+                # Player control
+                imgui.text('Player control')
+                if imgui.button(f'{"|<"}'):  # centered
+                    self.camera_path.selected = 0
+                imgui.same_line()
+                if imgui.button(f'{"<"}'):
+                    self.camera_path.selected = max(0, self.camera_path.selected - 1)
+
+                imgui.same_line()
+                push_button_color(0xff5533ff if self.camera_path.playing else 0x55cc33ff)
+                if imgui.button(f'{"Stop": ^4}' if self.camera_path.playing else f'{"Play": ^4}'):
+                    self.camera_path.playing = not self.camera_path.playing
+                pop_button_color()
+
+                imgui.same_line()
+                if imgui.button(f'{">"}'):
+                    self.camera_path.selected = min(len(self.camera_path) - 1, self.camera_path.selected + 1)
+
+                imgui.same_line()
+                if imgui.button(f'{">|"}'):
+                    self.camera_path.selected = len(self.camera_path) - 1
+
+                # if self.camera_path.playing:
+                imgui.same_line()
+                self.camera_path.playing_speed = imgui.slider_float('Speed', self.camera_path.playing_speed, 0.0001, 0.005, format='%.6f')[1]  # temporal interpolation
+
+                # Timeline slider
+                self.camera_path.playing_time = imgui.slider_float('Playing time', self.camera_path.playing_time, 0, 1)[1]  # temporal interpolation
+                self.camera_path.loop_interp = imgui_toggle.toggle('Loop interpolations', self.camera_path.loop_interp, config=self.static.toggle_ios_style)[1]
+                self.visualize_paths = imgui_toggle.toggle('Visualize paths', self.visualize_paths, config=self.static.toggle_ios_style)[1]
+
+                if 'keyframes_path' in self.static:
+                    offline_title = 'Keyframes offline rendering script:'
+                    imgui.text(offline_title)
+                    backslash, slash = '\\', '/'  # windows supports both forward and backward slash
+                    args = sys.argv
+                    args[0] = os.path.basename(args[0])  # hope this can be called at whereever place
+                    source = f"{' '.join(args)}".replace('gui', 'test')
+                    source += " " + f"val_dataloader_cfg.dataset_cfg.camera_path_intri={join(self.static.keyframes_path, 'intri.yml').replace(backslash, slash)}"
+                    source += " " + f"val_dataloader_cfg.dataset_cfg.camera_path_extri={join(self.static.keyframes_path, 'extri.yml').replace(backslash, slash)}"
+                    source += " " + f"val_dataloader_cfg.dataset_cfg.temporal_range=None"
+                    source += " " + f"configs=configs/specs/cubic.yaml,configs/specs/ibr.yaml,configs/specs/cubic.yaml,configs/specs/interp.yaml" if 'ImageBased' in self.dataset.__class__.__name__ else " " + f"configs=configs/specs/interp.yaml"
+                    source += " " + f"val_dataloader_cfg.dataset_cfg.interp_cfg.smoothing_term=0.0" if self.camera_path.loop_interp else " " + f"val_dataloader_cfg.dataset_cfg.interp_cfg.smoothing_term=10.0"
+
+                    if 'editor' not in self.static:
+                        editor = ed.TextEditor()
+                        editor.set_language_definition(ed.TextEditor.LanguageDefinition.python())
+                        editor.set_read_only(True)
+                        editor.set_show_whitespaces(True)
+                        self.static.editor = editor
+
+                    line_height = imgui.get_font_size()
+                    editor_size = ImVec2()
+                    editor_size.x = (imgui.get_content_region_max().x - imgui.get_window_content_region_min().x - imgui.get_style().item_spacing.x)
+                    editor_size.y = line_height * (len(source.split('\n')) + 1.5)
+
+                    if (imgui.button('Copy')):
+                        imgui.set_clipboard_text(source)
+
+                    imgui.same_line()
+                    self.static.editor.set_text(source)
+                    self.static.editor.render(a_title='Code', a_size=editor_size, a_border=False)  # id, size, border
+
+                    if 'offline' in self.static and self.static.offline is not None:  # exists and started
+                        if self.static.offline.poll() is None:
+                            # Still running
+                            push_button_color(0xff3355ff)
+                            if (imgui.button('Kill offline rendering')):
+                                self.static.offline.kill()
+                            pop_button_color()
+                            imgui.text(f'Offline rendering running... (PID: {self.static.offline.pid})')
+                            imgui.text(f'Please check the terminal output for details')
+                        else:
+                            # Finished
+                            self.static.offline = None
+                    else:
+                        if (imgui.button('Run offline rendering')):
+                            self.static.offline = subprocess.Popen(source.split(' '))
+
+        if self.camera_path.playing:  # automatic update of playing time
+            self.camera_path.playing_time = (self.camera_path.playing_time + self.camera_path.playing_speed) % 1
+
+        if self.camera_path.playing_time != self.static.playing_time and len(self.camera_path) > 3:  # ok to interpolate
+            # Update main camera
+            us = self.camera_path.playing_time
+            interp = self.camera_path.interp(us)
+            if interp is not None:
+                H, W, K, R, T, n, f, t, v, bounds = interp
+                interp = dotdict(H=H, W=W, K=K, R=R, T=T, n=n, f=f, t=t, v=v, bounds=bounds)
+                self.camera.from_batch(interp)  # may return None
+
+            # Update cursor when dragging the slider
+            K = len(self.camera_path)
+            self.camera_path.cursor_index = min(int(np.floor(us * (K - 1))), K - 1)  # do not interp or change playtime
+
+        # Render user added camera path
+        if self.visualize_paths:
+            self.camera_path.draw(self.camera)  # do the projection
+
+    def draw_mesh_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
+        from easyvolcap.utils.gl_utils import Mesh, Splat, Gaussian, PointSplat
+
+        if imgui.collapsing_header('Meshes & splats'):
+            if imgui.button('Add triangle mesh from file'):
+                self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
+                self.static.render_type = Mesh.RenderType.TRIS
+                self.static.mesh_class = Mesh
+            if imgui.button('Add point cloud from file'):
+                self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
+                self.static.render_type = Mesh.RenderType.POINTS
+                self.static.mesh_class = Mesh
+            if imgui.button('Add point splat from file'):
+                self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
+                self.static.mesh_class = Splat
+            if imgui.button('Add gaussian splat from file'):
+                self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['3DGS Files', '*.ply *.npz *.pt *.pth'])
+                self.static.mesh_class = Gaussian
+            if imgui.button('Add camera path visualization'):
+                self.static.add_mesh_dialog = pfd.select_folder('Select folder')
+                self.static.mesh_class = CameraPath
+            if 'add_mesh_dialog' in self.static and \
+               self.static.add_mesh_dialog is not None and \
+               self.static.add_mesh_dialog.ready(timeout=1):  # this is not moved up since it spans frames # MARK: SLOW
+
+                directory = self.static.add_mesh_dialog.result()
+                if directory:
+                    # Prepare arguments for mesh creation
+                    kwargs = dotdict()
+                    if 'render_type' in self.static: kwargs.render_type = self.static.render_type
+                    if 'vert_sizes' in self.static: kwargs.vert_sizes = self.static.vert_sizes
+
+                    # Construct and store the mesh
+                    filename = directory[0] if isinstance(directory, list) else directory
+                    mesh = self.static.mesh_class(filename=filename, H=self.H, W=self.W, **kwargs)
+                    self.meshes.append(mesh)
+                self.static.add_mesh_dialog = None
+
+            will_delete = []
+            for i, mesh in enumerate(self.meshes):
+                mesh.render_imgui(viewer=self, batch=dotdict(i=i, will_delete=will_delete, slider_width=self.static.slider_width))
+
+            for i in will_delete:
+                del self.meshes[i]
+
+    def draw_debug_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
+
+        if imgui.collapsing_header('Debugging'):
+            imgui.text('The UI will freeze to switch control to pdbr')
+            imgui.text('Use "c" in pdbr to continue normal execution')
+            push_button_color(0xff3355ff)
+            if imgui.button('Invoke pdbr (go see the terminal)'):
+                breakpoint()  # preserve tqdm (do not use debugger())
+            if imgui.button('Enable breakpoint (if defined in code)'):
+                enable_breakpoint()  # preserve tqdm (do not use debugger())
+            pop_button_color()
+
+    def draw_banner_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
+
+        # Misc information
+        imgui.push_font(self.bold_font)
+        imgui.text(f'EasyVolcap Framework -- by zju3dv')
+        imgui.text(f'Running on {self.static.name}: {self.static.device}')
+        imgui.text(f'FPS       : {self.static.fps:7.3f} FPS')
+        tooltip('This is the 20 frame average fps instead of per frame')
+        imgui.text(f'torch VRAM: {self.static.memory / 2**20:7.2f} MB ')
+        tooltip('For now, we only show VRAM used by the torch engine. OpenGL VRAM is not counted')
+        imgui.text(f'frame time: {self.static.frame_time * 1000:7.3f} ms ')
+        tooltip('This is the 20 frame average frame_time instead of per frame')
+        imgui.pop_font()
+
+        # Full frame timings
+        timer.disabled = not imgui_toggle.toggle('Collect timings', not timer.disabled, config=self.static.toggle_ios_style)[1]
+        if not timer.disabled:
+            if imgui.collapsing_header('Timing'):
+                imgui.text(f'gui  : {batch.gui_time * 1000:7.3f}ms')
+                tooltip('Time for every other GUI elements (imgui & meshes & cameras & bounds) of previous frame')
+                imgui.text(f'data : {batch.data_time * 1000:7.3f}ms')
+                tooltip('Time for extracting data from GUI & pass through dataset wrapper')
+                imgui.text(f'ctog : {batch.ctog_time * 1000:7.3f}ms')
+                tooltip('Time for move batch data from CPU RAM to GPU VRAM (limited by PCIe bandwidth)')
+                imgui.text(f'model: {batch.model_time * 1000:7.3f}ms')
+                tooltip('Time for forwarding the underlying model, this should dominate')
+                imgui.text(f'post : {batch.post_time * 1000:7.3f}ms')
+                tooltip('Time for post processing of the rendered image got from the model')
+                imgui.text(f'gtos : {batch.gtos_time * 1000:7.3f}ms')
+                tooltip('Time for blitting the rendered content from torch.Tensor to screen of previous frame')
+
+    def draw_menu_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
+
+        if imgui.begin_menu_bar():
+            if imgui.begin_menu('File', True):
+                imgui.end_menu()
+
+            if imgui.begin_menu('Edit', True):
+                if imgui.menu_item('Quit Viewer', 'Ctrl+Q', False, True)[0]:
+                    exit(1)
+
+                if imgui.menu_item('Toggle Fullscreen', 'F11', False, True)[0]:
+                    self.toggle_fullscreen()
+
+                if imgui.menu_item('Toggle Help Window', 'F1', False, True)[0]:
+                    pass  # TODO: finish help window
+
+                if imgui.menu_item('Toggle ImGUI Metrics', 'F10', False, True)[0]:
+                    self.show_metrics_window = not self.show_metrics_window
+
+                if imgui.menu_item('Toggle ImGUI Demo', 'F12', False, True)[0]:
+                    self.show_demo_window = not self.show_demo_window
+
+                imgui.end_menu()
+            imgui.end_menu_bar()
+
+        if self.show_metrics_window:
+            imgui.show_metrics_window()
+
+        if self.show_demo_window:
+            imgui.show_demo_window()
+
+    def draw_imgui(self, batch: dotdict, output: dotdict):  # need to explicitly handle empty input
+        # Initialization
+        glfw.poll_events()  # process pending events, keyboard and stuff
+        imgui.backends.opengl3_new_frame()
+        imgui.backends.glfw_new_frame()
+        imgui.new_frame()
+        imgui.push_font(self.default_font)
+
+        # States
+        self.static.playing_time = self.camera_path.playing_time  # Remember this, if changed, update camera
+        self.static.slider_width = imgui.get_window_width() * 0.65  # https://github.com/ocornut/imgui/issues/267
+        self.static.toggle_ios_style = imgui_toggle.ios_style(size_scale=0.2, light_mode=False)
+
+        # Titles
+        fps, frame_time = self.get_fps_and_frame_time()
+        name, device, memory = self.get_device_and_memory()
+        # glfw.set_window_title(self.window, self.window_title.format(FPS=fps)) # might confuse window managers
+        self.static.fps = fps
+        self.static.frame_time = frame_time
+        self.static.name = name
+        self.static.device = device
+        self.static.memory = memory
+
+        # Being the main window
+        imgui.begin(f'{self.W}x{self.H} {fps:.3f} fps###main', flags=imgui.WindowFlags_.menu_bar)
+
+        self.draw_menu_gui(batch, output)
+        self.draw_banner_gui(batch, output)
+        self.draw_camera_gui(batch, output)
+        self.draw_rendering_gui(batch, output)
+        self.draw_keyframes_gui(batch, output)
+        self.draw_model_gui(batch, output)
+        self.draw_mesh_gui(batch, output)
+        self.draw_debug_gui(batch, output)
 
         # End of gui and rendering
         imgui.end()
@@ -997,7 +1058,8 @@ class VolumetricVideoViewer:
             self.show_metrics_window = not self.show_metrics_window  # will render test window
 
         elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_SPACE:
-            self.playing = not self.playing  # play automatically
+            if SHIFT: self.camera_path.playing = not self.camera_path.playing
+            else: self.playing = not self.playing  # play automatically
 
         elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_N:
             self.render_network = not self.render_network
@@ -1009,6 +1071,74 @@ class VolumetricVideoViewer:
             # Reset gui (mainly camera)
             self.reset()
 
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_I:
+            # Insert animation keyframe
+            self.camera_path.insert(self.camera)
+
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_A:
+            self.camera.force.x = -self.camera.movement_force
+
+        elif action == glfw.RELEASE and key == glfw.KEY_A:
+            self.camera.force.x = 0.0
+
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_W:
+            self.camera.force.y = self.camera.movement_force
+
+        elif action == glfw.RELEASE and key == glfw.KEY_W:
+            self.camera.force.y = 0.0
+
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_S:
+            self.camera.force.y = -self.camera.movement_force
+
+        elif action == glfw.RELEASE and key == glfw.KEY_S:
+            self.camera.force.y = 0.0
+
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_D:
+            self.camera.force.x = self.camera.movement_force
+
+        elif action == glfw.RELEASE and key == glfw.KEY_D:
+            self.camera.force.x = 0.0
+
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_C:
+            self.camera.force.z = -self.camera.movement_force
+
+        elif action == glfw.RELEASE and key == glfw.KEY_C:
+            self.camera.force.z = 0.0
+
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_V:
+            self.camera.force.z = self.camera.movement_force
+
+        elif action == glfw.RELEASE and key == glfw.KEY_V:
+            self.camera.force.z = 0.0
+
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_1:
+            self.camera.torque.x = -self.camera.movement_torque
+
+        elif action == glfw.RELEASE and key == glfw.KEY_1:
+            self.camera.torque.x = 0.0
+
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_2:
+            self.camera.torque.x = self.camera.movement_torque
+
+        elif action == glfw.RELEASE and key == glfw.KEY_2:
+            self.camera.torque.x = 0.0
+
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_Q:
+            self.camera.torque.y = -self.camera.movement_torque
+
+        elif action == glfw.RELEASE and key == glfw.KEY_Q:
+            self.camera.torque.y = 0.0
+
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_E:
+            self.camera.torque.y = self.camera.movement_torque
+
+        elif action == glfw.RELEASE and key == glfw.KEY_E:
+            self.camera.torque.y = 0.0
+
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_L:
+            # Toggle camera path looping
+            self.camera_path.loop_interp = not self.camera_path.loop_interp
+
         elif ((action == glfw.PRESS or action == glfw.REPEAT) or action == glfw.REPEAT) and key == glfw.KEY_LEFT:
             # Backup one frame
             self.camera.t = np.clip(self.camera.t - 1 / self.dataset.frame_range, 0, 1)
@@ -1017,7 +1147,7 @@ class VolumetricVideoViewer:
             # Advance one frame
             self.camera.t = np.clip(self.camera.t + 1 / self.dataset.frame_range, 0, 1)
 
-        if ((action == glfw.PRESS or action == glfw.REPEAT) or action == glfw.REPEAT) and key >= glfw.KEY_0 and key <= glfw.KEY_9:
+        elif ((action == glfw.PRESS or action == glfw.REPEAT) or action == glfw.REPEAT) and key >= glfw.KEY_0 and key <= glfw.KEY_9 and CONTROL:
             # Snap to input camera
             view_index = key - glfw.KEY_0
             if len(self.dataset.Rs) - 1 >= view_index:
@@ -1100,10 +1230,11 @@ class VolumetricVideoViewer:
             SHIFT = mods & glfw.MOD_SHIFT
             CONTROL = mods & glfw.MOD_CONTROL
             MIDDLE = button == glfw.MOUSE_BUTTON_MIDDLE
+            LEFT = button == glfw.MOUSE_BUTTON_LEFT
             RIGHT = button == glfw.MOUSE_BUTTON_RIGHT
 
             is_panning = SHIFT or MIDDLE
-            about_origin = RIGHT or (MIDDLE and SHIFT)
+            about_origin = LEFT or (MIDDLE and SHIFT)
             self.camera.begin_dragging(x, y, is_panning, about_origin)
         elif action == glfw.RELEASE:
             self.camera.end_dragging()
@@ -1178,26 +1309,41 @@ class VolumetricVideoViewer:
         dataset = self.dataset
         H, W = self.window_size  # dimesions
         M = max(H, W)
-        K = torch.as_tensor([
-            [M * dataset.focal_ratio, 0, W / 2],  # smaller focal, large fov for a bigger picture
-            [0, M * dataset.focal_ratio, H / 2],
-            [0, 0, 1],
-        ], dtype=torch.float)
-        if view_index is None: R, T = dataset.Rv.clone(), dataset.Tv.clone()  # intrinsics and extrinsics
-        else: R, T = dataset.Rs[view_index, 0], dataset.Ts[view_index, 0]
+
+        if self.use_window_focal or not hasattr(dataset, 'Ks'):
+            K = torch.as_tensor([
+                [M * dataset.focal_ratio, 0, W / 2],  # smaller focal, large fov for a bigger picture
+                [0, M * dataset.focal_ratio, H / 2],
+                [0, 0, 1],
+            ], dtype=torch.float)
+        else:
+            if view_index is None:
+                K = dataset.Ks[0, 0].clone()
+                ratio = M / max(dataset.Hs[0, 0], dataset.Ws[0, 0])
+            else:
+                K = dataset.Ks[view_index, 0].clone()
+                ratio = M / max(dataset.Hs[view_index, 0], dataset.Ws[view_index, 0])
+            K[:2] *= ratio
+
+        if view_index is None:
+            R, T = dataset.Rv.clone(), dataset.Tv.clone()  # intrinsics and extrinsics
+        else:
+            R, T = dataset.Rs[view_index, 0], dataset.Ts[view_index, 0]
+
         n, f, t, v = dataset.near, dataset.far, 0, 0  # use 0 for default t
         bounds = dataset.bounds.clone()  # avoids modification
         self.camera = Camera(H, W, K, R, T, n, f, t, v, bounds, **camera_cfg)
         self.camera.front = self.camera.front  # perform alignment correction
         self.snap_camera_index = view_index if view_index is not None else 0
 
-    def init_texture(self):
+    def init_quad(self):
         from easyvolcap.utils.gl_utils import Quad
-        self.quad = Quad(H=self.H, W=self.W, compose=self.compose, compose_power=self.compose_power)  # will blit this texture to screen if rendered
+        from cuda import cudart
+        self.quad = Quad(H=self.H, W=self.W, use_quad_cuda=self.use_quad_cuda, compose=self.compose, compose_power=self.compose_power)  # will blit this texture to screen if rendered
 
     def init_opengl(self):
-        import OpenGL.GL as gl
         from easyvolcap.utils.gl_utils import common_opengl_options
+        import OpenGL.GL as gl
         gl.glViewport(0, 0, self.W, self.H)
         common_opengl_options()
 

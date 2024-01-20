@@ -32,9 +32,6 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
         self.perc_loss_weight = perc_loss_weight
         self.ssim_loss_weight = ssim_loss_weight
 
-        # For computing perceptual loss & img_loss # HACK: Nobody is referencing this as a pytorch module
-        if self.perc_loss_weight > 0: self.perc_loss_reference = [VGGPerceptualLoss().cuda().to(self.dtype)]  # move to specific location
-
     @property
     def perc_loss(self):
         return self.perc_loss_reference[0]
@@ -51,6 +48,10 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
         psnr = (1 / mse.clip(1e-10)).log() * 10 / np.log(10)
 
         if type == ImgLossType.PERC:
+            if not hasattr(self, 'perc_loss_reference'):
+                # For computing perceptual loss & img_loss # HACK: Nobody is referencing this as a pytorch module
+                log('Initializing VGGPerceptualLoss')
+                self.perc_loss_reference = [VGGPerceptualLoss().cuda().to(self.dtype)]  # move to specific location
             rgb_gt = rgb_gt.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
             rgb_map = rgb_map.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
             img_loss = self.perc_loss(rgb_map, rgb_gt)

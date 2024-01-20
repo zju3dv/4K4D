@@ -2,6 +2,7 @@ from __future__ import annotations
 import os
 import cv2
 import json
+import torch
 import numpy as np
 from typing import Union
 from enum import Enum, auto
@@ -11,6 +12,24 @@ from scipy.spatial.transform import Rotation
 
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.data_utils import get_rays, get_near_far
+from easyvolcap.utils.math_utils import affine_inverse, affine_padding
+
+
+def compute_camera_similarity(tar_c2ws: torch.Tensor, src_c2ws: torch.Tensor):
+    # c2ws = affine_inverse(w2cs)  # N, L, 3, 4
+    # src_exts = affine_padding(w2cs)  # N, L, 4, 4
+
+    # tar_c2ws = c2ws
+    # src_c2ws = affine_inverse(src_exts)
+    centers_target = tar_c2ws[..., :3, 3]  # N, L, 3
+    centers_source = src_c2ws[..., :3, 3]  # N, L, 3
+
+    # Using distance between centers for camera selection
+    sims: torch.Tensor = 1 / (centers_source[None] - centers_target[:, None]).norm(dim=-1)  # N, N, L,
+
+    # Source view index and there similarity
+    src_sims, src_inds = sims.sort(dim=1, descending=True)  # similarity to source views # Target, Source, Latent
+    return src_sims, src_inds  # N, N, L
 
 
 class Interpolation(Enum):

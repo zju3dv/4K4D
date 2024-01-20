@@ -6,11 +6,22 @@ from torch.nn import functional as F
 
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.sh_utils import eval_sh
-from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.data_utils import to_x, add_batch
-from easyvolcap.utils.blend_utils import  batch_rodrigues
+from easyvolcap.utils.blend_utils import batch_rodrigues
 from easyvolcap.utils.math_utils import torch_inverse_2x2
 from easyvolcap.utils.net_utils import make_buffer, make_params, typed
+
+
+@torch.jit.script
+def rgb2sh0(rgb: torch.Tensor):
+    C0 = 0.28209479177387814
+    return (rgb - 0.5) / C0
+
+
+@torch.jit.script
+def sh02rgb(sh: torch.Tensor):
+    C0 = 0.28209479177387814
+    return sh * C0 + 0.5
 
 
 @torch.jit.script
@@ -50,18 +61,6 @@ def gaussian_3d(scale3: torch.Tensor,  # B, P, 3, the scale of the 3d gaussian i
     R_sigma = rotmat @ sigma0
     covariance = R @ R_sigma @ R_sigma.mT @ R.mT
     return covariance  # B, P, 3, 3
-
-
-@torch.jit.script
-def rgb2sh(rgb):
-    C0 = 0.28209479177387814
-    return (rgb - 0.5) / C0
-
-
-@torch.jit.script
-def sh2rgb(sh):
-    C0 = 0.28209479177387814
-    return sh * C0 + 0.5
 
 
 @torch.jit.script
@@ -235,6 +234,7 @@ class GaussianModel(nn.Module):
                  xyz: torch.Tensor = None,
                  colors: torch.Tensor = None,
                  init_occ: float = 0.1,
+                 init_scale: torch.Tensor = None,
                  sh_deg: int = 3,
                  scale_min: float = 1e-4,
                  scale_max: float = 1e1,
@@ -256,7 +256,7 @@ class GaussianModel(nn.Module):
         self.max_sh_degree = sh_deg
 
         # Initalize trainable parameters
-        self.create_from_pcd(xyz, colors, init_occ)
+        self.create_from_pcd(xyz, colors, init_occ, init_scale)
 
         # Densification related parameters
         self.max_radii2D = make_buffer(torch.zeros(self.get_xyz.shape[0]))
@@ -320,23 +320,29 @@ class GaussianModel(nn.Module):
         if self.active_sh_degree < self.max_sh_degree:
             self.active_sh_degree += 1
 
-    def create_from_pcd(self, xyz: torch.Tensor, colors: torch.Tensor, opacity: float = 0.1):
+    def create_from_pcd(self, xyz: torch.Tensor, colors: torch.Tensor = None, opacities: float = 0.1, scales: torch.Tensor = None):
         from simple_knn._C import distCUDA2
         if xyz is None:
             xyz = torch.empty(0, 3, device='cuda')  # by default, init empty gaussian model on CUDA
 
         features = torch.zeros((xyz.shape[0], 3, (self.max_sh_degree + 1) ** 2))
         if colors is not None:
-            SH = rgb2sh(colors)
+            SH = rgb2sh0(colors)
             features[:, :3, 0] = SH
         features[:, 3: 1:] = 0
 
-        dist2 = torch.clamp_min(distCUDA2(xyz.float().cuda()), 0.0000001)
-        scales = self.scaling_inverse_activation(torch.sqrt(dist2))[..., None].repeat(1, 3)
+        if scales is None:
+            dist2 = torch.clamp_min(distCUDA2(xyz.float().cuda()), 0.0000001)
+            scales = self.scaling_inverse_activation(torch.sqrt(dist2))[..., None].repeat(1, 3)
+        else:
+            scales = self.scaling_inverse_activation(scales)
+
         rots = torch.rand((xyz.shape[0], 4))
         rots[:, 0] = 1
 
-        opacities = self.inverse_opacity_activation(opacity * torch.ones((xyz.shape[0], 1), dtype=torch.float))
+        if not isinstance(opacities, torch.Tensor) or len(opacities) != len(xyz):
+            opacities = opacities * torch.ones((xyz.shape[0], 1), dtype=torch.float)
+        opacities = self.inverse_opacity_activation(opacities)
 
         self._xyz = make_params(xyz)
         self._features_dc = make_params(features[:, :, :1].transpose(1, 2).contiguous())
@@ -618,7 +624,7 @@ class GaussianModel(nn.Module):
         sh = self.get_features
 
         # Prepare the camera transformation for Gaussian
-        gaussian_camera = to_x(prepare_gaussian_camera(add_batch(batch)), torch.float)
+        gaussian_camera = to_x(prepare_gaussian_camera(batch), torch.float)
 
         # Prepare rasterization settings for gaussian
         raster_settings = GaussianRasterizationSettings(

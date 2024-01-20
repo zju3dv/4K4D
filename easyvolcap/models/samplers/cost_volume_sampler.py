@@ -21,7 +21,7 @@ from easyvolcap.utils.data_utils import to_x
 from easyvolcap.utils.ibr_utils import get_src_inps, get_src_feats, prepare_caches, compute_src_inps, compute_src_feats
 from easyvolcap.utils.nerf_utils import linear_sampling, ray2xyz, volume_rendering
 from easyvolcap.utils.prop_utils import s_vals_to_z_vals, z_vals_to_s_vals
-from easyvolcap.utils.image_utils import interpolate_image, fill_nchw_image
+from easyvolcap.utils.image_utils import interpolate_image, pad_image
 from easyvolcap.utils.enerf_utils import MinCostRegNet, CostRegNet, FeatureNet, get_proj_mats, build_cost_vol, depth_regression, render_debug_cost_volume
 
 # ? How do we share 2D convolutions between multiple levels?
@@ -139,7 +139,7 @@ class CostVolumeSampler(UniformSampler):
         # Preparing source scaling (for painless up convolution and skip connections)
         Hc, Wc = src_inps.shape[-2:]  # cropped image size
         Hp, Wp = int(np.ceil(Hc / self.img_pad)) * self.img_pad, int(np.ceil(Wc / self.img_pad)) * self.img_pad  # Input and output should be same in size
-        src_inps = fill_nchw_image(src_inps, size=(Hp, Wp))  # B, S, 3, H, W
+        src_inps = pad_image(src_inps, size=(Hp, Wp))  # B, S, 3, H, W
         timer.record('fill src imgs')
 
         # Forward feature extraction

@@ -1,0 +1,14 @@
+# Supercharged model only
+configs: configs/specs/vis.yaml
+model_cfg:
+    sampler_cfg:
+        skip_loading_points: True
+        points_expanded: True
+        points_aligned: True
+
+val_dataloader_cfg:
+    dataset_cfg:
+        type: NoopDataset
+        barebone: True
+        use_vhulls: False
+        skip_loading_images: True

@@ -137,9 +137,9 @@ def read_camera(intri_path: str, extri_path: str = None, cam_names=[]) -> dotdic
     return dotdict(cams)
 
 
-def write_camera(cameras: dict, path: str, intri_path: str = '', extri_path: str = ''):
+def write_camera(cameras: dict, path: str, intri_name: str = '', extri_name: str = ''):
     os.makedirs(path, exist_ok=True)
-    if not intri_path or not extri_path:
+    if not intri_name or not extri_name:
         intri_name = join(path, 'intri.yml')  # TODO: make them arguments
         extri_name = join(path, 'extri.yml')
     intri = FileStorage(intri_name, True)

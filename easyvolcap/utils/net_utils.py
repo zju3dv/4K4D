@@ -29,12 +29,13 @@ if TYPE_CHECKING:
 def print_shape(batch: dotdict):
     if isinstance(batch, dict):
         for k, v in batch.items():
-            print_shape(batch)
+            print(k)
+            print_shape(v)
     elif isinstance(batch, list):
         for v in batch:
             print_shape(v)
-    elif isinstance(v, torch.Tensor):
-        print(f'{k}: {v.shape}')
+    elif isinstance(batch, torch.Tensor):
+        print(f'{batch.shape}')
     else:
         print(batch)
 
@@ -150,11 +151,11 @@ def number_of_params(network: nn.Module):
 
 
 def make_params(params: torch.Tensor):
-    return nn.Parameter(params, requires_grad=True)
+    return nn.Parameter(torch.as_tensor(params), requires_grad=True)
 
 
 def make_buffer(params: torch.Tensor):
-    return nn.Parameter(params, requires_grad=False)
+    return nn.Parameter(torch.as_tensor(params), requires_grad=False)
 
 
 def take_jacobian(func: Callable, input: torch.Tensor, create_graph=False, vectorize=True, strategy='reverse-mode'):

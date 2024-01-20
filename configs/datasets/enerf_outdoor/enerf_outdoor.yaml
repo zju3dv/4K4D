@@ -17,7 +17,8 @@ dataloader_cfg: # we see the term "dataloader" as one word?
         coarse_discard_masks: False
         intersect_camera_bounds: False
 
-        force_sparse_view: True
+        use_aligned_cameras: True # will center the bounding box
+        force_sparse_view: True # the user will specify the view count
         view_sample: [0, 18, 1]
         frame_sample: [0, 200, 1] # only train for a thousand frames
         focal_ratio: 1.2
@@ -29,3 +30,6 @@ val_dataloader_cfg:
 runner_cfg:
     visualizer_cfg:
         video_fps: 60 # this dataset id built differently
+
+viewer_cfg:
+    use_window_focal: True

@@ -656,16 +656,19 @@ def display_table(states: dotdict,
 
 def build_parser(d: dict, parser: argparse.ArgumentParser = None):
     """
-    locals().update(vars(build_parser(locals()).parse_args()))
+    args = dotdict(vars(build_parser(args).parse_args()))
     """
     if parser is None:
         parser = argparse.ArgumentParser()
     for k, v in d.items():
-        if isinstance(v, list):
+        if isinstance(v, dict):
+            # TODO: Add argparse group here
+            pass
+        elif isinstance(v, list):
             parser.add_argument(f'--{k}', type=type(v[0]) if len(v) else str, default=v, nargs='+')
         elif isinstance(v, bool):
-            parser.add_argument(f'--{k}', action='store_false' if v else 'store_true')
+            t = 'no_' + k if v else k
+            parser.add_argument(f'--{t}', action='store_false' if v else 'store_true', dest=k)
         else:
             parser.add_argument(f'--{k}', type=type(v), default=v)
-        # TODO: Add argparse group here
     return parser

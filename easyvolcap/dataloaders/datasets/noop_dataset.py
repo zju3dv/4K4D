@@ -17,26 +17,31 @@ class NoopDataset(Dataset):
                  bounds=torch.as_tensor([[-5, -5, -5], [5, 5, 5]]),
                  render_ratio=1.0,
                  focal_ratio: float = 1.0,
+
+                 Rv=[[-0.9977766275405884, 0.06664637476205826, 0.0], [0.004728599451482296, 0.07079283893108368, -0.9974799156188965], [-0.0664784237742424, -0.9952622056007385, -0.07095059007406235]],
+                 Tv=[[-2.059340476989746e-5], [2.5779008865356445e-6], [-3.000047445297241]],
+
+                 imbound_crop: bool = True,
+                 use_objects_priors: bool = False,
                  **kwargs):
         self.view_sample = view_sample
         self.frame_sample = frame_sample
         self.closest_using_t = closest_using_t
-        self.n_views = (view_sample[1] - view_sample[0]) // view_sample[2]
-        self.n_latents = (frame_sample[1] - frame_sample[0]) // frame_sample[2]
-        self.n_frame_total = self.n_latents
+        self.n_views = (view_sample[1] - view_sample[0]) // view_sample[2] if view_sample[1] is not None else 1
+        self.n_latents = (frame_sample[1] - frame_sample[0]) // frame_sample[2] if frame_sample[1] is not None else 1
+        self.n_frames_total = self.n_latents
         self.n_view_total = self.n_views
 
-        self.Rv = torch.as_tensor([
-            [1, 0, 0],
-            [0, 0, -1],
-            [0, 1, 0],
-        ])  # 3, 3
-        self.Tv = torch.as_tensor([0, 0, 3])  # 3, 1
+        self.Rv = torch.as_tensor(Rv, dtype=torch.float)  # 3, 3
+        self.Tv = torch.as_tensor(Tv, dtype=torch.float)  # 3, 1
         self.near = near
         self.far = far
-        self.bounds = torch.as_tensor(bounds)
+        self.bounds = torch.as_tensor(bounds, dtype=torch.float)
         self.render_ratio = render_ratio
         self.focal_ratio = focal_ratio
+
+        self.imbound_crop = imbound_crop
+        self.use_objects_priors = use_objects_priors
 
     def __len__(self):
         return self.n_latents * self.n_views
@@ -73,6 +78,12 @@ class NoopDataset(Dataset):
 
     def get_bounds(self, latent_index): return VolumetricVideoDataset.get_bounds(self, latent_index)
 
+    @staticmethod
+    def scale_ixts(output: dotdict, ratio: float): return VolumetricVideoDataset.scale_ixts(output, ratio)
+
+    @staticmethod
+    def crop_ixts_bounds(output: dotdict): return VolumetricVideoDataset.crop_ixts_bounds(output)
+
     def virtual_to_physical(self, latent_index): return latent_index
 
     def physical_to_virtual(self, latent_index): return latent_index
@@ -101,4 +112,13 @@ class NoopDataset(Dataset):
         output.bounds[0] = torch.maximum(output.bounds[0], bounds[0])  # crop according to user bound
         output.bounds[1] = torch.minimum(output.bounds[1], bounds[1])
         output.meta.bounds = output.bounds
+
+        output = self.scale_ixts(output, self.render_ratio)
+
+        if self.imbound_crop:
+            output = self.crop_ixts_bounds(output)
+
+        if self.use_objects_priors:
+            output = self.get_objects_priors(output)
+
         return output

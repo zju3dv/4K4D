@@ -33,7 +33,17 @@ evc -t test -c configs/exps/r4dv/r4dv_0013_01_optcam.yaml exp_name=scr4dv_0013_0
 zip -r zsh_vim_tmux.zip .zshrc .oh-my-zsh .tmux .tmux.conf .tmux.conf.local .p10k.zsh .gitconfig .ssh .config/nvim software/exa software/nvim-linux64 software/vmtouch software/viu software/v2ray-sagernet software/aliyunpan -x .ssh/id_rsa
 ```
 
-```shell
-# Creating swapfile
+#### Swapfiles
 
+```shell
+# Removing existing swapfiles
+sudo swapoff -v /swapfile
+# Remove the swap file entry /swapfile swap swap defaults 0 0 from the /etc/fstab file.
+sudo rm /swapfile
+
+# Creating swapfile
+sudo fallocate -l 512G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
 ```

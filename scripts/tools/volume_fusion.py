@@ -10,10 +10,12 @@ import argparse
 from os.path import join
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.fcds_utils import voxel_down_sample, remove_outlier
-from easyvolcap.utils.data_utils import add_batch, to_cuda, export_pts, export_mesh, export_pcd, to_x
-from easyvolcap.utils.math_utils import point_padding, affine_padding, affine_inverse
+from easyvolcap.utils.image_utils import pad_image
+from easyvolcap.utils.cam_utils import compute_camera_similarity
 from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
+from easyvolcap.utils.math_utils import point_padding, affine_padding, affine_inverse
+from easyvolcap.utils.data_utils import add_batch, to_cuda, export_pts, export_mesh, export_pcd, to_x
+from easyvolcap.utils.fusion_utils import filter_global_points, depth_geometry_consistency, compute_consistency
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -29,16 +31,15 @@ def main():
     sep_ind = sys.argv.index('--')
     our_args = sys.argv[1:sep_ind]
     evv_args = sys.argv[sep_ind + 1:]
-    sys.argv = [sys.argv[0]] + ['-t', 'test'] + evv_args + ['configs=configs/specs/vis.yaml,configs/specs/fp16.yaml', 'val_dataloader_cfg.dataset_cfg.skip_loading_images=False', 'model_cfg.apply_optcam=True']
+    sys.argv = [sys.argv[0]] + ['-t', 'test'] + evv_args + ['configs=configs/specs/vis.yaml', 'val_dataloader_cfg.dataset_cfg.skip_loading_images=False', 'model_cfg.apply_optcam=True']
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--result_dir', type=str, default='data/geometry')
-    parser.add_argument('--occ_thresh', type=float, default=0.01)
-    parser.add_argument('--skip_align', action='store_true')
-    parser.add_argument('--skip_density', action='store_true')
-    parser.add_argument('--skip_outlier', action='store_true')
-    parser.add_argument('--skip_near_far', action='store_true')
-    parser.add_argument('--near_far_pad', type=float, default=0.0)
+    parser.add_argument('--n_srcs', type=int, default=4, help='Number of source views to use for the fusion process')
+    parser.add_argument('--geo_abs_thresh', type=float, default=1.0, help='The threshold for MSE in reprojection, unit: squared pixels') # aiming for a denser reconstruction
+    parser.add_argument('--geo_rel_thresh', type=float, default=0.01, help='The difference in relative depth values, unit: one')
+    parser.add_argument('--skip_depth_consistency', action='store_true')
+    parser.add_argument('--skip_align_with_camera', action='store_true')
     args = parser.parse_args(our_args)
 
     # Entry point first, other modules later to avoid strange import errors
@@ -69,107 +70,140 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
 
     pbar = tqdm(total=nl * nv, desc=f'Fusing rendered RGBD')
     for f in range(nl):
-        ptss, rgbs, prds, occs, dpts, dirs = [], [], [], [], [], []
+        dpts = []
+        cens = []
+        dirs = []
+
+        occs = []
+        rads = []
+        rgbs = []
+
         for v in range(nv):
             # Handle data movement
             batch = dataset[inds[v, f]]  # get the batch data for this view
             batch = add_batch(to_cuda(batch))
-            meta = batch.meta
-            del batch.meta
-            batch.meta = meta
 
             # Running inference
             with torch.inference_mode(), torch.no_grad():
                 output = runner.model(batch)  # get everything we need from the model, this performs the actual rendering
 
             # Get output point clouds
-            pts = (batch.ray_o + output.dpt_map * batch.ray_d).detach().cpu()
-            rgb = batch.rgb.detach().cpu()
-            prd = output.rgb_map.detach().cpu()
-            occ = output.acc_map.detach().cpu()
-            dpt = output.dpt_map.detach().cpu()
-            dir = batch.ray_d.detach().cpu()
+            H, W = batch.meta.H[0].item(), batch.meta.W[0].item()
+            rgb = batch.rgb.view(H, W, -1)
+            occ = output.acc_map.view(H, W, -1)
+            rad = torch.full_like(occ, 0.0015)
 
-            # Store it into list
-            prds.append(prd)
-            ptss.append(pts)
-            rgbs.append(rgb)
-            occs.append(occ)
-            dpts.append(dpt)
-            dirs.append(dir)
+            # Other scalars
+            if 'gs' in output:
+                occ = output.gs.occ.view(H, W, -1)
+                rad = output.gs.pix.view(H, W, -1)[..., :1]
 
+            dpt = output.dpt_map.view(H, W, -1)
+            cen = batch.ray_o.view(H, W, -1)
+            dir = batch.ray_d.view(H, W, -1)
+
+            if 'msk' in batch:
+                msk = batch.msk.view(H, W, -1)
+                dpt = dpt * (msk > 0)  # zero mask points should be removed
+
+            # Store CUDA depth for later use
+            dpts.append(dpt)  # keep the cuda version for later geometric fusion
+            cens.append(cen)  # keep the cuda version for later geometric fusion
+            dirs.append(dir)  # keep the cuda version for later geometric fusion
+            occs.append(occ)  # keep the cuda version for later geometric fusion
+            rads.append(rad)  # keep the cuda version for later geometric fusion
+            rgbs.append(rgb)  # keep the cuda version for later geometric fusion
             pbar.update()
 
-        # Concatenate per-view depth map and other information
-        prd = torch.cat(prds, dim=-2).float()
-        pts = torch.cat(ptss, dim=-2).float()
-        rgb = torch.cat(rgbs, dim=-2).float()
-        occ = torch.cat(occs, dim=-2).float()
-        dpt = torch.cat(dpts, dim=-2).float()
-        dir = torch.cat(dirs, dim=-2).float()
+        if not args.skip_depth_consistency:
+            if dataset.closest_using_t:
+                c2ws = dataset.c2ws[f]
+                w2cs = dataset.w2cs[f]
+                Ks = dataset.Ks[f]
+            else:
+                c2ws = dataset.c2ws[:, f]
+                w2cs = dataset.w2cs[:, f]
+                Ks = dataset.Ks[:, f]
 
-        # Remove NaNs in point positions
-        ind = (~pts.isnan())[0, ..., 0].nonzero()[..., 0]  # P,
-        log(f'Removing NaNs: {pts.shape[1] - len(ind)}')
-        prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
-        pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
-        rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
-        occ = multi_gather(occ, ind[None, ..., None])  # B, P, C
-        dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
-        dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
+            _, src_inds = compute_camera_similarity(c2ws, c2ws)  # V, V
+            H, W = max([d.shape[-3] for d in dpts]), max([d.shape[-2] for d in dpts])
 
-        # Remove low density points
-        if not args.skip_density:
-            ind = (occ > args.occ_thresh)[0, ..., 0].nonzero()[..., 0]  # P,
-            log(f'Removing low density points: {pts.shape[1] - len(ind)}')
-            prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
-            pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
-            rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
-            occ = multi_gather(occ, ind[None, ..., None])  # B, P, C
-            dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
-            dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
+            dpts = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in dpts])  # V, H, W, 1
+            cens = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in cens])  # V, H, W, 3
+            dirs = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in dirs])  # V, H, W, 3
+            rgbs = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in rgbs])  # V, H, W, 3
+            occs = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in occs])  # V, H, W, 1
+            rads = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in rads])  # V, H, W, 1
 
-        # Remove statistic outliers (il_ind -> inlier indices)
-        if not args.skip_outlier:
-            ind = remove_outlier(pts, K=50, std_ratio=4.0, return_inds=True)[0]  # P,
-            log(f'Removing outliers: {pts.shape[1] - len(ind)}')
-            prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
-            pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
-            rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
-            occ = multi_gather(occ, ind[None, ..., None])  # B, P, C
-            dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
-            dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
+            ptss_out = []
+            rgbs_out = []
+            occs_out = []
+            rads_out = []
 
-        # Remove points outside of the near far bounds
-        if not args.skip_near_far:
-            near, far = dataset.near, dataset.far  # scalar for controlling camera near far
-            near_far_mask = pts.new_ones(pts.shape[1:-1], dtype=torch.bool)
+            # Perform depth consistency check and filtering
             for v in range(nv):
-                batch = dataset[inds[v, f]]  # get the batch data for this view
-                H, W, K, R, T = batch.H, batch.W, batch.K, batch.R, batch.T
-                pts_view = pts @ R.mT + T.mT
-                pts_pix = pts_view @ K.mT  # N, 3
-                pix = pts_pix[..., :2] / pts_pix[..., 2:]
-                pix = pix / pix.new_tensor([W, H]) * 2 - 1  # N, P, 2 to sample the msk (dimensionality normalization for sampling)
-                outside = ((pix[0] < -1) | (pix[0] > 1)).any(dim=-1)  # P,
-                near_far = ((pts_view[0, ..., -1] < far + args.near_far_pad) & (pts_view[0, ..., -1] > near - args.near_far_pad))  # P,
-                near_far_mask &= near_far | outside
-            ind = near_far_mask.nonzero()[..., 0]
-            log(f'Removing out-of-near-far points: {pts.shape[1] - len(ind)}')
-            prd = multi_gather(prd, ind[None, ..., None])  # B, P, C
-            pts = multi_gather(pts, ind[None, ..., None])  # B, P, C
-            rgb = multi_gather(rgb, ind[None, ..., None])  # B, P, C
-            occ = multi_gather(occ, ind[None, ..., None])  # B, P, C
-            dpt = multi_gather(dpt, ind[None, ..., None])  # B, P, C
-            dir = multi_gather(dir, ind[None, ..., None])  # B, P, C
+                # Prepare source views' information
+                src_ind = src_inds[v, 1:1 + args.n_srcs]  # 4,
+                dpt_src = dpts[src_ind]  # 4, HW
+                ixt_src = Ks[src_ind]  # 4, 3, 3
+                ext_src = affine_padding(w2cs[src_ind])  # 4, 3, 3
+
+                # Prepare reference view's information
+                dpt_ref = dpts[v]  # HW, 1
+                ixt_ref = Ks[v]  # 3, 3
+                ext_ref = affine_padding(w2cs[v])  # 4, 4
+
+                # Prepare data for computation
+                S, H, W, C = dpt_src.shape
+                dpt_src = dpt_src.view(S, H, W)  # 4, H, W
+                dpt_ref = dpt_ref.view(H, W)
+                ixt_ref, ext_ref, ixt_src, ext_src = to_cuda([ixt_ref, ext_ref, ixt_src, ext_src])
+
+                depth_est_averaged, photo_mask, geo_mask, final_mask = compute_consistency(
+                    dpt_ref, ixt_ref, ext_ref, dpt_src, ixt_src, ext_src,
+                    args.geo_abs_thresh, args.geo_rel_thresh
+                )
+
+                # Filter points based on geometry and photometric mask
+                ind = final_mask.view(-1).nonzero()  # N, 1
+                dpt = multi_gather(depth_est_averaged.view(-1, 1), ind)  # N, 1
+                dir = multi_gather(dirs[v].view(-1, 3), ind)  # N, 3
+                cen = multi_gather(cens[v].view(-1, 3), ind)  # N, 3
+                rgb = multi_gather(rgbs[v].view(-1, 3), ind)  # N, 3
+                occ = multi_gather(occs[v].view(-1, 1), ind)  # N, 1
+                rad = multi_gather(rads[v].view(-1, 1), ind)  # N, 1
+                pts = cen + dpt * dir  # N, 3
+
+                log(f'View {v}, photo_mask {photo_mask.sum() / photo_mask.numel():.04f}, geometry mask {geo_mask.sum() / geo_mask.numel():.04f}, final mask {final_mask.sum() / final_mask.numel():.04f}, final point count {len(pts)}')
+
+                ptss_out.append(pts)
+                rgbs_out.append(rgb)
+                occs_out.append(occ)
+                rads_out.append(rad)
+        else:
+            ptss_out = [(cens[v] + dpts[v] * dirs[v]).view(-1, 3) for v in range(nv)]
+            rgbs_out = [rgb.view(-1, 3) for rgb in rgbs]
+            occs_out = [occ.view(-1, 1) for occ in occs]
+            rads_out = [rad.view(-1, 1) for rad in rads]
+
+        # Concatenate per-view depth map and other information
+        pts = torch.cat(ptss_out, dim=-2).float()  # N, 3
+        rgb = torch.cat(rgbs_out, dim=-2).float()  # N, 3
+        occ = torch.cat(occs_out, dim=-2).float()  # N, 1
+        rad = torch.cat(rads_out, dim=-2).float()  # N, 1
+
+        # Apply some global filtering
+        points = filter_global_points(dotdict(pts=pts, rgb=rgb, occ=occ, rad=rad))
+        log(f'Filtered to {len(points.pts) / len(pts):.06f} of the points globally, final count {len(points.pts)}')
+        pts, rgb, occ, rad = points.pts, points.rgb, points.occ, points.rad
 
         # Align point cloud with the average camera, which is processed in memory, to make sure the stored files are consistent
-        if dataset.use_aligned_cameras and not args.skip_align:  # match the visual hull implementation
-            pts = (point_padding(pts) @ affine_padding(dataset.c2w_avg).mT)[..., :3]  # homo
+        if dataset.use_aligned_cameras and not args.skip_align_with_camera:  # match the visual hull implementation
+            pts = (point_padding(pts) @ affine_padding(to_cuda(dataset.c2w_avg)).mT)[..., :3]  # homo
 
         # Save final fused point cloud back onto the disk
-        filename = join(args.result_dir, runner.exp_name, runner.visualizer.save_tag, 'POINT', f'{prefix}{f:04d}.ply')
-        export_pts(pts, rgb, filename=filename)
+        filename = join(args.result_dir, runner.exp_name, str(runner.visualizer.save_tag), 'POINT', f'{prefix}{f:04d}.ply')
+        export_pts(pts, rgb, scalars=dotdict(radius=rad, alpha=occ), filename=filename)
         log(yellow(f'Fused points saved to {blue(filename)}, totally {cyan(pts.numel() // 3)} points'))
     pbar.close()
 

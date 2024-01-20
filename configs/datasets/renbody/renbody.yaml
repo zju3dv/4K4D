@@ -1,6 +1,7 @@
 dataloader_cfg: # we see the term "dataloader" as one word?
     dataset_cfg: &dataset_cfg
         masks_dir: masks # good naming ^_^
+        # prettier-ignore
         ratio: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6]
         # ratio: 0.5
         # ratio: 1.0
@@ -8,6 +9,7 @@ dataloader_cfg: # we see the term "dataloader" as one word?
         bounds: [[-5.0, -5.0, -5.0], [5.0, 5.0, 5.0]] # thinner?
         dist_opt_K: false # the distortion parameter was very bad...
         force_sparse_view: True
+        use_aligned_cameras: True
         view_sample: [0, 60, 1]
         frame_sample: [0, 150, 1] # only train for a thousand frames
 
@@ -37,3 +39,6 @@ val_dataloader_cfg:
         frame_sample: [0, 150, 30]
     sampler_cfg:
         view_sample: [0, 60, 20]
+
+viewer_cfg:
+    use_window_focal: True

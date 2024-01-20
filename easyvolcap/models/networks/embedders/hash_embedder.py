@@ -26,7 +26,7 @@ class HashEmbedder(nn.Module):
                  include_input=True,  # this will pass gradient better to input, but if you're using uvt, no need
                  ps=[1, 19349663, 83492791, 166985587],
 
-                 bounds: List[List[int]] = OptimizableCamera.bounds,
+                 bounds: List[List[int]] = OptimizableCamera.square_bounds,
                  in_dim: int = 3,
                  predefined_sizes: List[int] = [-1, -1, -1],  # this overwrites the computed size from b, level and base
                  ):

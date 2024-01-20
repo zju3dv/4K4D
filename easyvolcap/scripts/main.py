@@ -261,21 +261,11 @@ def train(
     launcher(**kwargs, runner_function=runner.train, runner_object=runner)
 
 
-def test_entrypoint():
-    if cfg.mocking: log(f'Modules imported. No config loaded for: {yellow(args.type)}, pass config file using `-c <PATH_TO_CONFIG>`') # MARK: GLOBAL
-    else: test(cfg)
-
-
-def train_entrypoint():
-    if cfg.mocking: log(f'Modules imported. No config loaded for: {yellow(args.type)}, pass config file using `-c <PATH_TO_CONFIG>`') # MARK: GLOBAL
-    else: train(cfg)
-
-
-def main_entrypoint():
-    if cfg.mocking: log(f'Modules imported. No config loaded for: {yellow(args.type)}, pass config file using `-c <PATH_TO_CONFIG>`') # MARK: GLOBAL
+def main():
+    if cfg.mocking: log(f'Modules imported. No config loaded for: {yellow(args.type)}, pass config file using `-c <PATH_TO_CONFIG>`')  # MARK: GLOBAL
     else: globals()[args.type](cfg)  # invoke this (call callable_from_cfg -> call_from_cfg)
 
 
 # Module name == '__main__', this is the outermost commandline entry point
 if __name__ == '__main__':
-    main_entrypoint()
+    main()

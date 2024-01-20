@@ -7,7 +7,7 @@ from easyvolcap.engine import EMBEDDERS, REGRESSORS
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.enerf_utils import sample_feature_volume, sample_geometry_feature_image, FeatureAgg, FeatureNet
 from easyvolcap.utils.ibr_utils import get_src_inps, get_src_feats, prepare_caches, compute_src_inps, compute_src_feats
-from easyvolcap.utils.image_utils import interpolate_image, fill_nchw_image
+from easyvolcap.utils.image_utils import interpolate_image, pad_image
 from easyvolcap.utils.data_utils import to_x
 
 
@@ -36,7 +36,7 @@ class GeometryImageBasedEmbedder(nn.Module):
         if self.use_interpolate:
             src_inps = interpolate_image(src_inps, size=(Hp, Wp))  # B, S, 3, H, W
         else:
-            src_inps = fill_nchw_image(src_inps, size=(Hp, Wp))  # B, S, 3, H, W
+            src_inps = pad_image(src_inps, size=(Hp, Wp))  # B, S, 3, H, W
 
         # Preparing source image scaling
         if self.use_interpolate:

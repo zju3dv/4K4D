@@ -42,7 +42,7 @@ class ImageBasedDataset(VolumetricVideoDataset):
                  barebone: bool = False,
 
                  src_view_sample: List[int] = [0, None, 1],  # use these as input source views
-                 force_sparse_view: bool = False,
+                 force_sparse_view: bool = True, # The user will be responsible for setting up the correct view count
 
                  **kwargs,
                  ):

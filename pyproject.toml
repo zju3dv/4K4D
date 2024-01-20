@@ -58,17 +58,17 @@ packages = [ # ................?????
 ] # yes, .py not needed here, but just for clarification that you can use py for config
 
 [project.scripts]
-evc = "easyvolcap.scripts.main:main_entrypoint"
-evc-test = "easyvolcap.scripts.main:test_entrypoint"
-evc-train = "easyvolcap.scripts.main:train_entrypoint"
+evc = "easyvolcap.scripts.wrap:main_entrypoint"
+evc-test = "easyvolcap.scripts.wrap:test_entrypoint"
+evc-train = "easyvolcap.scripts.wrap:train_entrypoint"
 
 evc-gui = "easyvolcap.scripts.wrap:gui_entrypoint"
 evc-dist = "easyvolcap.scripts.wrap:dist_entrypoint"
 evc-prof = "easyvolcap.scripts.wrap:prof_entrypoint"
 
-volcap = "easyvolcap.scripts.main:main_entrypoint"
-volcap-test = "easyvolcap.scripts.main:test_entrypoint"
-volcap-train = "easyvolcap.scripts.main:train_entrypoint"
+volcap = "easyvolcap.scripts.wrap:main_entrypoint"
+volcap-test = "easyvolcap.scripts.wrap:test_entrypoint"
+volcap-train = "easyvolcap.scripts.wrap:train_entrypoint"
 
 volcap-gui = "easyvolcap.scripts.wrap:gui_entrypoint"
 volcap-dist = "easyvolcap.scripts.wrap:dist_entrypoint"

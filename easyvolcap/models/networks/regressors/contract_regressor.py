@@ -1,17 +1,20 @@
 # mipnerf360 space contraction
 import torch
+import numpy as np
 from torch import nn
 from easyvolcap.engine import REGRESSORS
-from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.bound_utils import contract, get_bounds
 from easyvolcap.utils.console_utils import *
+from easyvolcap.utils.bound_utils import contract, get_bounds
+from easyvolcap.models.cameras.optimizable_camera import OptimizableCamera
 
 
 @REGRESSORS.register_module()
 class ContractRegressor(nn.Module):
+    radius = (OptimizableCamera.bounds[1] - OptimizableCamera.bounds[0]).max() / 2
+
     def __init__(self,
                  in_dim: int = 3,
-                 radius: float = 3.0,  # -> 10.0m?, bad convergence if radius too small
+                 radius: float = radius,  # -> 10.0m?, bad convergence if radius too small
                  p: float = torch.inf,
                  normalize: bool = False,
                  ):

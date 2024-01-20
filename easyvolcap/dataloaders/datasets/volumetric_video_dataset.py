@@ -80,7 +80,7 @@ class VolumetricVideoDataset(Dataset):
                  imsize_overwrite: List[int] = [-1, -1],  # overwrite the image size
 
                  # Camera alignment
-                 use_aligned_cameras: bool = True,
+                 use_aligned_cameras: bool = False,
                  avg_using_all: bool = False,  # ok enough for now
                  avg_max_count: int = 100,  # prevent slow center of attention computation
                  init_viewer_index: int = 0,
@@ -208,8 +208,8 @@ class VolumetricVideoDataset(Dataset):
         self.view_sample = view_sample
         if self.view_sample[1] is not None: self.n_view_total = self.view_sample[1]
         else: self.n_view_total = len(os.listdir(join(self.data_root, self.images_dir)))  # total number of cameras before filtering
-        if self.frame_sample[1] is not None: self.n_frame_total = self.frame_sample[1]
-        else: self.n_frame_total = min([len(glob(join(self.data_root, self.images_dir, cam, '*'))) for cam in os.listdir(join(self.data_root, self.images_dir))])  # total number of images before filtering
+        if self.frame_sample[1] is not None: self.n_frames_total = self.frame_sample[1]
+        else: self.n_frames_total = min([len(glob(join(self.data_root, self.images_dir, cam, '*'))) for cam in os.listdir(join(self.data_root, self.images_dir))])  # total number of images before filtering
         self.use_loaded_time = use_loaded_time
 
         # Rendering and space carving bounds
@@ -355,13 +355,15 @@ class VolumetricVideoDataset(Dataset):
     def load_paths(self):
         # Load image related stuff for reading from disk later
         # If number of images in folder does not match, here we'll get an error
-        ims = [[join(self.data_root, self.images_dir, cam, self.ims_pattern.format(frame=i)) for i in range(self.n_frame_total)] for cam in self.camera_names]
+        ims = [[join(self.data_root, self.images_dir, cam, self.ims_pattern.format(frame=i)) for i in range(self.n_frames_total)] for cam in self.camera_names]
         if not exists(ims[0][0]):
-            ims = [[i.replace('.jpg', '.png') for i in im] for im in ims]
+            ims = [[i.replace('.' + self.ims_pattern.split('.')[-1], '.JPG') for i in im] for im in ims]
         if not exists(ims[0][0]):
-            ims = [[i.replace('.png', '.jpg') for i in im] for im in ims]
+            ims = [[i.replace('.JPG', '.png') for i in im] for im in ims]
         if not exists(ims[0][0]):
-            ims = [sorted(glob(join(self.data_root, self.images_dir, cam, '*')))[:self.n_frame_total] for cam in self.camera_names]
+            ims = [[i.replace('.png', '.PNG') for i in im] for im in ims]
+        if not exists(ims[0][0]):
+            ims = [sorted(glob(join(self.data_root, self.images_dir, cam, '*')))[:self.n_frames_total] for cam in self.camera_names]
         ims = [np.asarray(ims[i])[:min([len(i) for i in ims])] for i in range(len(ims))]  # deal with the fact that some weird dataset has different number of images
         self.ims = np.asarray(ims)  # V, N
         self.ims_dir = join(*split(dirname(self.ims[0, 0]))[:-1])  # logging only
@@ -410,9 +412,9 @@ class VolumetricVideoDataset(Dataset):
 
         # Depth image path preparation
         if self.use_depths:
-            self.dps = np.asarray([im.replace(self.images_dir, self.depths_dir).replace('.jpg', '.hdr').replace('.png', '.hdr') for im in self.ims.ravel()]).reshape(self.ims.shape)
+            self.dps = np.asarray([im.replace(self.images_dir, self.depths_dir).replace('.jpg', '.exr').replace('.png', '.exr') for im in self.ims.ravel()]).reshape(self.ims.shape)
             if not exists(self.dps[0, 0]):
-                self.dps = np.asarray([dp.replace('.hdr', 'exr') for dp in self.dps.ravel()]).reshape(self.dps.shape)
+                self.dps = np.asarray([dp.replace('.exr', 'exr') for dp in self.dps.ravel()]).reshape(self.dps.shape)
             self.dps_dir = join(*split(dirname(self.dps[0, 0]))[:-1])  # logging only
 
         # Background image path preparation
@@ -462,7 +464,7 @@ class VolumetricVideoDataset(Dataset):
             self.dps_bytes, self.Ks, self.Hs, self.Ws = \
                 load_resize_undist_ims_bytes(self.dps, ori_Ks.numpy(), ori_Ds.numpy(), ratio, self.center_crop_size,
                                              f'Loading dpts bytes for {blue(self.dps_dir)} {magenta(self.split.name)}',
-                                             decode_flag=cv2.IMREAD_UNCHANGED, dist_opt_K=self.dist_opt_K, encode_ext='.hdr')  # will for a grayscale read from bytes
+                                             decode_flag=cv2.IMREAD_UNCHANGED, dist_opt_K=self.dist_opt_K, encode_ext='.exr')  # will for a grayscale read from bytes
 
         # Image pre cacheing (from disk to memory)
         self.ims_bytes, self.Ks, self.Hs, self.Ws = \
@@ -482,7 +484,7 @@ class VolumetricVideoDataset(Dataset):
             self.ims_bytes, self.mks_bytes, self.Ks, self.Hs, self.Ws, self.crop_xs, self.crop_ys = \
                 decode_crop_fill_ims_bytes(self.ims_bytes, self.mks_bytes, self.Ks.numpy(), self.Rs.numpy(), self.Ts.numpy(), bounds.numpy(), f'Cropping msks imgs for {blue(self.data_root)} {magenta(self.split.name)}', encode_ext=self.encode_ext)
             if hasattr(self, 'dps_bytes'): self.dps_bytes, self.mks_bytes, self.Ks, self.Hs, self.Ws, self.crop_xs, self.crop_ys = \
-                decode_crop_fill_ims_bytes(self.dps_bytes, self.mks_bytes, self.Ks.numpy(), self.Rs.numpy(), self.Ts.numpy(), bounds.numpy(), f'Cropping msks dpts for {blue(self.data_root)} {magenta(self.split.name)}', encode_ext=['.hdr', self.encode_ext])
+                decode_crop_fill_ims_bytes(self.dps_bytes, self.mks_bytes, self.Ks.numpy(), self.Rs.numpy(), self.Ts.numpy(), bounds.numpy(), f'Cropping msks dpts for {blue(self.data_root)} {magenta(self.split.name)}', encode_ext=['.exr', self.encode_ext])
             self.corp_xs = torch.as_tensor(self.crop_xs)
             self.corp_ys = torch.as_tensor(self.crop_ys)
             self.Ks = torch.as_tensor(self.Ks)
@@ -492,7 +494,7 @@ class VolumetricVideoDataset(Dataset):
         # Only fill the background regions
         if not self.immask_crop and self.immask_fill:  # a little bit wasteful but acceptable for now
             self.ims_bytes = decode_fill_ims_bytes(self.ims_bytes, self.mks_bytes, f'Filling msks imgs for {blue(self.data_root)} {magenta(self.split.name)}', encode_ext=self.encode_ext)
-            if hasattr(self, 'dps_bytes'): self.dps_bytes = decode_fill_ims_bytes(self.dps_bytes, self.mks_bytes, f'Filling dpts imgs for {blue(self.data_root)} {magenta(self.split.name)}', encode_ext='.hdr')
+            if hasattr(self, 'dps_bytes'): self.dps_bytes = decode_fill_ims_bytes(self.dps_bytes, self.mks_bytes, f'Filling dpts imgs for {blue(self.data_root)} {magenta(self.split.name)}', encode_ext='.exr')
 
         # To make memory access faster, store raw floats in memory
         if self.cache_raw:
@@ -654,7 +656,7 @@ class VolumetricVideoDataset(Dataset):
         if exists(join(self.data_root, self.intri_file)) and exists(join(self.data_root, self.extri_file)):
             self.cameras = read_camera(join(self.data_root, self.intri_file), join(self.data_root, self.extri_file))
             self.camera_names = np.asarray(sorted(list(self.cameras.keys())))  # NOTE: sorting camera names
-            self.cameras = dotdict({k: [self.cameras[k] for i in range(self.n_frame_total)] for k in self.camera_names})
+            self.cameras = dotdict({k: [self.cameras[k] for i in range(self.n_frames_total)] for k in self.camera_names})
             # TODO: Handle avg processing
 
         # Monocular dataset loading, each camera has a separate folder
@@ -930,7 +932,7 @@ class VolumetricVideoDataset(Dataset):
 
     @property
     def frame_max(self):
-        middle = (self.frame_sample[1] if self.frame_sample[1] else self.n_frame_total) - 1  # None -> all frames are loaded
+        middle = (self.frame_sample[1] if self.frame_sample[1] else self.n_frames_total) - 1  # None -> all frames are loaded
         return middle if len(self.frame_sample) == 3 else max(self.frame_sample)
 
     @property
@@ -1030,8 +1032,6 @@ class VolumetricVideoDataset(Dataset):
         meta.tar_ixt = K
         meta.H = torch.as_tensor(new_h)
         meta.W = torch.as_tensor(new_w)
-        meta.full_H = torch.as_tensor(orig_h)
-        meta.full_W = torch.as_tensor(orig_w)
         if 'orig_h' in output:
             meta.crop_x = torch.as_tensor(int(output.crop_x * ratio))
             meta.crop_y = torch.as_tensor(int(output.crop_y * ratio))  # TODO: this is messy

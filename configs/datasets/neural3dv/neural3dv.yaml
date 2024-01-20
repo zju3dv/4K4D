@@ -3,7 +3,7 @@ dataloader_cfg: # we see the term "dataloader" as one word?
         ratio: 0.5 # otherwise, oom
         near: 12.0
         far: 40.0
-        bounds: [[-15, -12, 8], [15, 12, 20]]
+        bounds: [[-15, -12, 2], [15, 12, 20]]
         use_aligned_cameras: False
         force_sparse_view: True
         view_sample: [0, 21, 1]
