@@ -1,13 +1,13 @@
 import os
 import sys
+import subprocess
 
-# fmt: off
-sys.path.append('.')
 from easyvolcap.utils.console_utils import *
-# fmt: on
+
+EASYVOLCAP = 'python -q -X faulthandler easyvolcap/scripts/main.py'
 
 
-def configurable_entrypoint(SEPERATION='--', LAUNCHER='', EASYVOLCAP='evc',
+def configurable_entrypoint(SEPERATION='--', LAUNCHER='', EASYVOLCAP=EASYVOLCAP,
                             default_launcher_args=[],
                             extra_launcher_args=[],
                             default_easyvolcap_args=[],
@@ -32,7 +32,7 @@ def configurable_entrypoint(SEPERATION='--', LAUNCHER='', EASYVOLCAP='evc',
     if easyvolcap_args: args.append(' '.join(easyvolcap_args))
 
     # The actual invokation
-    run(' '.join(args))
+    subprocess.call(' '.join(args), shell=True)
 
 
 def dist_entrypoint():
@@ -45,9 +45,21 @@ def prof_entrypoint():
     configurable_entrypoint(extra_easyvolcap_args=['profiler_cfg.enabled=True'])
 
 
+def test_entrypoint():
+    configurable_entrypoint(EASYVOLCAP=EASYVOLCAP + ' ' + '-t test')
+
+
+def train_entrypoint():
+    configurable_entrypoint(EASYVOLCAP=EASYVOLCAP + ' ' + '-t train')
+
+
+def main_entrypoint():
+    configurable_entrypoint()
+
+
 def gui_entrypoint():
     # Directly run GUI without external requirements
     if '-c' not in sys.argv:
         sys.argv.insert(1, '-c')
         sys.argv.insert(2, 'configs/specs/gui.yaml')
-    configurable_entrypoint(EASYVOLCAP='evc -t gui')
+    configurable_entrypoint(EASYVOLCAP=EASYVOLCAP + ' ' + '-t gui')

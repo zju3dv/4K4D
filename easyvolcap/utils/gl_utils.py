@@ -484,7 +484,14 @@ class Mesh:
 class Quad(Mesh):
     # A shared texture for CUDA (pytorch) and OpenGL
     # Could be rendererd to screen using blitting or just drawing a quad
-    def __init__(self, H: int = 256, W: int = 256, use_quad_cuda: bool = True, compose: bool = False, compose_power: float = 1.0):  # the texture to blip
+    def __init__(self,
+                 H: int = 256, W: int = 256,
+                 use_quad_draw: bool = True,
+                 use_quad_cuda: bool = True,
+                 compose: bool = False,
+                 compose_power: float = 1.0,
+                 ):  # the texture to blip
+        self.use_quad_draw = use_quad_draw
         self.use_quad_cuda = use_quad_cuda
         self.vert_sizes = [3]  # only position
         self.vert_gl_types = [gl.GL_FLOAT]  # only position
@@ -501,6 +508,7 @@ class Quad(Mesh):
         self.H, self.W = H, W
         self.compose = compose
         self.compose_power = compose_power
+
         self.init_texture()
 
     @property
@@ -558,10 +566,21 @@ class Quad(Mesh):
                 flags = cudart.cudaGraphicsRegisterFlags.cudaGraphicsRegisterFlagsNone
             else:
                 flags = cudart.cudaGraphicsRegisterFlags.cudaGraphicsRegisterFlagsWriteDiscard
-            self.cu_tex = CHECK_CUDART_ERROR(cudart.cudaGraphicsGLRegisterImage(self.tex, gl.GL_TEXTURE_2D, flags))
+            try:
+                self.cu_tex = CHECK_CUDART_ERROR(cudart.cudaGraphicsGLRegisterImage(self.tex, gl.GL_TEXTURE_2D, flags))
+            except RuntimeError as e:
+                log(red('Failed to initialize Quad with CUDA-GL interop, will use slow upload: '), e)
+                self.use_quad_cuda = False
 
     def copy_to_texture(self, image: torch.Tensor, x: int = 0, y: int = 0, w: int = 0, h: int = 0):
-        assert self.use_quad_cuda, "Need to enable cuda-opengl interop to copy from device to device, check creation of this Quad"
+        if not self.use_quad_cuda:
+            self.upload_to_texture(image)
+            return
+
+        if not hasattr(self, 'cu_tex'):
+            self.init_texture()
+
+        # assert self.use_quad_cuda, "Need to enable cuda-opengl interop to copy from device to device, check creation of this Quad"
         w = w or self.W
         h = h or self.H
         if image.shape[-1] == 3:
@@ -614,11 +633,14 @@ class Quad(Mesh):
                                                            torch.cuda.current_stream().cuda_stream))
         CHECK_CUDART_ERROR(cudart.cudaGraphicsUnmapResources(1, self.cu_tex, torch.cuda.current_stream().cuda_stream))
 
-    def upload_to_texture(self, ptr: np.ndarray):
-        H, W = ptr.shape[:2]
-        H, W = min(self.H, H), min(self.W, W)
+    def upload_to_texture(self, ptr: np.ndarray, x: int = 0, y: int = 0, w: int = 0, h: int = 0):
+        w = w or self.W
+        h = h or self.H
+        if isinstance(ptr, torch.Tensor):
+            ptr = ptr.detach().cpu().numpy()  # slow sync and copy operation # MARK: SYNC
+
         gl.glBindTexture(gl.GL_TEXTURE_2D, self.tex)
-        gl.glTexSubImage2D(gl.GL_TEXTURE_2D, 0, 0, 0, W, H, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, ptr[:H, :W])  # to gpu, might slow down?
+        gl.glTexSubImage2D(gl.GL_TEXTURE_2D, 0, x, y, w, h, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, ptr[y:h, x:w])  # to gpu, might slow down?
 
     @property
     def verts_data(self):  # a heavy copy operation
@@ -634,6 +656,10 @@ class Quad(Mesh):
         Upload the texture instead of the camera
         This respects the OpenGL convension of lower left corners
         """
+        if not self.use_quad_draw:
+            self.blit(x, y, w, h)
+            return
+
         w = w or self.W
         h = h or self.H
         _, _, W, H = gl.glGetIntegerv(gl.GL_VIEWPORT)
@@ -1233,10 +1259,10 @@ class HardwareRendering(Splat):
                  ):
         self.dtype = getattr(torch, dtype) if isinstance(dtype, str) else dtype
         self.gl_dtype = gl.GL_HALF_FLOAT if self.dtype == torch.half else gl.GL_FLOAT
-        super().__init__(**kwargs,
-                         blit_last_ratio=0.90,
-                         vert_sizes=[3, 3, 1, 1],
-                         )  # verts, color, radius, alpha
+        kwargs = dotdict(kwargs)
+        kwargs.blit_last_ratio = kwargs.get('blit_last_ratio', 0.90)
+        kwargs.vert_sizes = kwargs.get('vert_sizes', [3, 3, 1, 1])
+        super().__init__(**kwargs)  # verts, color, radius, alpha
 
     @property
     def verts_data(self):  # a heavy copy operation
@@ -1253,7 +1279,13 @@ class HardwareRendering(Splat):
 
         # Register vertex buffer obejct
         flags = cudart.cudaGraphicsRegisterFlags.cudaGraphicsRegisterFlagsWriteDiscard
-        self.cu_vbo = CHECK_CUDART_ERROR(cudart.cudaGraphicsGLRegisterBuffer(self.vbo, flags))
+        try:
+            self.cu_vbo = CHECK_CUDART_ERROR(cudart.cudaGraphicsGLRegisterBuffer(self.vbo, flags))
+        except RuntimeError as e:
+            log(red(f'Your system does not support CUDA-GL interop, please use pytorch3d\'s implementation instead'))
+            log(red(f'This can be done by specifying {blue("model_cfg.sampler_cfg.use_cudagl=False model_cfg.sampler_cfg.use_diffgl=False")} at the end of your command'))
+            log(red(f'Note that this implementation is extremely slow, we recommend running on a native system that support the interop'))
+            raise RuntimeError(str(e) + ": This unrecoverable, please read the error message above")
 
     def init_textures(self):
         from cuda import cudart
@@ -1370,7 +1402,7 @@ class HardwareRendering(Splat):
         return rgb_map, acc_map, dpt_map
 
 
-class HardwarePeeling(Splat):
+class HardwarePeeling(HardwareRendering):
     def __init__(self,
                  dtype=torch.float,
                  **kwargs):
@@ -1382,12 +1414,6 @@ class HardwarePeeling(Splat):
                          )  # verts, radius, index
         # from pytorch3d.renderer import AlphaCompositor
         # self.compositor = AlphaCompositor()  # this the key to convergence, this is differentiable
-
-    @property
-    def verts_data(self):  # a heavy copy operation
-        verts = torch.cat([self.verts, self.radius], dim=-1).ravel().numpy()  # MARK: Maybe sync
-        verts = np.asarray(verts, dtype=torch_dtype_to_numpy_dtype(self.dtype), order='C')  # this should only be invoked once
-        return verts
 
     def use_gl_program(self, program):
         super().use_gl_program(program)
@@ -1410,17 +1436,6 @@ class HardwarePeeling(Splat):
         except Exception as e:
             print(str(e).encode('utf-8').decode('unicode_escape'))
             raise e
-
-    def init_gl_buffers(self, v: int = 0, f: int = 0):
-        from cuda import cudart
-        if hasattr(self, 'cu_vbo'):
-            CHECK_CUDART_ERROR(cudart.cudaGraphicsUnregisterResource(self.cu_vbo))
-
-        super().init_gl_buffers(v, f)
-
-        # Register vertex buffer obejct
-        flags = cudart.cudaGraphicsRegisterFlags.cudaGraphicsRegisterFlagsWriteDiscard
-        self.cu_vbo = CHECK_CUDART_ERROR(cudart.cudaGraphicsGLRegisterBuffer(self.vbo, flags))
 
     def init_textures(self):
         from cuda import cudart
