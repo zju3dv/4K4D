@@ -25,7 +25,7 @@ from easyvolcap.utils.data_utils import to_cuda, to_tensor, add_batch
 from easyvolcap.utils.enerf_utils import sample_geometry_feature_image
 from easyvolcap.utils.ibr_utils import compute_src_feats, compute_src_inps
 from easyvolcap.utils.cuda_utils import register_memory, unregister_memory
-from easyvolcap.utils.image_utils import interpolate_image, fill_nchw_image
+from easyvolcap.utils.image_utils import interpolate_image, pad_image
 from easyvolcap.utils.net_utils import unfreeze_module, freeze_module, typed, make_params, make_buffer
 
 from easyvolcap.models.networks.embedders.kplanes_embedder import KPlanesEmbedder
@@ -134,7 +134,7 @@ def average_single_frame(i: int,
     img_pad = sampler.ibr_embedder.feat_reg.size_pad
     Hc, Wc = src_inps.shape[-2:]  # padded and cropped image size
     Hp, Wp = int(np.ceil(Hc / img_pad)) * img_pad, int(np.ceil(Wc / img_pad)) * img_pad  # Input and output should be same in size
-    src_inps = fill_nchw_image(src_inps, size=(Hp, Wp))  # B, S, 3, H, W
+    src_inps = pad_image(src_inps, size=(Hp, Wp))  # B, S, 3, H, W
     timer.record('load source images')
 
     # Pass through the IBR networks for blending weights
@@ -231,11 +231,10 @@ class SuperChargedR4DV(PointPlanesSampler):
         self.cache_size = cache_size
         self.retain_resd = retain_resd
         self.should_release_memory = should_release_memory
-        self.sh_deg = self.ibr_regressor.sh_deg
-        self.sh_dim = self.ibr_regressor.sh_dim
-        self.out_dim = self.ibr_regressor.out_dim
-        self.resd_limit = self.ibr_regressor.resd_limit
-
+        self.ibr_sh_deg = self.ibr_regressor.sh_deg
+        self.ibr_sh_dim = self.ibr_regressor.sh_dim
+        self.ibr_out_dim = self.ibr_regressor.out_dim
+        self.ibr_resd_limit = self.ibr_regressor.resd_limit
         if not retain_resd:
             del self.pcd_embedder
             del self.resd_regressor
@@ -394,7 +393,7 @@ class SuperChargedR4DV(PointPlanesSampler):
             self.shs = [None for _ in self.pcds]  # BIG
             for i, feat in enumerate(tqdm(feats, desc='Caching spherical harmonics')):
                 sh: torch.Tensor = self.ibr_regressor.sh_mlp(feat)
-                sh = sh.view(*sh.shape[:-1], self.out_dim, self.sh_dim // self.out_dim)[..., :(self.n_shs + 1) ** 2]  # reshape to B, P, 3, SH
+                sh = sh.view(*sh.shape[:-1], self.ibr_out_dim, self.ibr_sh_dim // self.ibr_out_dim)[..., :(self.n_shs + 1) ** 2]  # reshape to B, P, 3, SH
                 sh = sh.to(self.dtype).view(self.memory_dtype).detach().cpu(memory_format=torch.contiguous_format)  # MARK: SYNC
                 torch.cuda.empty_cache()  # only out-of-frame cache cleaning works
                 sh = register_memory(sh)  # only registering using cudart
@@ -497,7 +496,7 @@ class SuperChargedR4DV(PointPlanesSampler):
         if self.skip_base:
             sh = sh.abs()
             rgbw[..., :3] = 0
-        rgb = self.get_rgb(batch.R.half(), batch.T.half(), xyz, sh, rgbw, cent, self.n_srcs, self.n_shs, self.resd_limit)
+        rgb = self.get_rgb(batch.R.half(), batch.T.half(), xyz, sh, rgbw, cent, self.n_srcs, self.n_shs, self.ibr_resd_limit)
 
         if return_frags:
             return None, xyz, rgb, rad, occ

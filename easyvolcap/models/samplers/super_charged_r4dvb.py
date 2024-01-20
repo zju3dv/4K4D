@@ -46,7 +46,7 @@ def forward_bg(self: SuperChargedR4DV,
     rgbw = self.fetch(index, [self.rgbws])  # will initiate copy for both rgbw and sh
     rgbw = torch.stack([v[0] for v in rgbw])
     cent = torch.stack([self.cents[l] for l in index])  # B, S, 3
-    rgb = self.get_rgb(batch.R.half(), batch.T.half(), xyz, sh, rgbw, cent, self.n_srcs, self.n_shs, self.resd_limit)
+    rgb = self.get_rgb(batch.R.half(), batch.T.half(), xyz, sh, rgbw, cent, self.n_srcs, self.n_shs, self.ibr_resd_limit)
 
     if return_frags:
         return None, xyz, rgb, rad, occ
