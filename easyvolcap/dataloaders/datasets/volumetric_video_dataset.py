@@ -75,7 +75,7 @@ class VolumetricVideoDataset(Dataset):
                  intri_file: str = 'intri.yml',
                  extri_file: str = 'extri.yml',
                  images_dir: str = 'images',
-                 camera_dir: str = 'cameras',  # only when the camera is moving through time
+                 cameras_dir: str = 'cameras',  # only when the camera is moving through time
                  ims_pattern: str = '{frame:06d}.jpg',
                  imsize_overwrite: List[int] = [-1, -1],  # overwrite the image size
 
@@ -188,7 +188,7 @@ class VolumetricVideoDataset(Dataset):
         self.use_avg_init_viewer = use_avg_init_viewer
 
         # Data and priors directories
-        self.camera_dir = camera_dir
+        self.cameras_dir = cameras_dir
         self.images_dir = images_dir
         self.masks_dir = masks_dir
         self.depths_dir = depths_dir
@@ -660,17 +660,17 @@ class VolumetricVideoDataset(Dataset):
             # TODO: Handle avg processing
 
         # Monocular dataset loading, each camera has a separate folder
-        elif exists(join(self.data_root, self.camera_dir)):
-            self.camera_names = np.asarray(sorted(os.listdir(join(self.data_root, self.camera_dir))))  # NOTE: sorting here is very important!
+        elif exists(join(self.data_root, self.cameras_dir)):
+            self.camera_names = np.asarray(sorted(os.listdir(join(self.data_root, self.cameras_dir))))  # NOTE: sorting here is very important!
             self.cameras = dotdict({
                 k: [v[1] for v in sorted(
-                    read_camera(join(self.data_root, self.camera_dir, k, self.intri_file),
-                                join(self.data_root, self.camera_dir, k, self.extri_file)).items()
+                    read_camera(join(self.data_root, self.cameras_dir, k, self.intri_file),
+                                join(self.data_root, self.cameras_dir, k, self.extri_file)).items()
                 )] for k in self.camera_names
             })
             # TODO: Handle avg export and loading for such monocular dataset
         else:
-            raise NotImplementedError(f'Could not find {{{self.intri_file},{self.extri_file}}} or {self.camera_dir} directory in {self.data_root}, check your dataset configuration')
+            raise NotImplementedError(f'Could not find {{{self.intri_file},{self.extri_file}}} or {self.cameras_dir} directory in {self.data_root}, check your dataset configuration')
 
         # Expectation:
         # self.camera_names: a list containing all camera names

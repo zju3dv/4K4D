@@ -15,7 +15,7 @@ from easyvolcap.utils.math_utils import affine_inverse, affine_padding
 from easyvolcap.utils.bound_utils import monotonic_near_far
 
 
-def load_align_cameras(data_root: str, intri_file: str, extri_file: str, camera_dir: str = 'cameras',
+def load_align_cameras(data_root: str, intri_file: str, extri_file: str, cameras_dir: str = 'cameras',
                        n_frames_total: int = 1, near: float = 0.2, far: float = 100.0,
                        avg_using_all: bool = False, avg_max_count: int = 100):
 
@@ -25,12 +25,12 @@ def load_align_cameras(data_root: str, intri_file: str, extri_file: str, camera_
         camera_names = np.asarray(sorted(list(cameras.keys())))  # NOTE: sorting camera names
         cameras = dotdict({k: [cameras[k] for i in range(n_frames_total)] for k in camera_names})
     # Monocular dataset loading, each camera has a separate folder
-    elif exists(join(data_root, camera_dir)):
-        camera_names = np.asarray(sorted(os.listdir(join(data_root, camera_dir))))  # NOTE: sorting here is very important!
+    elif exists(join(data_root, cameras_dir)):
+        camera_names = np.asarray(sorted(os.listdir(join(data_root, cameras_dir))))  # NOTE: sorting here is very important!
         cameras = dotdict({
             k: [v[1] for v in sorted(
-                read_camera(join(data_root, camera_dir, k, intri_file),
-                            join(data_root, camera_dir, k, extri_file)).items()
+                read_camera(join(data_root, cameras_dir, k, intri_file),
+                            join(data_root, cameras_dir, k, extri_file)).items()
             )] for k in camera_names
         })
     # Whatever else, for now, raise error
@@ -84,7 +84,7 @@ def main():
     parser.add_argument('--data_root', type=str, default='data/webcam/simple/light/calib_gather_230928/colmap/align/static/images')
     parser.add_argument('--intri_file', type=str, default='intri.yml')
     parser.add_argument('--extri_file', type=str, default='extri.yml')
-    parser.add_argument('--camera_dir', type=str, default='cameras')
+    parser.add_argument('--cameras_dir', type=str, default='cameras')
 
     parser.add_argument('--n_frames_total', type=int, default=1)
     parser.add_argument('--near', type=float, default=0.25)
@@ -98,7 +98,7 @@ def main():
 
     # Load and align cameras
     Ks, Hs, Ws, Rs, Ts, ts, ns, fs, Ds = load_align_cameras(
-        args.data_root, args.intri_file, args.extri_file, args.camera_dir,
+        args.data_root, args.intri_file, args.extri_file, args.cameras_dir,
         args.n_frames_total, args.near, args.far, args.avg_using_all, args.avg_max_count
     )
 
