@@ -5,15 +5,11 @@ import argparse
 import operator
 import numpy as np
 import imageio.v2 as imageio
-from os.path import join, exists
 
-import sys
-sys.path.append('.')
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.easy_utils import write_camera
 from easyvolcap.utils.parallel_utils import parallel_execution
-from easyvolcap.utils.data_utils import read_cam_file, read_pfm
 
 
 def main():

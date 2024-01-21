@@ -1,6 +1,6 @@
 dataloader_cfg: # we see the term "dataloader" as one word?
     dataset_cfg: &dataset_cfg
-        ratio: 0.5 # align with D-NeRF
+        # ratio: 0.5 # align with D-NeRF
         view_sample: [0, 1, 1] # monocular dataset
         frame_sample: [0, null, 1]
         use_default_time: True # use dataset provided timestamp

@@ -1,0 +1,20 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/kplanes.yaml # network model configuration
+    - configs/datasets/dnerf_synthetic/lego.yaml # dataset usage configuration
+    - configs/specs/mask.yaml
+    - configs/specs/white.yaml # white background
+
+dataloader_cfg:
+    dataset_cfg: &dataset_cfg
+        use_vhulls: False
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+
+runner_cfg:
+    epochs: 60
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}
