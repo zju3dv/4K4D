@@ -144,6 +144,10 @@ class VolumetricVideoVisualizer:  # this should act as a base class for other ty
         else:
             raise NotImplementedError(f'Unimplemented visualization type: {type}')
 
+        if img_gt is not None and 'bg_color' in output and 'msk' in batch:
+            # Fill gt with input BG colors
+            img_gt = img_gt + output.bg_color * (1 - batch.msk)
+
         if self.store_image_error and img_gt is not None:
             img_error = (img - img_gt).pow(2).sum(dim=-1).clip(0, 1)[..., None].expand(img.shape)
 

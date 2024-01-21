@@ -453,25 +453,32 @@ class Mesh:
                     imgui.set_item_default_focus()
             imgui.end_combo()
         imgui.pop_item_width()
-        mesh.point_radius = imgui.slider_float(f'Point radius##{i}', mesh.point_radius, 0.0005, 3.0)[1]  # 0.1mm
-        if hasattr(mesh, 'pts_per_pix'): mesh.pts_per_pix = imgui.slider_int('Point per pixel', mesh.pts_per_pix, 0, 60)[1]  # 0.1mm
 
-        push_button_color(0x55cc33ff if not mesh.shade_flat else 0x8855aaff)
-        if imgui.button(f'Smooth##{i}' if not mesh.shade_flat else f' Flat ##{i}'):
-            mesh.shade_flat = not mesh.shade_flat
-        pop_button_color()
+        if hasattr(mesh, 'point_radius'):
+            mesh.point_radius = imgui.slider_float(f'Point radius##{i}', mesh.point_radius, 0.0005, 3.0)[1]  # 0.1mm
 
-        imgui.same_line()
-        push_button_color(0x55cc33ff if not mesh.render_normal else 0x8855aaff)
-        if imgui.button(f'Color ##{i}' if not mesh.render_normal else f'Normal##{i}'):
-            mesh.render_normal = not mesh.render_normal
-        pop_button_color()
+        if hasattr(mesh, 'pts_per_pix'):
+            mesh.pts_per_pix = imgui.slider_int('Point per pixel', mesh.pts_per_pix, 0, 60)[1]  # 0.1mm
 
-        imgui.same_line()
-        push_button_color(0x55cc33ff if not mesh.visible else 0x8855aaff)
-        if imgui.button(f'Show##{i}' if not mesh.visible else f'Hide##{i}'):
-            mesh.visible = not mesh.visible
-        pop_button_color()
+        if hasattr(mesh, 'shade_flat'):
+            push_button_color(0x55cc33ff if not mesh.shade_flat else 0x8855aaff)
+            if imgui.button(f'Smooth##{i}' if not mesh.shade_flat else f' Flat ##{i}'):
+                mesh.shade_flat = not mesh.shade_flat
+            pop_button_color()
+
+        if hasattr(mesh, 'render_normal'):
+            imgui.same_line()
+            push_button_color(0x55cc33ff if not mesh.render_normal else 0x8855aaff)
+            if imgui.button(f'Color ##{i}' if not mesh.render_normal else f'Normal##{i}'):
+                mesh.render_normal = not mesh.render_normal
+            pop_button_color()
+
+        if hasattr(mesh, 'visible'):
+            imgui.same_line()
+            push_button_color(0x55cc33ff if not mesh.visible else 0x8855aaff)
+            if imgui.button(f'Show##{i}' if not mesh.visible else f'Hide##{i}'):
+                mesh.visible = not mesh.visible
+            pop_button_color()
 
         # Render the delete button
         imgui.same_line()
@@ -883,7 +890,7 @@ class Gaussian(Mesh):
                  gaussian_cfg: dotdict = dotdict(),
                  quad_cfg: dotdict = dotdict(),
 
-                 render_depth: bool = False,  # show depth or show color
+                 view_depth: bool = False,  # show depth or show color
                  dpt_cm: str = 'linear',
 
                  H: int = 1024,
@@ -915,7 +922,10 @@ class Gaussian(Mesh):
 
         elif filename.endswith('.ply'):
             # Load raw GaussianModel
-            pass
+            # pts, rgb, norm, scalars = load_pts(filename)
+            self.gaussian_model: GaussianModel = call_from_cfg(GaussianModel, gaussian_cfg)  # init empty gaussian model
+            self.gaussian_model.load_ply(filename)  # load the original gaussian model
+            self.gaussian_model.cuda()
         else:
             raise NotImplementedError
 
@@ -923,8 +933,11 @@ class Gaussian(Mesh):
         self.quad: Quad = call_from_cfg(Quad, quad_cfg, H=H, W=W)
 
         # Other configurations
-        self.render_depth = render_depth
+        self.view_depth = view_depth
         self.dpt_cm = dpt_cm
+        del self.shade_flat
+        del self.point_radius
+        del self.render_normal
 
     # Disabling initialization
     def load_from_file(self, *args, **kwargs):
@@ -949,7 +962,7 @@ class Gaussian(Mesh):
         batch = add_batch(to_cuda(camera.to_batch()))
         rgb, acc, dpt = self.gaussian_model.render(batch)
 
-        if self.render_depth:
+        if self.view_depth:
             rgba = torch.cat([depth_curve_fn(dpt, cm=self.dpt_cm), acc], dim=-1)  # H, W, 4
         else:
             rgba = torch.cat([rgb, acc], dim=-1)  # H, W, 4
@@ -957,7 +970,7 @@ class Gaussian(Mesh):
         # Copy rendered tensor to screen
         rgba = (rgba.clip(0, 1) * 255).type(torch.uint8).flip(0)  # transform
         self.quad.copy_to_texture(rgba)
-        self.quad.render()
+        self.quad.draw()
 
     def render_imgui(mesh, viewer: 'VolumetricVideoViewer', batch: dotdict):
         super().render_imgui(viewer, batch)
@@ -966,6 +979,7 @@ class Gaussian(Mesh):
         from easyvolcap.utils.imgui_utils import push_button_color, pop_button_color
 
         i = batch.i
+        imgui.same_line()
         push_button_color(0x55cc33ff if not mesh.view_depth else 0x8855aaff)
         if imgui.button(f'Color##{i}' if not mesh.view_depth else f' Depth ##{i}'):
             mesh.view_depth = not mesh.view_depth

@@ -60,8 +60,8 @@ class VolumeRenderer(VolumetricVideoModule):  # should not contain optimizables
         output.rgb_map = rgb_map  # main output
         output.acc_map = acc_map  # with last dimension intact
 
-        if self.training:
-            output.bg_color = bg_color
+        if isinstance(bg_color, torch.Tensor): output.bg_color = bg_color
+        else: output.bg_color = torch.full_like(rgb_map, bg_color)  # B, P, 3
 
         # TODO: Differentiate between visualization and training
         # Lots of memory could be saved if only the needed parts are rendered out

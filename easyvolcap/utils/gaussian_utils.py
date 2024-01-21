@@ -1,3 +1,4 @@
+import os
 import math
 import numpy as np
 import torch
@@ -6,9 +7,9 @@ from torch.nn import functional as F
 
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.sh_utils import eval_sh
-from easyvolcap.utils.data_utils import to_x, add_batch
 from easyvolcap.utils.blend_utils import batch_rodrigues
 from easyvolcap.utils.math_utils import torch_inverse_2x2
+from easyvolcap.utils.data_utils import to_x, add_batch, load_pts
 from easyvolcap.utils.net_utils import make_buffer, make_params, typed
 
 
@@ -284,7 +285,7 @@ class GaussianModel(nn.Module):
         self.rotation_activation = getattr(torch, rotation_activation) if isinstance(rotation_activation, str) else rotation_activation
 
         self.scaling_inverse_activation = getattr(torch, scaling_inverse_activation) if isinstance(scaling_inverse_activation, str) else scaling_inverse_activation
-        self.inverse_opacity_activation = getattr(torch, inverse_opacity_activation) if isinstance(inverse_opacity_activation, str) else inverse_opacity_activation
+        self.opacity_inverse_activation = getattr(torch, inverse_opacity_activation) if isinstance(inverse_opacity_activation, str) else inverse_opacity_activation
         self.covariance_activation = build_covariance_from_scaling_rotation
 
     @property
@@ -342,7 +343,7 @@ class GaussianModel(nn.Module):
 
         if not isinstance(opacities, torch.Tensor) or len(opacities) != len(xyz):
             opacities = opacities * torch.ones((xyz.shape[0], 1), dtype=torch.float)
-        opacities = self.inverse_opacity_activation(opacities)
+        opacities = self.opacity_inverse_activation(opacities)
 
         self._xyz = make_params(xyz)
         self._features_dc = make_params(features[:, :, :1].transpose(1, 2).contiguous())
@@ -356,7 +357,8 @@ class GaussianModel(nn.Module):
         # Supports loading points and features with different shapes
         if prefix is not '' and not prefix.endswith('.'): prefix = prefix + '.'  # special care for when we're loading the model directly
         for name, params in self.named_parameters():
-            params.data = params.data.new_empty(state_dict[f'{prefix}{name}'].shape)
+            if f'{prefix}{name}' in state_dict:
+                params.data = params.data.new_empty(state_dict[f'{prefix}{name}'].shape)
 
     def reset_opacity(self, optimizer_state):
         for _, val in optimizer_state.items():
@@ -591,17 +593,31 @@ class GaussianModel(nn.Module):
         return l
 
     def save_ply(self, path):
-        import os
         from plyfile import PlyData, PlyElement
-        dirname = os.path.dirname(path)
-        os.makedirs(dirname, exist_ok=True)
+        os.makedirs(dirname(path), exist_ok=True)
+
+        # The original gaussian model uses a different activation
+        # Normalization for rotation, so no conversion
+        # Exp on scaling, need to -> world space -> log
+
+        # Doing inverse_sigmoid here will lead to NaNs
+        opacity = self._opacity
+        if self.opacity_activation != F.sigmoid and \
+                self.opacity_activation != torch.sigmoid and \
+                not isinstance(self.opacity_activation, nn.Sigmoid):
+            opacity = self.opacity_activation(opacity)
+            _opacity = inverse_sigmoid(opacity)
+
+        scale = self._scale
+        scale = self.scaling_activation(scale)
+        _scale = torch.log(scale)
 
         xyz = self._xyz.detach().cpu().numpy()
         normals = np.zeros_like(xyz)
         f_dc = self._features_dc.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
         f_rest = self._features_rest.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
-        opacities = self._opacity.detach().cpu().numpy()
-        scale = self._scaling.detach().cpu().numpy()
+        opacities = _opacity.detach().cpu().numpy()
+        scale = _scale.detach().cpu().numpy()
         rotation = self._rotation.detach().cpu().numpy()
 
         dtype_full = [(attribute, 'f4') for attribute in self.construct_list_of_attributes()]
@@ -611,6 +627,50 @@ class GaussianModel(nn.Module):
         elements[:] = list(map(tuple, attributes))
         el = PlyElement.describe(elements, 'vertex')
         PlyData([el]).write(path)
+
+    def load_ply(self, path: str):
+        xyz, _, _, scalars = load_pts(path)
+
+        # The original gaussian model uses a different activation
+        xyz = torch.from_numpy(xyz)
+        rotation = torch.from_numpy(np.concatenate([scalars['rot_{}'.format(i)] for i in range(4)], axis=-1))
+        scaling = torch.from_numpy(np.concatenate([scalars['scale_{}'.format(i)] for i in range(3)], axis=-1))
+        scaling = torch.exp(scaling)
+        scaling = self.scaling_inverse_activation(scaling)
+        opacity = torch.from_numpy(scalars['opacity'])
+
+        # Doing inverse_sigmoid here will lead to NaNs
+        if self.opacity_activation != F.sigmoid and \
+                self.opacity_activation != torch.sigmoid and \
+                not isinstance(self.opacity_activation, nn.Sigmoid):
+            opacity = inverse_sigmoid(opacity)
+            opacity = self.opacity_inverse_activation(opacity)
+
+        # Load the SH colors
+        features_dc = torch.empty((xyz.shape[0], 3, 1))
+        features_dc[:, 0] = torch.from_numpy(np.asarray(scalars["f_dc_0"]))
+        features_dc[:, 1] = torch.from_numpy(np.asarray(scalars["f_dc_1"]))
+        features_dc[:, 2] = torch.from_numpy(np.asarray(scalars["f_dc_2"]))
+
+        extra_f_names = [k for k in scalars.keys() if k.startswith("f_rest_")]
+        extra_f_names = sorted(extra_f_names, key=lambda x: int(x.split('_')[-1]))
+        assert len(extra_f_names) == 3 * (self.max_sh_degree + 1) ** 2 - 3
+        features_rest = torch.zeros((xyz.shape[0], len(extra_f_names), 1))
+        for idx, attr_name in enumerate(extra_f_names):
+            features_rest[:, idx] = torch.from_numpy(np.asarray(scalars[attr_name]))
+        # Reshape (P,F*SH_coeffs) to (P, F, SH_coeffs except DC)
+        features_rest = features_rest.view(features_rest.shape[0], 3, (self.max_sh_degree + 1) ** 2 - 1)
+
+        state_dict = dotdict()
+        state_dict._xyz = xyz
+        state_dict._features_dc = features_dc.mT
+        state_dict._features_rest = features_rest.mT
+        state_dict._opacity = opacity
+        state_dict._scaling = scaling
+        state_dict._rotation = rotation
+
+        self.load_state_dict(state_dict, strict=False)
+        self.active_sh_degree.data.fill_(self.max_sh_degree)
 
     def render(self, batch: dotdict):
         # TODO: Make rendering function easier to read, now there're at least 3 types of gaussian rendering function
