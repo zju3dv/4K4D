@@ -1,0 +1,5 @@
+configs: configs/specs/orbit.yaml
+val_dataloader_cfg:
+    dataset_cfg:
+        interp_type: NONE
+        render_size: [-1, -1]

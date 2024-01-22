@@ -197,7 +197,7 @@ def write_camera(cameras: dict, path: str, intri_name: str = '', extri_name: str
 def to_easymocap(Ks: torch.Tensor, Hs: torch.Tensor, Ws: torch.Tensor,
                  Rs: torch.Tensor, Ts: torch.Tensor, ts: torch.Tensor,
                  ns: torch.Tensor, fs: torch.Tensor, Ds: torch.Tensor = None,
-                 cam_digit: int = 5):
+                 cam_digit: int = 6):
     # Number of render views
     n_render_views = Ks.shape[0]
 

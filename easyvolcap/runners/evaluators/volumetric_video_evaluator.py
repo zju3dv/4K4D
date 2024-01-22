@@ -6,6 +6,7 @@ from easyvolcap.engine import EVALUATORS
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.data_utils import Visualization
+from easyvolcap.utils.metric_utils import psnr, ssim, lpips
 from easyvolcap.runners.visualizers.volumetric_video_visualizer import VolumetricVideoVisualizer
 
 
@@ -17,28 +18,6 @@ class VolumetricVideoEvaluator(VolumetricVideoVisualizer):
         super().__init__(verbose=False)
         self.skip_time_in_summary = skip_time_in_summary
         self.metrics = []
-
-        from easyvolcap.utils.loss_utils import mse as compute_mse
-
-        def psnr(x: torch.Tensor, y: torch.Tensor):
-            mse = compute_mse(x, y).mean()
-            psnr = (1 / mse.clip(1e-10)).log() * 10 / np.log(10)
-            return psnr.item()  # tensor to scalar
-
-        from skimage.metrics import structural_similarity as compare_ssim
-
-        def ssim(xs: torch.Tensor, ys: torch.Tensor):
-            return np.mean([compare_ssim(x.detach().cpu().numpy(), y.detach().cpu().numpy(), channel_axis=-1, data_range=2.0) for x, y in zip(xs, ys)])
-
-        def lpips(x: torch.Tensor, y: torch.Tensor):
-            # B, H, W, 3
-            # B, H, W, 3
-            if not hasattr(self, 'compute_lpips'):
-                import lpips as lpips_module
-                log('Initializing LPIPS network')
-                self.compute_lpips = lpips_module.LPIPS(net='vgg', verbose=False).cuda()
-
-            return self.compute_lpips(x.permute(0, 3, 1, 2) * 2 - 1, y.permute(0, 3, 1, 2) * 2 - 1).mean().item()
 
         self.compute_metrics = [psnr, ssim, lpips]
 

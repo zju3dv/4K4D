@@ -56,6 +56,7 @@ class GaussianTSampler(PointPlanesSampler):
                  percent_dense: float = 0.01,
                  size_threshold: float = None,  # UNUSED:
                  min_opacity: float = 0.005,
+                 preload_gs: str = '',
 
                  # DEBUG:
                  debug: bool = False,
@@ -112,6 +113,9 @@ class GaussianTSampler(PointPlanesSampler):
 
         # Test time controls
         self.post_handle = self.register_load_state_dict_post_hook(self._load_state_dict_post_hook)
+
+        if preload_gs:
+            self.load_from_file(preload_gs)
 
     def render_gaussians(self, xyz: torch.Tensor, sh: torch.Tensor, scale3: torch.Tensor, rot4: torch.Tensor, occ1: torch.Tensor, batch: dotdict):
         # Lazy imports
