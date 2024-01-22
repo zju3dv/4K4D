@@ -2,7 +2,11 @@
 
 ## Dataset Structure
 
-Basic dataset structure:
+***EasyVolcap*** has built-in support for both multi-view datasets and monocular datasets. Once you organize your dataset in one of the data formats listed below, you can directly use ***EasyVolcap*** for model training on your own dataset. You can also use the provided scripts to convert the exsiting multi-view or monocular datasets to the required format, you can refer to the [nerf_to_easyvolcap.py](../../scripts/nerf/nerf_to_easyvolcap.py) for an example of converting multi-view dataset, and the [colmap_to_easyvolcap.py](../../scripts/preprocess/dnerf_synthetic_to_easyvolcap.py) for an example of converting monocular dataset, more preprocessing scripts can be found in the [scripts/preprocess](../../scripts/preprocess) directory.
+
+### Multi-view Dataset
+
+Basic dataset structure for multi-view dataset:
 
 ```shell
 data/dataset/sequence # data_root & datadir
@@ -17,6 +21,41 @@ data/dataset/sequence # data_root & datadir
     ├── 02
     ...
 ```
+
+### Monocular Dataset
+
+Basic dataset structure for monocular dataset:
+
+```shell
+data/dataset/sequence # data_root & datadir
+├── cameras  # required: camera parameter for the whole sequence
+│   ├── 00 # only one camera
+│   │   ├── intri.yml # required: intrinsics
+│   │   └── extri.yml # required: extrinsics
+└── images # required: source images captured by the monocular camera
+    ├── 00 # only one camera
+    │   ├── 000000.jpg # image
+    │   ├── 000001.jpg
+    │   ...
+```
+
+Compared to multi-view datasets, the difference in data organization format for monocular datasets is that it includes a separate `cameras` folder, and both the `cameras` and `images` folders have only one subdirectory, indicating the presence of a single camera.
+
+## Dataset Configuration
+
+Before you can use ***EasyVolcap*** to train on your own dataset and get a reasonable result, you need to prepare a dataset configuration file for your dataset. The dataset configuration file is a YAML file that contains the basic information of your dataset.
+
+Among all the configuration items, the most important ones that you need to pay attention to are the `near`, `far`, `bounds`, take the [enerf_outdoor.yaml](../../configs/datasets/enerf_outdoor/enerf_outdoor.yaml) as an example:
+
+```yaml
+dataloader_cfg:
+    dataset_cfg:
+        near: 3.5 # global near for the specific scene
+        far: 9.0 # global far for the specific scene
+        bounds: [[-3.0, -3.0, -2.0], [3.0, 3.0, 2.0]] # global bounds for the specific scene
+```
+
+Most algorithms require a reasonable sampling range to achieve good results. Therefore, you should provide approximate `near` and `far` values based on the dataset you captured. These values will serve as a unified sampling range for each viewpoint in the current scene. Additionally, set the `bounds` parameter to a bounding box that roughly encompasses the entire scene, using the calibrated scene center as the origin. ***EasyVolcap*** will utilize this `bounds` parameter to calculate the intersection points between rays and the scene, enabling further refinement of the near and far sampling ranges for each ray.
 
 Dataset variables:
 
