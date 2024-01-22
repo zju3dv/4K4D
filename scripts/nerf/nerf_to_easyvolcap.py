@@ -73,12 +73,12 @@ def main():
     if args.transforms_file.endswith('_train.json') and \
         exists(join(args.nerf_root, args.transforms_file.replace("_train.json", "_test.json"))) and \
             args.convert_test:
-        run(f'python scripts/nerf/nerf_to_easyvolcap.py --nerf_root {args.nerf_root} --volcap_root {args.volcap_root} --transforms_file {args.transforms_file.replace("_train.json", "_test.json")} --images_dir {args.images_dir.replace("_train", "_test")} --intri_file {args.intri_file.replace("_train", "_test")} --extri_file {args.extri_file.replace("_train", "_test")}' + ' --organize_images' if args.organize_images else '')
+        run(f'python scripts/nerf/nerf_to_easyvolcap.py --nerf_root {args.nerf_root} --volcap_root {args.volcap_root} --transforms_file {args.transforms_file.replace("_train.json", "_test.json")} --images_dir {args.images_dir.replace("_train", "_test")} --intri_file {args.intri_file.replace("_train", "_test")} --extri_file {args.extri_file.replace("_train", "_test")}' + (' --no_organize_images' if not args.organize_images else ''))
 
     if args.transforms_file.endswith('_train.json') \
         and exists(join(args.nerf_root, args.transforms_file.replace("_train.json", "_val.json"))) \
             and args.convert_val:
-        run(f'python scripts/nerf/nerf_to_easyvolcap.py --nerf_root {args.nerf_root} --volcap_root {args.volcap_root} --transforms_file {args.transforms_file.replace("_train.json", "_val.json")} --images_dir {args.images_dir.replace("_train", "_val")} --intri_file {args.intri_file.replace("_train", "_val")} --extri_file {args.extri_file.replace("_train", "_val")}' + ' --organize_images' if args.organize_images else '')
+        run(f'python scripts/nerf/nerf_to_easyvolcap.py --nerf_root {args.nerf_root} --volcap_root {args.volcap_root} --transforms_file {args.transforms_file.replace("_train.json", "_val.json")} --images_dir {args.images_dir.replace("_train", "_val")} --intri_file {args.intri_file.replace("_train", "_val")} --extri_file {args.extri_file.replace("_train", "_val")}' + (' --no_organize_images' if not args.organize_images else ''))
 
 
 if __name__ == '__main__':
