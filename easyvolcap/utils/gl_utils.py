@@ -1299,7 +1299,8 @@ class HardwareRendering(Splat):
             log(red(f'Your system does not support CUDA-GL interop, please use pytorch3d\'s implementation instead'))
             log(red(f'This can be done by specifying {blue("model_cfg.sampler_cfg.use_cudagl=False model_cfg.sampler_cfg.use_diffgl=False")} at the end of your command'))
             log(red(f'Note that this implementation is extremely slow, we recommend running on a native system that support the interop'))
-            raise RuntimeError(str(e) + ": This unrecoverable, please read the error message above")
+            # raise RuntimeError(str(e) + ": This unrecoverable, please read the error message above")
+            raise e
 
     def init_textures(self):
         from cuda import cudart

@@ -36,6 +36,12 @@ from easyvolcap.models.networks.regressors.spherical_harmonics import SphericalH
 from easyvolcap.models.networks.regressors.displacement_regressor import DisplacementRegressor
 from easyvolcap.models.networks.embedders.positional_encoding_embedder import PositionalEncodingEmbedder
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from easyvolcap.models.networks.volumetric_video_network import VolumetricVideoNetwork
+    from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
+    from easyvolcap.models.networks.multilevel_network import MultilevelNetwork
+
 from pytorch3d.io import load_ply
 from pytorch3d.ops import knn_points, ball_query, sample_farthest_points
 from pytorch3d.structures import Pointclouds
@@ -282,6 +288,14 @@ class PointPlanesSampler(VolumetricVideoModule):
         if f'{prefix}pulsar.device_tracker' in state_dict:
             del state_dict[f'{prefix}pulsar.device_tracker']
 
+    def render_imgui(self, viewer: 'VolumetricVideoViewer', batch: dotdict):
+        if not self.use_cudagl and not self.use_diffgl:
+            from imgui_bundle import ImVec2
+            from easyvolcap.utils.viewer_utils import add_debug_text_2d
+            slow_pytorch3d_render_msg = 'Using slow PyTorch3D rendering backend. Please see the errors in the terminal.'
+            color = 0xff5533ff
+            viewer.add_debug_text_2d(slow_pytorch3d_render_msg, color)
+
     @torch.no_grad()
     def init_points(self, batch: dotdict = None):
         if self.skip_loading_points:
@@ -414,9 +428,15 @@ class PointPlanesSampler(VolumetricVideoModule):
             self.pulsar = Pulsar(self.max_W, self.max_H, max_num_balls=self.n_points, n_channels=5, n_track=self.pts_per_pix).to('cuda', non_blocking=True)
 
     def render_points(self, *args, **kwargs):
-        if self.use_cudagl: return self.render_cudagl(*args, **kwargs)
-        elif self.use_diffgl: return self.render_diffgl(*args, **kwargs)
-        elif self.use_pulsar: return self.render_pulsar(*args, **kwargs)
+        try:
+            if self.use_cudagl: return self.render_cudagl(*args, **kwargs)
+            elif self.use_diffgl: return self.render_diffgl(*args, **kwargs)
+        except RuntimeError as e:
+            log(red(f'Setting {blue("use_cudagl")} and {blue("use_diffgl")} to False'))
+            self.use_cudagl = False
+            self.use_diffgl = False
+
+        if self.use_pulsar: return self.render_pulsar(*args, **kwargs)
         else: return self.render_pytorch(*args, **kwargs)
 
     def render_pytorch(self,
