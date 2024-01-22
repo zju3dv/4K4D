@@ -317,7 +317,7 @@ class VolumetricVideoViewer:
         batch.gtos_time = gtos_time  # previous frame
         return batch, output
 
-    def add_debug_text_2d(viewer, text: str, color: int =0xff8080ff):
+    def add_debug_text_2d(viewer, text: str, color: int = 0xff8080ff):
         # slow_pytorch3d_render_msg = 'Using slow PyTorch3D rendering backend. Please see the errors in the terminal.'
         if 'debug_text_2d_loc' not in viewer.dynamic:
             viewer.dynamic.debug_text_2d_loc = ImVec2(0, 0)
@@ -685,7 +685,7 @@ class VolumetricVideoViewer:
             # Timelines
             if len(self.camera_path):  # need at least 3 components to interpolate
                 imgui.same_line()
-                if imgui.button('Export'):
+                if imgui.button('Export keyframes'):
                     self.static.export_keyframes_dialog = pfd.select_folder("Select folder")
                 if 'export_keyframes_dialog' in self.static and \
                         self.static.export_keyframes_dialog is not None and \
@@ -697,7 +697,7 @@ class VolumetricVideoViewer:
                     self.static.export_keyframes_dialog = None
 
                 imgui.same_line()
-                if imgui.button('Interpolate'):
+                if imgui.button('Export interpolated'):
                     self.static.export_interp_dialog = pfd.select_folder("Select folder")
                 if 'export_interp_dialog' in self.static and \
                         self.static.export_interp_dialog is not None and \

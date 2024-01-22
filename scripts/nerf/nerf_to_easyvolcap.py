@@ -1,10 +1,8 @@
-import numpy as np
-import argparse
 import os
 import json
-import imageio.v2 as imageio
+import argparse
+import numpy as np
 
-from PIL import Image
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.easy_utils import write_camera
 

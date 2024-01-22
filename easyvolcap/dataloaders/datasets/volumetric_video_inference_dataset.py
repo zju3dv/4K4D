@@ -159,9 +159,11 @@ class VolumetricVideoInferenceDataset(VolumetricVideoDataset):
         elif self.interp_type == Interpolation.SPIRAL:
             self.c2ws = as_torch_func(generate_spiral_path)(self.c2ws, self.n_render_views, **self.interp_cfg)
         elif self.interp_type == Interpolation.SECTOR:
-            pass
+            pass  # TODO: Implement this
         elif self.interp_type == Interpolation.NONE:
-            pass
+            if len(self.c2ws) != self.n_render_views:
+                log(yellow(f'The number of views in the camera path ({len(self.c2ws)}) does not match the number of views to render ({self.n_render_views}), will use the one in the camera path ({len(self.c2ws)})'))
+            self.n_render_views = len(self.c2ws)
         else:
             raise NotImplementedError
 
