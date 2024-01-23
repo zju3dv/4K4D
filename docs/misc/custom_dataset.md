@@ -9,7 +9,7 @@
 Basic dataset structure for multi-view dataset:
 
 ```shell
-data/dataset/sequence # data_root & datadir
+data/dataset/sequence # data_root & data_root
 ├── intri.yml # required: intrinsics
 ├── extri.yml # required: extrinsics
 └── images # required: source images
@@ -27,7 +27,7 @@ data/dataset/sequence # data_root & datadir
 Basic dataset structure for monocular dataset:
 
 ```shell
-data/dataset/sequence # data_root & datadir
+data/dataset/sequence # data_root & data_root
 ├── cameras  # required: camera parameter for the whole sequence
 │   ├── 00 # only one camera
 │   │   ├── intri.yml # required: intrinsics
@@ -61,25 +61,25 @@ Dataset variables:
 
 ```shell
 # Linux
-expname=skateboard
-datadir=data/volcano/skateboard
+expname=0013_01
+data_root=data/renbody/0013_01
 
 # Another dataset
-expname=wy02
-datadir=data/sensetime4d/wy02
+expname=0013_01
+data_root=data/renbody/0013_01
 
 # Windows
-$expname="skateboard"
-$datadir="data/volcano/skateboard"
+$expname="0013_01"
+$data_root="data/renbody/0013_01"
 ```
 
-## Camera Synchronization
+<!-- ## Camera Synchronization
 
 - [ ] TODO: Board
 
 ## Static Calibration
 
-Please refer to [static.md](../../docs/misc/static.md#colmap-for-camera-poses).
+Please refer to [static.md](../../docs/misc/static.md#colmap-for-camera-poses). -->
 
 ## Sparse Calibration
 
@@ -122,39 +122,44 @@ Remember to change the paths of your `EasyMocap` and `scene_root` if you put it 
 
 ## Dense Calibration
 
+**There's a [dedicated section in static.md](../../docs/misc/static.md#colmap-for-camera-poses) detailing the full calibration process from captured videos to a full dataset.**
+**Following that, there's also a [detailed description about finetuning the camera parameters](../../docs/misc/static.md#our-instant-ngpt-implementation) using a modified instant-ngp model.**
+
+Note that the dense calibration process on a multi-view dynamic system is pretty much the same, where we view the first frame (or any other meaning frame) as a static scene and run COLMAP on it.
+
+Let's assume you've arranged your images inside the `images` folder like: `images/00/000000.jpg`, `images/00/000001.jpg` ... `images/01/000000.jpg`, `images/01/000001.jpg`. We'll first need to rearange the images into a unified directory for running COLMAP:
+
 ```shell
-# Prepare colmap ply model
-mkdir -p ${datadir}/colmap/colmap_ply
-colmap model_converter --input_path ${datadir}/colmap/colmap_text --output_path ${datadir}/colmap/colmap_ply/000000.ply --output_type PLY
+data_root=data/neural3dv/sear_steak
 
-# Use bbox of ply for configs
-# colmap gui ...
+# Rearrange multi-view dataset (soft link for images for running COLMAP)
+python scripts/colmap/arrange_images.py --data_root "${data_root}" # run with -h for more info
 
-# Convert to easyvolcap camera format
-python scripts/colmap/colmap_to_easymocap.py --data_root ${datadir} --colmap colmap/colmap_text
+# Run COLMAP, this took roughly 3 hours on ~700 images
+python scripts/colmap/run_colmap.py --data_root "${data_root}"
 
-# Check camera
-python scripts/tools/visualize_cameras.py --data_root ${datadir}
+# Convert to easymocap dataformat
+python scripts/colmap/colmap_to_easyvolcap.py --data_root "${data_root}"
 ```
 
-Prepare config files like [`volcano.yaml`](../../configs/datasets/volcano/volcano.yaml) and [`skateboard.yaml`](../../configs/datasets/volcano/skateboard.yaml).
+Here we detail the process of the using the modified instant-ngp model to finetune the camera parameters on a multi-view dynamic system.
+Prepare config files like [`neural3dv.yaml`](../../configs/datasets/neural3dv/neural3dv.yaml) and [`sear_steak.yaml`](../../configs/datasets/neural3dv/sear_steak.yaml).
+Then prepare experiment configs like [`l3mhet_sear_steak_static.yaml`](../../configs/exps/l3mhet/l3mhet_sear_steak_static.yaml).
 
-Then prepare experiment configs like [`l3mhet_skateboard_static.yaml`](../../configs/exps/l3mhet/l3mhet_skateboard_static.yaml).
-
-Two cases:
+There are generally two cases about the camera setup of a multi-view dynamic system:
 1. The provided dataset contains a meaningful background and you want to optimize the camera parameters using the full images.
-   Check [`l3mhet_skateboard_static.yaml`](../../configs/exps/l3mhet/l3mhet_skateboard_static.yaml) for an example.
+   Check [`l3mhet_sear_steak_static.yaml`](../../configs/exps/l3mhet/l3mhet_sear_steak_static.yaml) for an example.
 ```yaml
 configs:
     - configs/base.yaml # default arguments for the whole codebase
     - configs/models/l3mhet.yaml # network model configuration
-    - configs/datasets/volcano/skateboard.yaml # dataset usage configuration
+    - configs/datasets/neural3dv/sear_steak.yaml # dataset usage configuration
     - configs/specs/static.yaml
     - configs/specs/optcam.yaml
     - configs/specs/transient.yaml
 ```
-2. The provided dataset comes with masks and you do not want the background to influence the foreground optimization. 
-   Check [`l3mhet_wy02_static.yaml`](../../configs/exps/l3mhet/l3mhet_wy02_static.yaml) for an example. Add a [`mask.yaml`](../../config/specs/mask.yaml) to the parent list.
+1. The provided dataset comes with masks and you do not want the background to influence the foreground optimization. 
+   Check [`l3mhet_0013_01_static.yaml`](../../configs/exps/l3mhet/l3mhet_0013_01_static.yaml) for an example. Add a [`mask.yaml`](../../config/specs/mask.yaml) to the parent list.
 
 Run the ***L3MHET*** model with camera parameter optimization:
 
@@ -166,7 +171,7 @@ evc -c configs/exps/l3mhet/l3mhet_${expname}_static.yaml
 python scripts/tools/extract_optimized_cameras.py -- -c configs/exps/l3mhet/l3mhet_${expname}_static.yaml
 
 # Check optimized camera
-python scripts/tools/visualize_cameras.py --data_root ${datadir}/optimized
+python scripts/tools/visualize_cameras.py --data_root ${data_root}/optimized
 ```
 
 
@@ -175,7 +180,7 @@ python scripts/tools/visualize_cameras.py --data_root ${datadir}/optimized
 Videos should be arranged like this before extracting images from it:
 
 ```shell
-data/dataset/sequence # data_root & datadir
+data/dataset/sequence # data_root & data_root
 └── videos # optional, required before extracting images
     ├── 00.mp4
     └── 01.mp4
@@ -185,7 +190,7 @@ data/dataset/sequence # data_root & datadir
 Extraction command:
 
 ```shell
-python scripts/preprocess/extract_videos.py --data_root ${datadir}
+python scripts/preprocess/extract_videos.py --data_root ${data_root}
 ```
 
 ## Segmentation
@@ -193,7 +198,7 @@ python scripts/preprocess/extract_videos.py --data_root ${datadir}
 Masks will be put into the dataset folder with similar structures to the `images`` folder:
 
 ```shell
-data/dataset/sequence # data_root & datadir
+data/dataset/sequence # data_root & data_root
 └── masks
     ├── 00 # camera / frame
     │   ├── 000000.jpg # image
@@ -207,7 +212,7 @@ data/dataset/sequence # data_root & datadir
 Background images will be arranged like (or should be placed as) this:
 
 ```shell
-data/dataset/sequence # data_root & datadir
+data/dataset/sequence # data_root & data_root
 └── bkgd # optional
     ├── 00.jpg
     └── 01.jpg
@@ -215,11 +220,11 @@ data/dataset/sequence # data_root & datadir
 ```
 
 ```shell
-python scripts/segmentation/inference_robust_video_matting.py --data_root ${datadir}
-python scripts/segmentation/extract_backgrounds.py --data_root ${datadir} --masks_dir rvm --dilation 100 --jump 1 --bkgd_dir bkgd_d100_j1
-python scripts/segmentation/extract_backgrounds.py --data_root ${datadir} --masks_dir rvm --dilation 20 --jump 1 --bkgd_dir bkgd_d20_j1
-python scripts/segmentation/merge_backgrounds.py --data_root ${datadir} --source_dir bkgd_d100_j1 --paste_dir bkgd_d20_j1 --bkgd_dir bkgd
-python scripts/segmentation/inference_bkgdmattev2.py --data_root ${datadir}
+python scripts/segmentation/inference_robust_video_matting.py --data_root ${data_root}
+python scripts/segmentation/extract_backgrounds.py --data_root ${data_root} --masks_dir rvm --dilation 100 --jump 1 --bkgd_dir bkgd_d100_j1
+python scripts/segmentation/extract_backgrounds.py --data_root ${data_root} --masks_dir rvm --dilation 20 --jump 1 --bkgd_dir bkgd_d20_j1
+python scripts/segmentation/merge_backgrounds.py --data_root ${data_root} --source_dir bkgd_d100_j1 --paste_dir bkgd_d20_j1 --bkgd_dir bkgd
+python scripts/segmentation/inference_bkgdmattev2.py --data_root ${data_root}
 ```
 
 ## Space Carving
@@ -227,7 +232,7 @@ python scripts/segmentation/inference_bkgdmattev2.py --data_root ${datadir}
 Visual hulls and processed visual hulls will be arranged like:
 
 ```shell
-data/dataset/sequence # data_root & datadir
+data/dataset/sequence # data_root & data_root
 └── vhulls # optional
     ├── 000000.ply
     └── 000001.ply
@@ -235,14 +240,14 @@ data/dataset/sequence # data_root & datadir
 ```
 
 ```shell
-data/dataset/sequence # data_root & datadir
+data/dataset/sequence # data_root & data_root
 └── surfs # optional
     ├── 000000.ply
     └── 000001.ply
     ...
 ```
 
-Prepare config files like [`volcano.yaml`](../../configs/datasets/volcano/volcano.yaml) and [`skateboard.yaml`](../../configs/datasets/volcano/skateboard.yaml).
+Prepare config files like [`renbody.yaml`](../../configs/datasets/renbody/renbody.yaml) and [`0013_01.yaml`](../../configs/datasets/renbody/0013_01.yaml).
 Note that we expect the camera parameters to have been properly prepared before extracting visual hulls:
 - Converted to ***EasyVolcap*** format
 - Optimized using ***L3MHET*** model (maybe also enable `use_aligned_cameras`)
@@ -252,19 +257,19 @@ Space carving scripts:
 
 ```shell
 # Remove previous visual hull estimation by static training
-rm -r ${datadir}/vhulls
+rm -r ${data_root}/vhulls
 
 # Extract visual hulls
-evc -t test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/volcano/skateboard.yaml,configs/specs/vhulls.yaml val_dataloader_cfg.dataset_cfg.ratio=0.5
+evc -t test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/vhulls.yaml val_dataloader_cfg.dataset_cfg.ratio=0.5
 
 # Preprocess visual hulls
-evc -t test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/volcano/skateboard.yaml,configs/specs/surfs.yaml
+evc -t test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/surfs.yaml
 
 # Extract on optimized cameras
 
 # Extract visual hulls
-evc -t test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/sensetime4d/wy02.yaml,configs/specs/optimized.yaml,configs/specs/vhulls.yaml val_dataloader_cfg.dataset_cfg.ratio=0.5
+evc -t test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/optimized.yaml,configs/specs/vhulls.yaml val_dataloader_cfg.dataset_cfg.ratio=0.5
 
 # Preprocess visual hulls
-evc -t test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/sensetime4d/wy02.yaml,configs/specs/optimized.yaml,configs/specs/surfs.yaml
+evc -t test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/optimized.yaml,configs/specs/surfs.yaml
 ```

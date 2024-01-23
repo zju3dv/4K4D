@@ -131,7 +131,7 @@ This dataset is a small subset of the [ENeRF-Outdoor](https://github.com/zju3dv/
 ### Dataset Structure
 
 ```shell
-data/dataset/sequence # data_root & datadir
+data/dataset/sequence # data_root & data_root
 ├── intri.yml # required: intrinsics
 ├── extri.yml # required: extrinsics
 └── images # required: source images
@@ -156,7 +156,7 @@ Before running the model, let's first prepare some shell variables for easy acce
 
 ```shell
 expname=actor1_4_subseq
-datadir=data/enerf_outdoor/actor1_4_subseq
+data_root=data/enerf_outdoor/actor1_4_subseq
 ```
 
 ### Running Instant-NGP+T
@@ -196,7 +196,7 @@ python scripts/tools/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_${expname
 
 # Move the rendering results to the dataset folder
 source_folder="data/geometry/l3mhet_${expname}/POINT"
-destination_folder="${datadir}/vhulls"
+destination_folder="${data_root}/vhulls"
 
 # Create the destination directory if it doesn't exist
 mkdir -p ${destination_folder}

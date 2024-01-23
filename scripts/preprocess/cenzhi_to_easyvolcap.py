@@ -14,11 +14,11 @@ def main():
     parser.add_argument('--easyvolcap_root', type=str, default='data/gaussian/tpose360')
     parser.add_argument('--pickle', type=str, default='debug_360cam.pkl')
     args = parser.parse_args()
-    datadir = join(args.cenzhi_root, args.pickle)
+    data_root = join(args.cenzhi_root, args.pickle)
 
     cameras = dotdict()
 
-    with open(datadir, 'rb') as f:
+    with open(data_root, 'rb') as f:
         pdata = pickle.load(f)
         heatmap, poses = pdata['heatmap'], pdata['poses']  # camera 2 world pose
         # render_heatmap, render_poses = pdata['render_heatmap'], pdata['render_poses']

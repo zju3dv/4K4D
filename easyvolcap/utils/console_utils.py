@@ -264,6 +264,7 @@ def path(string):  # add path markup
 def red(string: str) -> str: return f'[red bold]{string}[/]'
 def blue(string: str) -> str: return f'[blue bold]{string}[/]'
 def cyan(string: str) -> str: return f'[cyan bold]{string}[/]'
+def pink(string: str) -> str: return f'[bright_magenta bold]{string}[/]'
 def green(string: str) -> str: return f'[green bold]{string}[/]'
 def yellow(string: str) -> str: return f'[yellow bold]{string}[/]'
 def magenta(string: str) -> str: return f'[magenta bold]{string}[/]'
@@ -273,6 +274,7 @@ def color(string: str, color: str): return f'[{color} bold]{string}[/]'
 def red_slim(string: str) -> str: return f'[red]{string}[/]'
 def blue_slim(string: str) -> str: return f'[blue]{string}[/]'
 def cyan_slim(string: str) -> str: return f'[cyan]{string}[/]'
+def pink_slim(string: str) -> str: return f'[bright_magenta]{string}[/]'
 def green_slim(string: str) -> str: return f'[green]{string}[/]'
 def yellow_slim(string: str) -> str: return f'[yellow]{string}[/]'
 def magenta_slim(string: str) -> str: return f'[magenta]{string}[/]'
@@ -701,15 +703,18 @@ def display_table(states: dotdict,
     return table
 
 
-def build_parser(d: dict, parser: argparse.ArgumentParser = None):
+def build_parser(d: dict, parser: argparse.ArgumentParser = None, **kwargs):
     """
-    args = dotdict(vars(build_parser(args).parse_args()))
+    args = dotdict(vars(build_parser(args, description=__doc__).parse_args()))
     """
+    if 'description' in kwargs:
+        kwargs['description'] = markup_to_ansi(green(kwargs['description']))
+
     if parser is None:
-        # parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-        parser = argparse.ArgumentParser()
-    # help = f'default = {Colors.BLUE}%(default)s{Colors.END}'
-    help = 'default = {}'
+        parser = argparse.ArgumentParser(formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=slim_width), **kwargs)
+
+    help = f'default = {blue("{}")}'
+
     for k, v in d.items():
         if isinstance(v, dict):
             # TODO: Add argparse group here
@@ -721,4 +726,5 @@ def build_parser(d: dict, parser: argparse.ArgumentParser = None):
             parser.add_argument(f'--{t}', action='store_false' if v else 'store_true', dest=k, help=markup_to_ansi(help.format(v)))
         else:
             parser.add_argument(f'--{k}', type=type(v), default=v, help=markup_to_ansi(help.format(v)))
+
     return parser

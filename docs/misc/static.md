@@ -28,7 +28,7 @@ The parameter choices provided in the script were tested with a recording of [*X
 Here we assume the user has the following directory structure after completing the data preprocessing step.
 
 ```shell
-data/mww/zju3dv # data_root & datadir
+data/mww/zju3dv # data_root & data_root
 ├── intri.yml # required
 ├── extri.yml # required
 ├── images # required
@@ -60,11 +60,11 @@ And run the following command to
 3. Run COLMAP
 4. Convert to easyvolcap camera format
 
-Let's assume you've stored the location of `data/zju/zju3dv` in a variable `datadir` and also used shell arguments for other parameter choices.
+Let's assume you've stored the location of `data/zju/zju3dv` in a variable `data_root` and also used shell arguments for other parameter choices.
 
 ```shell
 expname="zju3dv"
-datadir="data/zju/zju3dv"
+data_root="data/zju/zju3dv"
 video="output.mp4"
 ffmpeg="/usr/bin/ffmpeg"
 fps="20"
@@ -76,8 +76,8 @@ After the preparation, you can extract the video frames using:
 
 ```shell
 # Extra video frames in images/00, make sure to tune fps and change the scale to match your video (or omit them to use the video's default)
-mkdir -p "${datadir}/images/00"
-${ffmpeg} -i "${datadir}/videos/00/${video}" -vf "${ffmpeg_vf}fps=${fps},scale=${resolution}" -q:v 1 -qmin 1 -start_number 0 "${datadir}/images/00/%06d.jpg"
+mkdir -p "${data_root}/images/00"
+${ffmpeg} -i "${data_root}/videos/00/${video}" -vf "${ffmpeg_vf}fps=${fps},scale=${resolution}" -q:v 1 -qmin 1 -start_number 0 "${data_root}/images/00/%06d.jpg"
 ```
 Before running COLMAP, it's also recommended to discard blurry images to aid the reconstruction.
 After which, you can run COLMAP using the following command:
@@ -85,16 +85,16 @@ After which, you can run COLMAP using the following command:
 
 ```shell
 # Discard blurry images, maybe tune the threshold, check the script for more details
-python scripts/colmap/discard_blurry.py --data_root "${datadir}/images/00"
+python scripts/colmap/discard_blurry.py --data_root "${data_root}/images/00"
 
 # Run COLMAP, this took roughly 3 hours on ~700 images
-python scripts/colmap/run_colmap.py --data_root "${datadir}"
+python scripts/colmap/run_colmap.py --data_root "${data_root}"
 
 # Convert to easymocap dataformat
-python scripts/colmap/colmap_to_easymocap.py --data_root "${datadir}"
+python scripts/colmap/colmap_to_easyvolcap.py --data_root "${data_root}"
 
 # Flatten the images folder
-python scripts/colmap/unflatten_dataset.py --data_root "${datadir}"
+python scripts/colmap/unflatten_dataset.py --data_root "${data_root}"
 ```
 
 ### Our [Instant-NGP](https://github.com/NVlabs/instant-ngp)+T Implementation
@@ -149,8 +149,8 @@ python scripts/tools/extract_optimized_cameras.py -- -c configs/exps/l3mhet/l3mh
 python scripts/tools/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_${expname}.yaml val_dataloader_cfg.dataset_cfg.ratio=0.25 val_dataloader_cfg.dataset_cfg.view_sample=0,null,25
 
 # Move the rendering results to the dataset folder
-mkdir -p ${datadir}/vhulls
-cp data/geometry/l3mhet_${expname}/POINT/frame0000.ply ${datadir}/vhulls/000000.ply
+mkdir -p ${data_root}/vhulls
+cp data/geometry/l3mhet_${expname}/POINT/frame0000.ply ${data_root}/vhulls/000000.ply
 ```
 
 Our convention for storing initialization point clouds:

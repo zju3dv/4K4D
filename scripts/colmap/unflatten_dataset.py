@@ -13,7 +13,7 @@ def main():
     parser.add_argument('--data_root', default='data/zju/ipstage')
     parser.add_argument('--images_dirs', nargs='+', default=['images', 'masks'])
     parser.add_argument('--cameras_dir', default='cameras')
-    parser.add_argument('--cameras_dir', default='00')
+    parser.add_argument('--camera_dir', default='00')
     parser.add_argument('--image_base', default='000000')
     parser.add_argument('--extri_file', default='extri.yml')
     parser.add_argument('--intri_file', default='intri.yml')
@@ -34,9 +34,9 @@ def main():
         except: pass
 
         os.makedirs(images_path, exist_ok=True)
-        for idx, cam in enumerate(sorted(os.listdir(images_path + postfix + f'/{args.cameras_dir}'))):
+        for idx, cam in enumerate(sorted(os.listdir(images_path + postfix + f'/{args.camera_dir}'))):
             os.makedirs(join(images_path, f'{idx:06d}'), exist_ok=True)
-            src = join(images_path + postfix, args.cameras_dir, cam)
+            src = join(images_path + postfix, args.camera_dir, cam)
             tar = join(images_path, f'{idx:06d}', args.image_base + os.path.splitext(cam)[-1])
             try: os.remove(tar)
             except: pass
@@ -52,13 +52,13 @@ def main():
         try: os.rename(cameras_path, cameras_path + postfix)
         except: pass
 
-        src = join(cameras_path + postfix, args.cameras_dir, args.extri_file)
+        src = join(cameras_path + postfix, args.camera_dir, args.extri_file)
         tar = join(args.data_root, args.extri_file)
         try: os.remove(tar)
         except: pass
         os.rename(src, tar)
 
-        src = join(cameras_path + postfix, args.cameras_dir, args.intri_file)
+        src = join(cameras_path + postfix, args.camera_dir, args.intri_file)
         tar = join(args.data_root, args.intri_file)
         try: os.remove(tar)
         except: pass

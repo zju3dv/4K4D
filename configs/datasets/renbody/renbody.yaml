@@ -1,31 +1,13 @@
 dataloader_cfg: # we see the term "dataloader" as one word?
     dataset_cfg: &dataset_cfg
-        masks_dir: masks # good naming ^_^
+        masks_dir: masks # {data_root}/{masks_dir,images_dir}/{camera_name}/000000{.jpg,.png}
         # prettier-ignore
-        ratio: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6]
-        # ratio: 0.5
-        # ratio: 1.0
-        # ratio: 0.8 # reasonably high but not too high resolution?
+        ratio: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6] # a single float or a list of floats corresponding to every camera
         bounds: [[-5.0, -5.0, -5.0], [5.0, 5.0, 5.0]] # thinner?
-        dist_opt_K: false # the distortion parameter was very bad...
-        force_sparse_view: True
-        use_aligned_cameras: True
-        view_sample: [0, 60, 1]
-        frame_sample: [0, 150, 1] # only train for a thousand frames
-
-        # dist_mask: [1, 1, 1, 1, 0] # the p3 parameter looks suspicious, ignore it
-
-        # Visual hull related
-        # MARK: This is for now the best vhull extraction setting
-        # vhull_thresh: 0.95 # 18 cameras?
-        # count_thresh: 16 # common views
-        # vhull_padding: 0.02 # padding could just be larger, this should be mostly fine
-
-        # vhull_ctof_factor: 3.0 # larger size?
-        # vhull_thresh_factor: 1.0 # requires some careful finetuning
-        # vhull_count_factor: 1.0 # requires some careful finetuning
-        # coarse_discard_masks: False
-        # intersect_camera_bounds: True # requires some careful finetuning
+        dist_opt_K: false # whether to resize the image so that after distortion, no black pixels will remain
+        use_aligned_cameras: True # whether to move the center of the attention of the cameras to the world origin
+        view_sample: [0, 60, 1] # start, end, step. 0 means the first view, null means the last view
+        frame_sample: [0, 150, 1] # start, end, step. 0 means the first frame, null means the last frame
 
 model_cfg:
     sampler_cfg:
@@ -36,9 +18,9 @@ model_cfg:
 val_dataloader_cfg:
     dataset_cfg:
         <<: *dataset_cfg
-        frame_sample: [0, 150, 30]
+        frame_sample: [0, 150, 30] # make rendering faster, controls which of the views and frames to load
     sampler_cfg:
-        view_sample: [0, 60, 20]
+        view_sample: [0, 60, 20] # make rendering faster, if doing IBR, change the view_sample in sampler_cfg to control which view to render
 
 viewer_cfg:
-    use_window_focal: True
+    use_window_focal: True # when initializing viewer, use window H and W to calculate focal to give a better experience

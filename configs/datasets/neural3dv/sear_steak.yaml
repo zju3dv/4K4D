@@ -1,5 +1,5 @@
-configs: configs/datasets/neural3dv/neural3dv.yaml
-dataloader_cfg: # we see the term "dataloader" as one word?
+configs: configs/datasets/neural3dv/neural3dv.yaml # inherit from this config
+dataloader_cfg:
     dataset_cfg: &dataset_cfg
         data_root: data/neural3dv/sear_steak
 

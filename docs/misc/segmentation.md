@@ -10,7 +10,7 @@ We perform the matting on batches of images, thus if you encountered OOM errors,
 
 ```shell
 # Perform video matting using RVM
-python scripts/segmentation/inference_robust_video_matting.py --data_root ${datadir}
+python scripts/segmentation/inference_robust_video_matting.py --data_root ${data_root}
 ```
 
 ## [Self Correction Human Parsing](https://github.com/dendenxu/Self-Correction-Human-Parsing)
@@ -34,7 +34,7 @@ git clone https://github.com/dendenxu/Self-Correction-Human-Parsing 3rdparty/sel
 python -c "import detectron2" # no error -> OK
 
 # Run the detect-crop-schp-restore pipeline
-python scripts/segmentation/inference_schp.py --data_root ${datadir}
+python scripts/segmentation/inference_schp.py --data_root ${data_root}
 ```
 
 ## [Background Matting V2](https://github.com/PeterL1n/BackgroundMattingV2)
@@ -50,7 +50,7 @@ Similar to SCHP, you'll also need to download the pretrained model from [BGMTV2'
 
 ```shell
 # Extract mask with BGMTV2
-python scripts/segmentation/inference_bkgdmattev2.py --data_root ${datadir}
+python scripts/segmentation/inference_bkgdmattev2.py --data_root ${data_root}
 ```
 
 
@@ -64,5 +64,5 @@ This is useful when you want to reconstruct a separated static background model 
 
 ```shell
 # Fuse background from masks
-python scripts/segmentation/extract_backgrounds.py --data_root ${datadir}
+python scripts/segmentation/extract_backgrounds.py --data_root ${data_root}
 ```

@@ -1,10 +1,10 @@
-configs:
+configs: # parents
     - configs/base.yaml # default arguments for the whole codebase
-    - configs/models/l3mhet.yaml # network model configuration
+    - configs/models/l3mhet.yaml # network model configuration (this is a three level instant ngp model with boosted performance)
     - configs/datasets/neural3dv/sear_steak.yaml # dataset usage configuration
-    - configs/specs/optcam.yaml
-    - configs/specs/transient.yaml
-    - configs/specs/static.yaml
+    - configs/specs/optcam.yaml # add camera optimization (instant-ngp)
+    - configs/specs/transient.yaml # add per-view transient encoding (nerf in the wild)
+    - configs/specs/static.yaml # remote temporal embedder and update frame sample to use only the first frame
 
 # prettier-ignore
-exp_name: {{fileBasenameNoExtension}}
+exp_name: {{fileBasenameNoExtension}} # same experiment name as the file name of this config without file extension

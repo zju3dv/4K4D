@@ -6,19 +6,11 @@ import numpy as np
 from glob import glob
 from os.path import join
 from pathlib import Path
-from rich import traceback
-from termcolor import colored
 
-traceback.install()
-
-# fmt: off
-import sys
-sys.path.append('.')
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.parallel_utils import parallel_execution
 from easyvolcap.utils.data_utils import load_mask, save_mask
 from easyvolcap.utils.colmap_utils import correct_colmap_scale
-# fmt: on
 
 
 def parse_args():
@@ -93,7 +85,7 @@ def run_colmap(args):
 
     log(f"running colmap with:\n\tdb={db}\n\timages={images}\n\tsparse={sparse}\n\ttext={text}")
     if os.path.isdir(sparse) or os.path.isdir(text) or os.path.isfile(db):  # be caring
-        if (input(colored(f"warning! '{colored(sparse, 'red')}' '{colored(text, 'red')}' and '{colored(db, 'red')}' will be deleted/replaced. continue? (Y/n) ", 'yellow')).lower().strip() + "y")[:1] != "y":
+        if (input(yellow(f"warning! '{red(sparse)}' '{red(text)}' and '{red(db)}' will be deleted/replaced. continue? (Y/n) ")).lower().strip() + "y")[:1] != "y":
             sys.exit(1)
         try:
             os.remove(db)
