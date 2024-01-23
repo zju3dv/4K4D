@@ -102,13 +102,15 @@ def generate_video(result_str: str,
                    crf: int = 17,
                    cqv: int = 19,
                    lookahead: int = 20,
-                   preset='p7',
+                   hwaccel: str = 'cuda',
+                   preset: str = 'p7',
+                   tag: str = 'hvc1',
                    vcodec: str = 'hevc_nvenc',
                    pix_fmt: str = 'yuv420p',  # chrome friendly
                    ):
     cmd = [
         'ffmpeg',
-        '-hwaccel', 'cuda',
+        '-hwaccel', hwaccel,
         '-hide_banner',
         '-loglevel', 'error',
         '-framerate', fps,
@@ -122,7 +124,7 @@ def generate_video(result_str: str,
         '-preset', preset,
         '-cq:v', cqv,
         '-rc:v', 'vbr',
-        '-tag:v', 'hvc1',
+        '-tag:v', tag,
         '-crf', crf,
         '-pix_fmt', pix_fmt,
         '-rc-lookahead', lookahead,
@@ -1043,8 +1045,8 @@ def load_image_file(img_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-        (draft[1][2] != int(w * ratio) or
-             draft[1][3] != int(h * ratio)):
+            (draft[1][2] != int(w * ratio) or
+         draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         return img
     else:
@@ -1096,8 +1098,8 @@ def load_unchanged(img_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-        (draft[1][2] != int(w * ratio) or
-             draft[1][3] != int(h * ratio)):
+            (draft[1][2] != int(w * ratio) or
+         draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         return img
     else:
@@ -1122,8 +1124,8 @@ def load_mask(msk_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-        (draft[1][2] != int(w * ratio) or
-             draft[1][3] != int(h * ratio)):
+            (draft[1][2] != int(w * ratio) or
+         draft[1][3] != int(h * ratio)):
             msk = cv2.resize(msk.astype(np.uint8), (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_NEAREST)[..., None]
         return msk
     else:
