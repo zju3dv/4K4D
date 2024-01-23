@@ -29,7 +29,7 @@ class Colors:
 essential_packages = [
     'pdbr', # will also install rich
     'tqdm',
-    'orjson',
+    'ujson',
     'ruamel.yaml',
 ]
 
@@ -57,7 +57,7 @@ import builtins
 import warnings
 import readline  # if you need to update stuff from input
 import numpy as np
-import orjson as json
+import ujson as json
 from bdb import BdbQuit
 from pdbr import RichPdb
 from ruamel.yaml import YAML

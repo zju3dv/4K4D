@@ -15,6 +15,7 @@ def main():
     parser.add_argument('--transforms_file', type=str, default='transforms_train.json')
     parser.add_argument('--intri_file', type=str, default='cameras_train/00/intri.yml')
     parser.add_argument('--extri_file', type=str, default='cameras_train/00/extri.yml')
+
     parser.add_argument('--images_dir', type=str, default='images_train/00')
     parser.add_argument('--no_organize_images', action='store_false', dest='organize_images')
     parser.add_argument('--no_convert_test', action='store_false', dest='convert_test')
@@ -65,7 +66,7 @@ def main():
     )
     log(yellow(f'Converted cameras saved to {blue(join(args.volcap_root, f"{{{args.intri_file},{args.extri_file}}}"))}'))
 
-    if args.organize_images:
+    if args.organize_images and len(transforms.frames) and exists(transforms.frames[0].file_path):
         run(f'python scripts/nerf/organize_images.py --nerf_root {args.nerf_root} --volcap_root {args.volcap_root} --transforms_file {args.transforms_file} --images_dir {args.images_dir}')
 
     if args.transforms_file.endswith('_train.json') and \
