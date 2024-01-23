@@ -180,6 +180,7 @@ class VolumetricVideoViewer:
         # Others
         self.skip_exception = skip_exception
         self.static = dotdict(batch=dotdict(), output=dotdict())  # static data store updated through the rendering
+        self.dynamic = dotdict()
 
     @property
     def render_ratio(self): return self.dataset.render_ratio
@@ -235,6 +236,7 @@ class VolumetricVideoViewer:
         import OpenGL.GL as gl
         # Clear frame buffer
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+        self.dynamic = dotdict()
 
         # should_render = glfw.get_window_attrib(self.window, glfw.FOCUSED) and self.H > 0 and self.W > 0 and self.camera.H > 0 and self.camera.W > 0
 
@@ -314,6 +316,13 @@ class VolumetricVideoViewer:
         batch.post_time = post_time
         batch.gtos_time = gtos_time  # previous frame
         return batch, output
+
+    def add_debug_text_2d(viewer, text: str, color: int = 0xff8080ff):
+        # slow_pytorch3d_render_msg = 'Using slow PyTorch3D rendering backend. Please see the errors in the terminal.'
+        if 'debug_text_2d_loc' not in viewer.dynamic:
+            viewer.dynamic.debug_text_2d_loc = ImVec2(0, 0)
+        add_debug_text_2d(viewer.dynamic.debug_text_2d_loc, text, color)
+        viewer.dynamic.debug_text_2d_loc = ImVec2(0, viewer.dynamic.debug_text_2d_loc.y + 20)
 
     def draw_cameras(self,
                      Ks: torch.Tensor,
@@ -517,10 +526,6 @@ class VolumetricVideoViewer:
                 bg_brightness = np.clip(self.static.bg_brightness, 0.0, 1.0)
                 gl.glClearColor(bg_brightness, bg_brightness, bg_brightness, 1.)
 
-            # Custome GUI elements will be rendered here
-            if hasattr(self.model, 'render_imgui'):
-                self.model.render_imgui(self, batch)  # some times the model has its own GUI elements
-
             # Almost all models has this option
             if network_available: self.quad.compose_power = imgui.slider_float('Compose power', self.quad.compose_power, 1.0, 10.0)[1]  # temporal interpolation
             if network_available: self.exposure = imgui.slider_float('Exposure', self.exposure, 0.0, 100.0)[1]  # temporal interpolation
@@ -542,12 +547,16 @@ class VolumetricVideoViewer:
             if hasattr(self.model.sampler, 'pts_per_pix'):
                 self.model.sampler.pts_per_pix = imgui.slider_int('Splatting pts_per_pix', self.model.sampler.pts_per_pix, 1, 60)[1]
 
+        # Custome GUI elements will be rendered here
+        if hasattr(self.model, 'render_imgui'):
+            self.model.render_imgui(self, batch)  # some times the model has its own GUI elements
+
         if not self.quad.use_quad_cuda:
             gpu_cpu_gpu_msg = f'Not using CUDA-GL interop for low-latency upload, will lead to degraded performance. Try using native Windows or Linux for CUDA-GL interop'
 
             imgui.push_font(self.bold_font)
             colored_wrapped_text(0xff3355ff, gpu_cpu_gpu_msg)
-            add_debug_text_2d(ImVec2(0, 0), gpu_cpu_gpu_msg, 0xff3355ff)
+            self.add_debug_text_2d(gpu_cpu_gpu_msg, 0xff3355ff)
             imgui.pop_font()
 
         # Render debug cameras out (this should not be affected bu guis)
@@ -676,7 +685,7 @@ class VolumetricVideoViewer:
             # Timelines
             if len(self.camera_path):  # need at least 3 components to interpolate
                 imgui.same_line()
-                if imgui.button('Export'):
+                if imgui.button('Export keyframes'):
                     self.static.export_keyframes_dialog = pfd.select_folder("Select folder")
                 if 'export_keyframes_dialog' in self.static and \
                         self.static.export_keyframes_dialog is not None and \
@@ -688,7 +697,7 @@ class VolumetricVideoViewer:
                     self.static.export_keyframes_dialog = None
 
                 imgui.same_line()
-                if imgui.button('Interpolate'):
+                if imgui.button('Export interpolated'):
                     self.static.export_interp_dialog = pfd.select_folder("Select folder")
                 if 'export_interp_dialog' in self.static and \
                         self.static.export_interp_dialog is not None and \

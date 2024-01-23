@@ -119,7 +119,7 @@ def build_from_cfg(cfg: Dict,
         obj_cls = registry.get(obj_type)
         if obj_cls is None:
             raise KeyError(
-                f'{obj_type} is not in the {registry.name} registry')
+                f'{obj_type} is not in the {registry.name} registry. Please check the start of the log for missing imports.')
     elif inspect.isclass(obj_type) or inspect.isfunction(obj_type):
         obj_cls = obj_type
     elif isinstance(obj_type, type(None)):

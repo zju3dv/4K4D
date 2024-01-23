@@ -1,10 +1,8 @@
-import numpy as np
-import argparse
 import os
 import json
-import imageio.v2 as imageio
+import argparse
+import numpy as np
 
-from PIL import Image
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.easy_utils import write_camera
 
@@ -12,11 +10,12 @@ from easyvolcap.utils.easy_utils import write_camera
 @catch_throw
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--nerf_root', type=str, default='/mnt/data/home/shuaiqing/Code/MultiNBFast/cache/Hospital/4')
-    parser.add_argument('--volcap_root', type=str, default='/mnt/data/home/shuaiqing/Code/MultiNBFast/cache/Hospital/4')
+    parser.add_argument('--nerf_root', type=str, default='/mnt/data/home/xuzhen/projects/large_gaussian/hospital')
+    parser.add_argument('--volcap_root', type=str, default='/mnt/data/home/xuzhen/projects/large_gaussian/hospital')
     parser.add_argument('--transforms_file', type=str, default='transforms_train.json')
     parser.add_argument('--intri_file', type=str, default='cameras_train/00/intri.yml')
     parser.add_argument('--extri_file', type=str, default='cameras_train/00/extri.yml')
+
     parser.add_argument('--images_dir', type=str, default='images_train/00')
     parser.add_argument('--no_organize_images', action='store_false', dest='organize_images')
     parser.add_argument('--no_convert_test', action='store_false', dest='convert_test')
@@ -67,18 +66,18 @@ def main():
     )
     log(yellow(f'Converted cameras saved to {blue(join(args.volcap_root, f"{{{args.intri_file},{args.extri_file}}}"))}'))
 
-    if args.organize_images:
+    if args.organize_images and len(transforms.frames) and exists(transforms.frames[0].file_path):
         run(f'python scripts/nerf/organize_images.py --nerf_root {args.nerf_root} --volcap_root {args.volcap_root} --transforms_file {args.transforms_file} --images_dir {args.images_dir}')
 
     if args.transforms_file.endswith('_train.json') and \
         exists(join(args.nerf_root, args.transforms_file.replace("_train.json", "_test.json"))) and \
             args.convert_test:
-        run(f'python scripts/nerf/nerf_to_easyvolcap.py --nerf_root {args.nerf_root} --volcap_root {args.volcap_root} --transforms_file {args.transforms_file.replace("_train.json", "_test.json")} --images_dir {args.images_dir.replace("_train", "_test")} --intri_file {args.intri_file.replace("_train", "_test")} --extri_file {args.extri_file.replace("_train", "_test")}' + '--organize_images' if args.organize_images else '')
+        run(f'python scripts/nerf/nerf_to_easyvolcap.py --nerf_root {args.nerf_root} --volcap_root {args.volcap_root} --transforms_file {args.transforms_file.replace("_train.json", "_test.json")} --images_dir {args.images_dir.replace("_train", "_test")} --intri_file {args.intri_file.replace("_train", "_test")} --extri_file {args.extri_file.replace("_train", "_test")}' + (' --no_organize_images' if not args.organize_images else ''))
 
     if args.transforms_file.endswith('_train.json') \
         and exists(join(args.nerf_root, args.transforms_file.replace("_train.json", "_val.json"))) \
             and args.convert_val:
-        run(f'python scripts/nerf/nerf_to_easyvolcap.py --nerf_root {args.nerf_root} --volcap_root {args.volcap_root} --transforms_file {args.transforms_file.replace("_train.json", "_val.json")} --images_dir {args.images_dir.replace("_train", "_val")} --intri_file {args.intri_file.replace("_train", "_val")} --extri_file {args.extri_file.replace("_train", "_val")}' + '--organize_images' if args.organize_images else '')
+        run(f'python scripts/nerf/nerf_to_easyvolcap.py --nerf_root {args.nerf_root} --volcap_root {args.volcap_root} --transforms_file {args.transforms_file.replace("_train.json", "_val.json")} --images_dir {args.images_dir.replace("_train", "_val")} --intri_file {args.intri_file.replace("_train", "_val")} --extri_file {args.extri_file.replace("_train", "_val")}' + (' --no_organize_images' if not args.organize_images else ''))
 
 
 if __name__ == '__main__':

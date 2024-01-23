@@ -1,7 +1,7 @@
 function easymocap() {
     # run idr pipeline of easymocap
-    datadir="${1:-/nas/home/xuzhen/datasets/dynacap/vlad}"
-    outdir="${2:-$datadir/easymocap}"
+    data_root="${1:-/nas/home/xuzhen/datasets/dynacap/vlad}"
+    outdir="${2:-$data_root/easymocap}"
     mocap_modes=("$@")
     if [[ ${#mocap_modes} -gt 2 ]]; then
         mocap_modes=${mocap_modes:2:$((${#mocap_modes} - 2))}
@@ -19,12 +19,12 @@ function easymocap() {
     export PYOPENGL_PLATFORM=osmesa
     # export LD_LIBRARY_PATH=$openpose_dir/build/src/openpose:$openpose_dir/build/caffe/lib:$LD_LIBRARY_PATH
 
-    echo "prepare easymocap datadir"
+    echo "prepare easymocap data_root"
     mkdir -p $outdir
     cd $outdir
-    ln -sfn $datadir/intri.yml
-    ln -sfn $datadir/extri.yml
-    ln -sfn $datadir/images
+    ln -sfn $data_root/intri.yml
+    ln -sfn $data_root/extri.yml
+    ln -sfn $data_root/images
 
     echo "running easymocap pipeline"
     cd $easymocap_dir

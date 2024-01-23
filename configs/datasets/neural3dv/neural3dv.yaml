@@ -1,22 +1,20 @@
-dataloader_cfg: # we see the term "dataloader" as one word?
+dataloader_cfg:
     dataset_cfg: &dataset_cfg
-        ratio: 0.5 # otherwise, oom
-        near: 12.0
-        far: 40.0
-        bounds: [[-15, -12, 2], [15, 12, 20]]
-        use_aligned_cameras: False
-        force_sparse_view: True
-        view_sample: [0, 21, 1]
-        frame_sample: [0, 300, 1] # only train for a thousand frames
+        ratio: 0.5 # scale images down during loading (thus affects rendering and testing)
+        near: 12.0 # camera near far range, affects ray sampling and some cost volume based algorithms
+        far: 40.0 # camera near far range, affects ray sampling and some cost volume based algorithms
+        bounds: [[-15, -12, 2], [15, 12, 20]] # axis-aligned bounding box of the scene, affects ray sampling and bounding box of some explicit algorithms
+        view_sample: [0, 21, 1] # these can be omitted if the dataset is present (defaults to [0, null, 1], will inference frame count from number of images)
+        frame_sample: [0, 300, 1] # these can be omitted if the dataset is present (defaults to [0, null, 1], will inference frame count from number of cameras)
 
 val_dataloader_cfg:
     dataset_cfg:
         <<: *dataset_cfg
-        focal_ratio: 0.5
-        frame_sample: [0, 300, 100] # only test these frames
+        focal_ratio: 0.5 # when generating completely novel views (volumetric_video_inference_dataset), use a smaller focal length to make the scene appear larger
+        frame_sample: [0, 300, 100] # make rendering faster, controls which of the views and frames to load
     sampler_cfg:
-        view_sample: [0, 21, 10] # only test these views
+        view_sample: [0, 21, 10] # make rendering faster, if doing IBR, change the view_sample in sampler_cfg to control which view to render
 
 viewer_cfg:
     camera_cfg:
-        world_up: [0, -1, 0]
+        world_up: [0, -1, 0] # this dataset uses a strange camera system, align it when using the viewer

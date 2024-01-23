@@ -48,7 +48,7 @@ class VolumetricVideoInferenceDataset(VolumetricVideoDataset):
                  camera_path_extri: str = None,  # path to extri.yml
 
                  save_interp_path: bool = True,  # save the interpolated path, find it is useful too
-                 render_path_root: str = None,  # root path for saving the interpolated render path
+                 render_path_root: str = 'data/novel_view',  # root path for saving the interpolated render path
                  **kwargs,
                  ):
         # NOTE: no super().__init__() since these datasets are fundamentally different
@@ -62,7 +62,7 @@ class VolumetricVideoInferenceDataset(VolumetricVideoDataset):
         self.interp_type = Interpolation[interp_type]
         self.interp_cfg = interp_cfg
         self.interp_using_t = interp_using_t
-        self.temporal_range_overwrite = temporal_range
+        self.temporal_range_overwrite = temporal_range if not interp_using_t else [0]
         self.input_Ks = self.Ks.clone()  # for exporting camera paths
         self.input_c2ws = self.c2ws.clone()
         self.load_interpolations()
@@ -159,9 +159,11 @@ class VolumetricVideoInferenceDataset(VolumetricVideoDataset):
         elif self.interp_type == Interpolation.SPIRAL:
             self.c2ws = as_torch_func(generate_spiral_path)(self.c2ws, self.n_render_views, **self.interp_cfg)
         elif self.interp_type == Interpolation.SECTOR:
-            pass
+            pass  # TODO: Implement this
         elif self.interp_type == Interpolation.NONE:
-            pass
+            if len(self.c2ws) != self.n_render_views:
+                log(yellow(f'The number of views in the camera path ({blue(len(self.c2ws))}) does not match the number of views to render ({blue(self.n_render_views)}), will use the one in the camera path ({blue(len(self.c2ws))})'))
+            self.n_render_views = len(self.c2ws)
         else:
             raise NotImplementedError
 
@@ -180,16 +182,18 @@ class VolumetricVideoInferenceDataset(VolumetricVideoDataset):
         if self.interp_using_t: self.Ks, self.Hs, self.Ws, self.ns, self.fs = self.Ks[0], self.Hs[0], self.Ws[0], self.ns[0], self.fs[0]
         else: self.Ks, self.Hs, self.Ws, self.ns, self.fs = self.Ks[:, 0], self.Hs[:, 0], self.Ws[:, 0], self.ns[:, 0], self.fs[:, 0]
 
-        self.Ks = torch.as_tensor(interpolate_camera_lins(self.Ks.float().view(-1, 9).numpy(), self.n_render_views, **self.interp_cfg)).view(-1, 3, 3)
-        self.Hs = torch.as_tensor(interpolate_camera_lins(self.Hs.float().view(-1, 1).numpy(), self.n_render_views, **self.interp_cfg)).view(-1).int()
-        self.Ws = torch.as_tensor(interpolate_camera_lins(self.Ws.float().view(-1, 1).numpy(), self.n_render_views, **self.interp_cfg)).view(-1).int()
-        self.ns = torch.as_tensor(interpolate_camera_lins(self.ns.float().view(-1, 1).numpy(), self.n_render_views, **self.interp_cfg)).view(-1)
-        self.fs = torch.as_tensor(interpolate_camera_lins(self.fs.float().view(-1, 1).numpy(), self.n_render_views, **self.interp_cfg)).view(-1)
+        if self.interp_type != Interpolation.NONE:
+
+            self.Ks = torch.as_tensor(interpolate_camera_lins(self.Ks.float().view(-1, 9).numpy(), self.n_render_views, **self.interp_cfg)).view(-1, 3, 3)
+            self.Hs = torch.as_tensor(interpolate_camera_lins(self.Hs.float().view(-1, 1).numpy(), self.n_render_views, **self.interp_cfg)).view(-1).int()
+            self.Ws = torch.as_tensor(interpolate_camera_lins(self.Ws.float().view(-1, 1).numpy(), self.n_render_views, **self.interp_cfg)).view(-1).int()
+            self.ns = torch.as_tensor(interpolate_camera_lins(self.ns.float().view(-1, 1).numpy(), self.n_render_views, **self.interp_cfg)).view(-1)
+            self.fs = torch.as_tensor(interpolate_camera_lins(self.fs.float().view(-1, 1).numpy(), self.n_render_views, **self.interp_cfg)).view(-1)
 
         # Add skeleton dimension for reusing camera parameter loading mechanism
         self.Ks = self.Ks[:, None].expand(-1, self.n_latents, -1, -1)  # (V, F, 3, 3)
-        self.Hs = self.Hs[:, None].expand(-1, self.n_latents)  # (V, F)
-        self.Ws = self.Ws[:, None].expand(-1, self.n_latents)  # (V, F)
+        self.Hs = self.Hs[:, None].expand(-1, self.n_latents).int()  # (V, F)
+        self.Ws = self.Ws[:, None].expand(-1, self.n_latents).int()  # (V, F)
         self.ns = self.ns[:, None].expand(-1, self.n_latents)  # (V, F)
         self.fs = self.fs[:, None].expand(-1, self.n_latents)  # (V, F)
 

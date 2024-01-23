@@ -23,6 +23,7 @@ from easyvolcap.utils.math_utils import torch_inverse_3x3, affine_inverse, norma
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from easyvolcap.models.networks.volumetric_video_network import VolumetricVideoNetwork
+    from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
     from easyvolcap.models.networks.multilevel_network import MultilevelNetwork
 
 
@@ -96,6 +97,10 @@ class VolumetricVideoModule(nn.Module):
         if not hasattr(self, 'sample'): self.sample = MethodType(sample, self)
         if not hasattr(self, 'render'): self.render = MethodType(sample, self)
         if not hasattr(self, 'compute'): self.compute = MethodType(sample, self)
+
+    def render_imgui(self, viewer: 'VolumetricVideoViewer', batch: dotdict):
+        if hasattr(super(), 'render_imgui'):
+            super().render_imgui(viewer, batch)
 
     @property
     def network(self):
@@ -528,4 +533,3 @@ def update_optimizer_state(optimizer, optimizer_state):
 
 def get_max_mem():
     return torch.cuda.max_memory_allocated() / 2 ** 20
-

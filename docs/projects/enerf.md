@@ -213,7 +213,7 @@ You can follow the instructions we provide in the [4K4D Custom Datasets](./realt
 
 ```shell
 # Visualize camera
-python scripts/tools/visualize_cameras.py --data_root ${datadir}
+python scripts/tools/visualize_cameras.py --data_root ${data_root}
 
 # Composable experiments
 evc -t gui -c configs/base.yaml,configs/models/enerfi.yaml,configs/datasets/volcano/skateboard.yaml,configs/specs/mask.yaml exp_name=enerfi_dtu val_dataloader_cfg.dataset_cfg.frame_sample=0,1,1

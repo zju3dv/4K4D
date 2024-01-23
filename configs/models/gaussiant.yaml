@@ -54,6 +54,8 @@ model_cfg:
     let_user_handle_input: True # let the user handle the output and input
     sampler_cfg:
         type: GaussianTSampler
+        use_cudagl: False
+        use_diffgl: False
 
     # Empty renderer and network
     renderer_cfg:
