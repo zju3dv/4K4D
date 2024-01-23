@@ -706,16 +706,19 @@ def build_parser(d: dict, parser: argparse.ArgumentParser = None):
     args = dotdict(vars(build_parser(args).parse_args()))
     """
     if parser is None:
+        # parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         parser = argparse.ArgumentParser()
+    # help = f'default = {Colors.BLUE}%(default)s{Colors.END}'
+    help = 'default = {}'
     for k, v in d.items():
         if isinstance(v, dict):
             # TODO: Add argparse group here
             pass
         elif isinstance(v, list):
-            parser.add_argument(f'--{k}', type=type(v[0]) if len(v) else str, default=v, nargs='+')
+            parser.add_argument(f'--{k}', type=type(v[0]) if len(v) else str, default=v, nargs='+', help=markup_to_ansi(help.format(v)))
         elif isinstance(v, bool):
             t = 'no_' + k if v else k
-            parser.add_argument(f'--{t}', action='store_false' if v else 'store_true', dest=k)
+            parser.add_argument(f'--{t}', action='store_false' if v else 'store_true', dest=k, help=markup_to_ansi(help.format(v)))
         else:
-            parser.add_argument(f'--{k}', type=type(v), default=v)
+            parser.add_argument(f'--{k}', type=type(v), default=v, help=markup_to_ansi(help.format(v)))
     return parser
