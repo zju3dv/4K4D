@@ -7,4 +7,4 @@ model_cfg:
 runner_cfg:
     collect_timing: True
     evaluator_cfg:
-        skip_time_in_summary: 10
+        skip_time_in_summary: 0

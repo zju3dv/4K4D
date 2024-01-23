@@ -130,6 +130,7 @@ runner_cfg: &runner_cfg
     visualizer_cfg:
         type: VolumetricVideoVisualizer
         types: [RENDER, DEPTH, ALPHA]
+        result_dir: data/result
     evaluator_cfg:
         type: VolumetricVideoEvaluator
     recorder_cfg:

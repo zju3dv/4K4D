@@ -89,8 +89,8 @@ def read_camera(intri_path: str, extri_path: str = None, cam_names=[]) -> dotdic
         # Intrinsics
         cams[cam] = dotdict()
         cams[cam].K = intri.read('K_{}'.format(cam))
-        cams[cam].H = intri.read('H_{}'.format(cam), dt='real') or -1
-        cams[cam].W = intri.read('W_{}'.format(cam), dt='real') or -1
+        cams[cam].H = int(intri.read('H_{}'.format(cam), dt='real')) or -1
+        cams[cam].W = int(intri.read('W_{}'.format(cam), dt='real')) or -1
         cams[cam].invK = np.linalg.inv(cams[cam]['K'])
 
         # Extrinsics

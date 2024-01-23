@@ -35,8 +35,8 @@ def convert_K(K, D, H, W):
         "p3": p3,
         "cx": cx,
         "cy": cy,
-        "h": H,
-        'w': W,
+        "h": int(H),
+        'w': int(W),
     }
     return out
 

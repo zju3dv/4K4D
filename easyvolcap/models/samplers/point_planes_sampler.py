@@ -257,7 +257,7 @@ class PointPlanesSampler(VolumetricVideoModule):
         self.dtype = getattr(torch, dtype) if isinstance(dtype, str) else dtype
         self.type(self.dtype)
 
-        if init_H > 0 and init_W > 0:
+        if init_H > 0 and init_W > 0 and (self.use_cudagl or self.use_diffgl):
             from easyvolcap.utils.gl_utils import HardwareRendering
             self.prepare_opengl('cudagl', HardwareRendering, self.dtype, self.dtype, init_H, init_W, n_points)
 

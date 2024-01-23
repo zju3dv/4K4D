@@ -429,7 +429,6 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
                 self.model.train(self.test_using_train_mode)
 
             profiler_step()  # record a step for the profiler, extracted logic
-
         scalar_stats = self.evaluator.summarize()
         image_stats = self.visualizer.summarize()
         self.recorder.update_scalar_stats(scalar_stats)
