@@ -78,7 +78,7 @@ def main():
     for camera_name in tqdm(camera_names):
         camera = cameras[camera_name]
 
-        if args.multi_frame_dataset:
+        if not args.multi_frame_dataset:
             filename = f'{args.images_dir}/{camera_name}{args.img_ext}'
         else:
             filename = f'{args.images_dir}/{camera_name}/{args.image_file}'
