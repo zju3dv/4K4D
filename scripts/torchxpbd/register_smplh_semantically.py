@@ -4,7 +4,7 @@ import json
 import torch
 import argparse
 import numpy as np
-import ujson as json
+import orjson as json
 
 from os.path import join
 from torch.optim import Adam

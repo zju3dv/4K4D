@@ -3,7 +3,7 @@ import cv2
 import argparse
 import collections
 import numpy as np
-import ujson as json
+import orjson as json
 
 from tqdm import tqdm
 from os.path import join

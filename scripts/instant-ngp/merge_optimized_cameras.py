@@ -4,7 +4,7 @@ import torch  # do we have a closed form solution for this?
 import msgpack
 import argparse
 import numpy as np
-import ujson as json
+import orjson as json
 import torch.nn.functional as F
 
 from tqdm import tqdm

@@ -40,7 +40,7 @@ ipdb
 pdbr
 ninja
 lpips
-ujson
+orjson
 pandas
 
 # for unwrapping to get StVK properly
