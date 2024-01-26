@@ -11,8 +11,9 @@ from easyvolcap.utils.data_utils import load_image, load_mask, save_image, save_
 from easyvolcap.utils.parallel_utils import parallel_execution
 
 
-def save_one_image(img: np.ndarray, out: str, FH: int = -1, FW: int = -1, thresh: float = 12):
-    msk = cv2.fastNlMeansDenoisingColored(img.astype(np.uint8), None, 10, 10, 7, 21)
+def save_one_image(img: np.ndarray, out: str, FH: int = -1, FW: int = -1, thresh: float = 12, denoise: bool = False):
+    if denoise: msk = cv2.fastNlMeansDenoisingColored(img.astype(np.uint8), None, 10, 10, 7, 21)
+    else: msk = img
     msk = msk.sum(axis=-1, keepdims=True) > thresh
     H, W, C = msk.shape
     if FH != -1 and FW != -1 and (H != FH or W != FW):
@@ -22,12 +23,13 @@ def save_one_image(img: np.ndarray, out: str, FH: int = -1, FW: int = -1, thresh
 
 @catch_throw
 def main():
-    parser = argparse.ArgumentParser(description='Extract the masked regions as masks')
-    parser.add_argument('--data_root', default='data/renbody/0013_01')
-    parser.add_argument('--videos_dir', default='videos_libx265')
-    parser.add_argument('--masks_dir', default='masks_libx265')
-    parser.add_argument('--thresh', default=12)  # all with 5
-    args = parser.parse_args()
+    args = dotdict()
+    args.data_root = 'data/renbody/0013_01'
+    args.videos_dir = 'videos_libx265'
+    args.masks_dir = 'masks_libx265'
+    args.thresh = 12
+    args.denoise = False
+    args = dotdict(vars(build_parser(args).parse_args()))
     videos_dir = join(args.data_root, args.videos_dir)
     masks_dir = join(args.data_root, args.masks_dir)
     videos = sorted(os.listdir(videos_dir))
@@ -46,7 +48,7 @@ def main():
 
         masks = [join(masks_dir, cam, f'{i:06d}.png') for i in range(N)]  # all output images path
         log(f'Output directory: {blue(join(masks_dir, cam))}')
-        parallel_execution([i for i in full.numpy()], masks, thresh=args.thresh, FW=FW, FH=FH, action=save_one_image, print_progress=True)
+        parallel_execution([i for i in full.numpy()], masks, thresh=args.thresh, FW=FW, FH=FH, denoise=args.denoise, action=save_one_image, print_progress=True)
 
 
 if __name__ == '__main__':

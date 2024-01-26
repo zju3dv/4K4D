@@ -7,6 +7,7 @@ import argparse
 import numpy as np
 
 from easyvolcap.utils.console_utils import *
+from easyvolcap.utils.timer_utils import timer
 from easyvolcap.utils.data_utils import load_image, load_mask, save_image, numpy_to_video, video_to_numpy, numpy_to_list
 from easyvolcap.utils.parallel_utils import parallel_execution
 
@@ -20,19 +21,22 @@ def save_one_image(img: np.ndarray, out: str, FH: int = -1, FW: int = -1):
 
 @catch_throw
 def main():
-    parser = argparse.ArgumentParser(description='Extract images from masked and resized videos')
-    parser.add_argument('--data_root', default='data/renbody/0013_01')
-    parser.add_argument('--videos_dir', default='videos_libx265')
-    parser.add_argument('--images_dir', default='images_libx265')
-    parser.add_argument('--single_channel', action='store_true')
-    args = parser.parse_args()
+    args = dotdict()
+    args.data_root = 'data/renbody/0013_01'
+    args.videos_dir = 'videos_libx265'
+    args.images_dir = 'images_libx265'
+    args.single_channel = False
+    args = dotdict(vars(build_parser(args).parse_args()))
     videos_dir = join(args.data_root, args.videos_dir)
     images_dir = join(args.data_root, args.images_dir)
     videos = sorted(os.listdir(videos_dir))
 
+    timer.disabled = False
     for video in videos:
         log(f'Processing video: {blue(video)}')
+        timer.record()
         vid = video_to_numpy(join(videos_dir, video))
+        timer.record('decoding')
         if args.single_channel:
             vid = vid[..., 0][..., None]  # Only save the first channel
         split = video.split('.')[0].split('_')
@@ -46,7 +50,7 @@ def main():
 
         images = [join(images_dir, cam, f'{i:06d}.png') for i in range(N)]  # all output images path
         log(f'Output directory: {blue(join(images_dir, cam))}')
-        parallel_execution([i for i in full.numpy()], images, FW=FW, FH=FH, action=save_one_image, print_progress=True)
+        parallel_execution([i for i in full.numpy()], images, FW=FW, FH=FH, action=save_one_image, print_progress=False)
 
 
 if __name__ == '__main__':

@@ -68,7 +68,9 @@ def forward_for_xyz_feat(i: int, sampler: SuperChargedR4DV, b, e, s, tb, te, ts,
     xyz: torch.Tensor = sampler.pcds[(b + i * s) // ts - tb][None]
     t = times[(b + i * s) // ts - tb]
     xyz_t = t[None, None].expand(*xyz.shape[:-1], 1)  # B, N, 1
+    timer.record('post processing')
     xyz_feat: torch.Tensor = sampler.xyz_embedder(xyz, xyz_t)  # same time
+    timer.record('sampling 4D feature')
     return xyz, xyz_feat  # this is without batch dimension
 
 
@@ -143,7 +145,7 @@ def average_single_frame(i: int,
         inp,
         sampler.ibr_embedder.feat_reg
     )[-1] for inp in src_inps[0]])[None]  # B, S, 3, H, W
-    timer.record('compute features')
+    timer.record('image feature extraction')
 
     src_feat_inps = torch.cat([
         src_feat,
@@ -160,7 +162,7 @@ def average_single_frame(i: int,
     ) for i in range(src_feat_inps.shape[1])], dim=1)  # B, S, N, 3
     ibrs, rgbs = ibrs_rgbs[..., :-3], ibrs_rgbs[..., -3:]
     del src_feat, src_inps, src_feat_inps, ibrs_rgbs
-    timer.record('sample features')
+    timer.record('sample image features')
 
     exp_xyz_feat = xyz_feat[..., None, :, :].expand(ibrs.shape[:-1] + (xyz_feat.shape[-1],))
     xyz_ibr_rgbs = torch.cat([exp_xyz_feat, ibrs, rgbs], dim=-1)  # B, S, N, 43
@@ -393,7 +395,9 @@ class SuperChargedR4DV(PointPlanesSampler):
         if hasattr(self, 'ibr_regressor') and hasattr(self.ibr_regressor, 'sh_mlp'):
             self.shs = [None for _ in self.pcds]  # BIG
             for i, feat in enumerate(tqdm(feats, desc='Caching spherical harmonics')):
+                timer.record('sh overhead')
                 sh: torch.Tensor = self.ibr_regressor.sh_mlp(feat)
+                timer.record('sh regression')
                 sh = sh.view(*sh.shape[:-1], self.ibr_out_dim, self.ibr_sh_dim // self.ibr_out_dim)[..., :(self.n_shs + 1) ** 2]  # reshape to B, P, 3, SH
                 sh = sh.to(self.dtype).view(self.memory_dtype).detach().cpu(memory_format=torch.contiguous_format)  # MARK: SYNC
                 torch.cuda.empty_cache()  # only out-of-frame cache cleaning works
@@ -419,7 +423,9 @@ class SuperChargedR4DV(PointPlanesSampler):
         self.rads = nn.ParameterList([None for _ in self.pcds])  # OK
         self.occs = nn.ParameterList([None for _ in self.pcds])  # OK
         for i, feat in enumerate(tqdm(feats, desc='Caching radius and alpha')):
+            timer.record('geometry overhead')
             rad, occ = self.geo_regressor(feat)
+            timer.record('geometry regression')
             self.rads[(b + i * s) // ts - tb] = make_buffer(rad)
             self.occs[(b + i * s) // ts - tb] = make_buffer(occ)
 
@@ -472,7 +478,7 @@ class SuperChargedR4DV(PointPlanesSampler):
         inds = inds[..., None, None].expand((-1, -1) + rgbw.shape[-2:])  # B, 4, N, 4
         rgbw = rgbw.gather(-3, inds)  # B, 4, N, 4
         base = (rgbw[..., -1:].softmax(-3) * rgbw[..., :-1]).sum(-3)
-
+        
         # Residual speculars
         rgb = base + eval_sh(sh_deg, sh, dir).tanh() * resd_limit  # NOTE: this is the only thing that need to be run on CUDA (or torch)
         rgb = rgb.clip(0, 1)
@@ -497,13 +503,17 @@ class SuperChargedR4DV(PointPlanesSampler):
         if self.skip_base:
             sh = sh.abs()
             rgbw[..., :3] = 0
+        timer.record('sample source images')
+
         rgb = self.get_rgb(batch.R.half(), batch.T.half(), xyz, sh, rgbw, cent, self.n_srcs, self.n_shs, self.ibr_resd_limit)
+        timer.record('evaluate SH')
 
         if return_frags:
             return None, xyz, rgb, rad, occ
 
         # Perform points rendering (for now, this is dominating)
         rgb, acc, dpt = self.render_points(xyz, rgb, rad, occ, batch)  # almost always use render_cudagl
+        timer.record('render points')
 
         # Prepare for output
         self.store_output(None, xyz, rgb, acc, dpt, batch)
