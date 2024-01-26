@@ -38,16 +38,17 @@ class VolumetricVideoEvaluator(VolumetricVideoVisualizer):
             for compute in self.compute_metrics:
                 metrics[compute.__name__] = compute(img, img_gt)  # actual computation of the metrics
 
-        self.metrics.append(metrics)
+        if len(metrics):
+            self.metrics.append(metrics)
 
-        # For recording
-        c = batch.meta.camera_index.item()
-        f = batch.meta.frame_index.item()
-        log(f'camera: {c}', f'frame: {f}', metrics)
-        metrics.camera = c
-        metrics.frame = f
+            # For recording
+            c = batch.meta.camera_index.item()
+            f = batch.meta.frame_index.item()
+            log(f'camera: {c}', f'frame: {f}', metrics)
+            metrics.camera = c
+            metrics.frame = f
+
         scalar_stats = dotdict({f'{k}_frame{f:04d}_cam{c:04d}': v for k, v in metrics.items()})
-
         return scalar_stats
 
     def summarize(self):

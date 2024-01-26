@@ -21,11 +21,11 @@ from easyvolcap.utils.base_utils import dotdict
 
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.console_utils import dotdict
-from easyvolcap.utils.gaussian_utils import GaussianModel
-from easyvolcap.utils.data_utils import load_pts, export_pts, to_x, to_cuda, to_cpu, to_tensor, remove_batch
-from easyvolcap.utils.net_utils import normalize, typed, update_optimizer_state
-from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
 from easyvolcap.utils.bound_utils import get_bounds
+from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
+from easyvolcap.utils.gaussian_utils import GaussianModel, in_frustrum
+from easyvolcap.utils.net_utils import normalize, typed, update_optimizer_state
+from easyvolcap.utils.data_utils import load_pts, export_pts, to_x, to_cuda, to_cpu, to_tensor, remove_batch
 
 from easyvolcap.models.cameras.optimizable_camera import OptimizableCamera
 from easyvolcap.models.samplers.point_planes_sampler import PointPlanesSampler
@@ -127,6 +127,9 @@ class GaussianTSampler(PointPlanesSampler):
 
         # Prepare the camera transformation for Gaussian
         gaussian_camera = to_x(prepare_gaussian_camera(batch), torch.float)
+
+        # is_in_frustrum = in_frustrum(xyz, gaussian_camera.full_proj_transform)
+        # print('Number of points to render:', is_in_frustrum.sum().item())
 
         # Prepare rasterization settings for gaussian
         raster_settings = GaussianRasterizationSettings(

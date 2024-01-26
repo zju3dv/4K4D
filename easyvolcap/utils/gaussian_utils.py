@@ -8,9 +8,41 @@ from torch.nn import functional as F
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.sh_utils import eval_sh
 from easyvolcap.utils.blend_utils import batch_rodrigues
-from easyvolcap.utils.math_utils import torch_inverse_2x2
 from easyvolcap.utils.data_utils import to_x, add_batch, load_pts
 from easyvolcap.utils.net_utils import make_buffer, make_params, typed
+from easyvolcap.utils.math_utils import torch_inverse_2x2, point_padding
+
+
+# def in_frustrum(xyz: torch.Tensor, ixt: torch.Tensor, ext: torch.Tensor):
+def in_frustrum(xyz: torch.Tensor, full_proj_matrix: torch.Tensor, padding: float = 0.01):
+    # __forceinline__ __device__ bool in_frustum(int idx,
+    # 	const float* orig_points,
+    # 	const float* viewmatrix,
+    # 	const float* projmatrix,
+    # 	bool prefiltered,
+    # 	float3& p_view,
+    # 	const float padding = 0.01f // padding in ndc space
+    # 	)
+    # {
+    # 	float3 p_orig = { orig_points[3 * idx], orig_points[3 * idx + 1], orig_points[3 * idx + 2] };
+
+    # 	// Bring points to screen space
+    # 	float4 p_hom = transformPoint4x4(p_orig, projmatrix);
+    # 	float p_w = 1.0f / (p_hom.w + 0.0000001f);
+    # 	float3 p_proj = { p_hom.x * p_w, p_hom.y * p_w, p_hom.z * p_w };
+    # 	p_view = transformPoint4x3(p_orig, viewmatrix); // write this outside
+
+    # 	// if (idx % 32768 == 0) printf("Viewspace point: %f, %f, %f\n", p_view.x, p_view.y, p_view.z);
+    # 	// if (idx % 32768 == 0) printf("Projected point: %f, %f, %f\n", p_proj.x, p_proj.y, p_proj.z);
+    # 	return (p_proj.z > -1 - padding) && (p_proj.z < 1 + padding) && (p_proj.x > -1 - padding) && (p_proj.x < 1. + padding) && (p_proj.y > -1 - padding) && (p_proj.y < 1. + padding);
+    # }
+
+    # xyz: N, 3
+    # ndc = (xyz @ R.mT + T)[..., :3] @ K # N, 3
+    # ndc[..., :2] = ndc[..., :2] / ndc[..., 2:] / torch.as_tensor([W, H], device=ndc.device) # N, 2, normalized x and y
+    ndc = point_padding(xyz) @ full_proj_matrix
+    ndc = ndc[..., :3] / ndc[..., 3:]
+    return (ndc[..., 2] > -1 - padding) & (ndc[..., 2] < 1 + padding) & (ndc[..., 0] > -1 - padding) & (ndc[..., 0] < 1. + padding) & (ndc[..., 1] > -1 - padding) & (ndc[..., 1] < 1. + padding)  # N,
 
 
 @torch.jit.script
@@ -199,7 +231,8 @@ def prepare_gaussian_camera(batch):
 def convert_to_gaussian_camera(K: torch.Tensor,
                                R: torch.Tensor,
                                T: torch.Tensor,
-                               H: int, W: int,
+                               H: int,
+                               W: int,
                                znear: float = 0.01,
                                zfar: float = 100.
                                ):
@@ -220,7 +253,7 @@ def convert_to_gaussian_camera(K: torch.Tensor,
 
     output.world_view_transform = getWorld2View(output.R, output.T).transpose(0, 1)
     output.projection_matrix = getProjectionMatrix(output.K, output.image_height, output.image_width, znear, zfar).transpose(0, 1)
-    output.full_proj_transform = torch.matmul(output.world_view_transform, output.projection_matrix)
+    output.full_proj_transform = torch.matmul(output.world_view_transform, output.projection_matrix)  # 4, 4
     output.camera_center = output.world_view_transform.inverse()[3:, :3]
 
     # Set up rasterization configuration
@@ -685,6 +718,9 @@ class GaussianModel(nn.Module):
 
         # Prepare the camera transformation for Gaussian
         gaussian_camera = to_x(prepare_gaussian_camera(batch), torch.float)
+
+        # is_in_frustrum = in_frustrum(xyz, gaussian_camera.full_proj_transform)
+        # print('Number of points to render:', is_in_frustrum.sum().item())
 
         # Prepare rasterization settings for gaussian
         raster_settings = GaussianRasterizationSettings(

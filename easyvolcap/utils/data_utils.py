@@ -231,7 +231,7 @@ def video_to_numpy(input_filename):
         'ffmpeg',
         '-hwaccel', 'cuda',
         '-v', 'quiet', '-stats',
-        # '-vcodec', 'hevc_cuvid',
+        '-vcodec', 'hevc_cuvid',
         '-i', input_filename,
         '-f', 'image2pipe',
         '-pix_fmt', 'rgb24',
@@ -244,7 +244,8 @@ def video_to_numpy(input_filename):
 
     # Convert the raw data to numpy array and reshape
     video_np = np.frombuffer(raw_data, dtype=np.uint8)
-    video_np = video_np.reshape(-1, H, W, 3)
+    H2, W2 = (H + 1) // 2 * 2, (W + 1) // 2 * 2
+    video_np = video_np.reshape(-1, H2, W2, 3)[:, :H, :W, :]
     return video_np
 
 

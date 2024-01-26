@@ -35,12 +35,13 @@ class VolumetricVideoVisualizer:  # this should act as a base class for other ty
                      Visualization.ALPHA.name,
                  ],
 
-                 stream_delay: int = 5,  # after this number of pending copy, start synchronizing the stream and saving to disk
-                 pool_limit: int = 5,  # maximum number of pending tasks in the thread pool, keep this small to avoid using too much resource
+                 stream_delay: int = 2,  # after this number of pending copy, start synchronizing the stream and saving to disk
+                 pool_limit: int = 10,  # maximum number of pending tasks in the thread pool, keep this small to avoid using too much resource
                  video_fps: int = 60,
                  verbose: bool = True,
 
                  dpt_curve: str = 'normalize',  # looks good
+                 dpt_mult: float = 1.0,
                  dpt_cm: str = 'virdis' if args.type != 'gui' else 'linear',  # looks good
                  ):
         super().__init__()
@@ -71,6 +72,7 @@ class VolumetricVideoVisualizer:  # this should act as a base class for other ty
         self.video_fps = video_fps
         self.verbose = verbose
         self.dpt_curve = dpt_curve
+        self.dpt_mult = dpt_mult
         self.dpt_cm = dpt_cm
 
         if self.verbose:
@@ -102,11 +104,15 @@ class VolumetricVideoVisualizer:  # this should act as a base class for other ty
                 img = output.dpt_map
             else:
                 img = depth_curve_fn(output.dpt_map, cm=self.dpt_cm)
+            # img = (img - 0.5) * self.dpt_mult + 0.5
+            img = img * self.dpt_mult
             if self.store_ground_truth and 'dpt' in batch:
                 if self.dpt_curve == 'linear':
                     img_gt = batch.dpt
                 else:
                     img_gt = depth_curve_fn(batch.dpt, cm=self.dpt_cm)
+                # img_gt = (img_gt - 0.5) * self.dpt_mult + 0.5
+                img_gt = img_gt * self.dpt_mult
 
         elif type == Visualization.FEATURE:
             # This visualizes the xyzt + xyz feature output

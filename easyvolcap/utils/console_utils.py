@@ -599,12 +599,24 @@ def time_function(sync_cuda: bool = True):
 
 
 class Timer:
-    def __init__(self, name='', disabled: bool = False, sync_cuda: bool = True):
+    def __init__(self, 
+                 name='base',
+                 exp_name='',
+                 record_dir: str = 'data/timing',
+                 disabled: bool = False, 
+                 sync_cuda: bool = True, 
+                 record_to_file: bool = False,
+                 ):
         self.sync_cuda = sync_cuda
         self.disabled = disabled
         self.name = name
+        self.exp_name = exp_name
         self.start_time = time.perf_counter()  # manually record another start time incase timer is disabled during initialization
         self.start()  # you can always restart multiple times to reuse this timer
+
+        self.record_to_file = record_to_file
+        if self.record_to_file:
+            self.timing_record = dotdict()
 
     def __enter__(self):
         self.start()
@@ -636,6 +648,13 @@ class Timer:
         if self.disabled: return 0
         self.name = event
         diff = self.stop(print=bool(event), back=3)
+        if self.record_to_file and event:
+            if event not in self.timing_record:
+                self.timing_record[event] = []
+            self.timing_record[event].append(diff)
+
+            with open(join(self.record_dir, f'{self.exp_name}.json'), 'w') as f:
+                json.dump(self.timing_record, f, indent=4)
         self.start()
         return diff
 

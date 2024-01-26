@@ -8,6 +8,8 @@ dataloader_cfg: # we see the term "dataloader" as one word?
         view_sample: [0, null, 1]
         frame_sample: [0, null, 1] # only train for a thousand frames
 
+        use_aligned_cameras: True
+
         vhull_thresh: 0.85 # 21 cameras?
         count_thresh: 6 # more visibility
         vhull_thresh_factor: 0.9 # FIXME: 313 need 1.5, 390, 394 requires 1.0

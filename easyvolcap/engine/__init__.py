@@ -115,7 +115,8 @@ def parse_cfg(args):
             )
         )  # empty config
     else:
-        raise FileNotFoundError(f"Config file {blue(args.config)} not found")
+        raise FileNotFoundError(f"Config file {args.config} not found")
+        # raise FileNotFoundError(f"Config file {markup_to_ansi(blue(args.config))} not found")
 
 
 parser = get_parser()

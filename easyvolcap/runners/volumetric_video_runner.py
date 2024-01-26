@@ -83,7 +83,8 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
 
                  # Debugging
                  collect_timing: bool = False,  # will lose 1 fps over copying
-                 timer_sync_cuda: bool = True,
+                 timer_sync_cuda: bool = True,  # will explicitly call torch.cuda.synchronize() before collecting
+                 timer_record_to_file: bool = False, # will write to a json file for collected analysis of the timing
                  ):
         self.model = model  # possibly already a ddp model?
 
@@ -148,6 +149,7 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
         # Debugging
         self.collect_timing = collect_timing  # another fancy self.timer (different from fps counter)
         self.timer_sync_cuda = timer_sync_cuda  # this enables accurate time recording for each section, but would slow down the programs
+        self.timer_record_to_file = timer_record_to_file
 
     @property
     def collect_timing(self):
@@ -157,6 +159,10 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
     def timer_sync_cuda(self):
         return timer.sync_cuda
 
+    @property
+    def timer_record_to_file(self):
+        return timer.record_to_file
+
     @collect_timing.setter
     def collect_timing(self, val: bool):
         timer.disabled = not val
@@ -164,6 +170,16 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
     @timer_sync_cuda.setter
     def timer_sync_cuda(self, val: bool):
         timer.sync_cuda = val
+
+    @timer_record_to_file.setter
+    def timer_record_to_file(self, val: bool):
+        timer.record_to_file = val
+        if timer.record_to_file:
+            log(yellow(f'Will record timing results to {blue(join(self.recorder.record_dir, f"{self.exp_name}.json"))}'))
+            timer.exp_name = self.exp_name
+            timer.record_dir = self.recorder.record_dir
+            if not hasattr(timer, 'timing_record'):
+                timer.timing_record = dotdict()
 
     @property
     def total_iter(self):
