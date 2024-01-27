@@ -111,7 +111,7 @@ verbose_time_format = '%Y-%m-%d %H:%M:%S.%f'
 do_nothing_console = Console(file=StringIO(), stderr=StringIO())
 console = Console(soft_wrap=True, tab_size=4, log_time_format=slim_time_format, width=slim_width, log_time=slim_log_time, log_path=slim_log_path)  # shared
 progress = Progress(console=console, expand=True)  # destroyed
-live = Live(console=console, refresh_per_second=1)  # destroyed
+live = Live(console=console, refresh_per_second=10)  # destroyed
 traceback.install(console=console, width=slim_width)  # for colorful tracebacks
 pretty.install(console=console)
 
