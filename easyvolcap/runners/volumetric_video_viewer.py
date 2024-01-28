@@ -71,6 +71,7 @@ class VolumetricVideoViewer:
                  update_mem_time: float = 0.1,  # be less stressful
                  use_quad_draw: bool = False,  # different rendering solution
                  use_quad_cuda: bool = True,
+                 use_vsync: bool = False,
 
                  # This is important for works like K-planes or IBR (or stableenerf), since it's not easy to perform interpolation (slow motion)
                  # For point clouds, only a fixed number of point clouds are produces since we performed discrete training (no interpolation)
@@ -99,6 +100,7 @@ class VolumetricVideoViewer:
         self.fullscreen = fullscreen
         self.window_size = window_size
         self.window_title = window_title
+        self.use_vsync = use_vsync
         self.use_window_focal = use_window_focal
 
         # Quad related configurations
@@ -901,7 +903,15 @@ class VolumetricVideoViewer:
         imgui.pop_font()
 
         # Full frame timings
-        timer.disabled = not imgui_toggle.toggle('Collect timings', not timer.disabled, config=self.static.toggle_ios_style)[1]
+        self.runner.collect_timing = imgui_toggle.toggle('Collect timing', self.runner.collect_timing, config=self.static.toggle_ios_style)[1]
+        changed, value = imgui_toggle.toggle('Record timing', self.runner.timer_record_to_file, config=self.static.toggle_ios_style)
+        if changed:
+            self.runner.timer_record_to_file = value
+        self.runner.timer_sync_cuda = imgui_toggle.toggle('Sync timing', self.runner.timer_sync_cuda, config=self.static.toggle_ios_style)[1]
+        changed, self.use_vsync = imgui_toggle.toggle('Enable VSync', self.use_vsync, config=self.static.toggle_ios_style)
+        if changed:
+            glfw.swap_interval(self.use_vsync)
+
         if not timer.disabled:
             if imgui.collapsing_header('Timing'):
                 imgui.text(f'gui  : {batch.gui_time * 1000:7.3f}ms')
@@ -1417,7 +1427,7 @@ class VolumetricVideoViewer:
         # Create a windowed mode window and its OpenGL context
         window = glfw.create_window(self.W, self.H, self.window_title, None, None)
         glfw.make_context_current(window)
-        glfw.swap_interval(0)  # disable vsync
+        glfw.swap_interval(self.use_vsync)  # disable vsync
 
         icon = load_image(self.icon_file)
         pixels = (icon * 255).astype(np.uint8)

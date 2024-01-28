@@ -16,9 +16,11 @@ class VolumetricVideoEvaluator(VolumetricVideoVisualizer):
     def __init__(self,
                  skip_time_in_summary: int = 0,  # skip first 5 image in summary
                  result_dir: str = cfg.runner_cfg.visualizer_cfg.result_dir,  # MARK: GLOBAL
+                 save_tag: str = cfg.runner_cfg.visualizer_cfg.save_tag,  # MARK: GLOBAL
                  metrics_file: str = 'metrics.json',
+                 **kwargs,
                  ) -> None:
-        super().__init__(verbose=False, result_dir=result_dir)
+        super().__init__(verbose=False, result_dir=result_dir, save_tag=save_tag, **kwargs)
         self.skip_time_in_summary = skip_time_in_summary
         self.metrics = []
         self.metrics_file = metrics_file
@@ -38,16 +40,17 @@ class VolumetricVideoEvaluator(VolumetricVideoVisualizer):
             for compute in self.compute_metrics:
                 metrics[compute.__name__] = compute(img, img_gt)  # actual computation of the metrics
 
-        self.metrics.append(metrics)
+        if len(metrics):
+            self.metrics.append(metrics)
 
-        # For recording
-        c = batch.meta.camera_index.item()
-        f = batch.meta.frame_index.item()
-        log(f'camera: {c}', f'frame: {f}', metrics)
-        metrics.camera = c
-        metrics.frame = f
+            # For recording
+            c = batch.meta.camera_index.item()
+            f = batch.meta.frame_index.item()
+            log(f'camera: {c}', f'frame: {f}', metrics)
+            metrics.camera = c
+            metrics.frame = f
+
         scalar_stats = dotdict({f'{k}_frame{f:04d}_cam{c:04d}': v for k, v in metrics.items()})
-
         return scalar_stats
 
     def summarize(self):
@@ -76,9 +79,12 @@ class VolumetricVideoEvaluator(VolumetricVideoVisualizer):
             metric.summary = summary
             metric.metrics = self.metrics
             metric_path = join(self.result_dir, self.metrics_file)
-            with open(metric_path, 'w') as f:
-                json.dump(metric, f, indent=4)
-            log(yellow(f'Evaluation metrics saved to {blue(metric_path)}'))
+            try:
+                with open(metric_path, 'w') as f:
+                    json.dump(metric, f, indent=4)
+                log(yellow(f'Evaluation metrics saved to {blue(metric_path)}'))
+            except Exception as e:
+                log(red(f'Error in dumping evaluation metrics to {blue(metric_path)}: {red(e)}'))
 
             self.metrics.clear()  # clear mean after extracting summary
         return summary

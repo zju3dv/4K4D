@@ -5,6 +5,8 @@ dataloader_cfg: # we see the term "dataloader" as one word?
         view_sample: [0, null, 1]
         frame_sample: [0, 200, 1] # only train for a thousand frames
 
+        use_aligned_cameras: True
+
         # MARK: This is for now the best vhull extraction setting
         vhull_thresh: 0.95 # 18 cameras?
         count_thresh: 16 # common views

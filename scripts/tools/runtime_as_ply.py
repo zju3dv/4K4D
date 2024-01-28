@@ -17,18 +17,17 @@ from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
 def main():
     # fmt: off
     import sys
-    sys.path.append('.')
 
-    sep_ind = sys.argv.index('--')
+    sep_ind = sys.argv.index('--') if '--' in sys.argv else len(sys.argv)
     our_args = sys.argv[1:sep_ind]
     evv_args = sys.argv[sep_ind + 1:]
-    sys.argv = [sys.argv[0]] + ['-t','test'] + evv_args + ['val_dataloader_cfg.dataset_cfg.type=VolumetricVideoDataset'] # use default dataset
+    sys.argv = [sys.argv[0]] + ['-t','test'] + evv_args
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--result_dir', type=str, default='data/geometry')
-    parser.add_argument('--frame_index', type=int, default=0)
-    parser.add_argument('--skip_align', action='store_true')
-    args = parser.parse_args(our_args)
+    args = dotdict()
+    args.result_dir = 'data/geometry'
+    args.frame_index = 0
+    args.skip_align = False
+    args =dotdict(vars(build_parser(args).parse_args(our_args)))
 
     sys.argv += [f'val_dataloader_cfg.dataset_cfg.frame_sample={args.frame_index},{args.frame_index+1},1']
 
@@ -47,11 +46,19 @@ def main():
     special_mapping = {
         f'sampler.pcds.{args.frame_index}': 'pts',
         f'sampler.rgbs.{args.frame_index}': 'color',
+        f'sampler.bg_sampler.pcds.{args.frame_index}': 'pts',
+        f'sampler.bg_sampler.rgbs.{args.frame_index}': 'color',
+        f'sampler.fg_sampler.pcds.{args.frame_index}': 'pts',
+        f'sampler.fg_sampler.rgbs.{args.frame_index}': 'color',
     }
 
     named_mapping = {
         f'sampler.rads.{args.frame_index}': 'radius',
         f'sampler.occs.{args.frame_index}': 'alpha',
+        f'sampler.bg_sampler.rads.{args.frame_index}': 'radius',
+        f'sampler.bg_sampler.occs.{args.frame_index}': 'alpha',
+        f'sampler.fg_sampler.rads.{args.frame_index}': 'radius',
+        f'sampler.fg_sampler.occs.{args.frame_index}': 'alpha',
     }
 
     # Save the model's registered parameters as numpy arrays in npz

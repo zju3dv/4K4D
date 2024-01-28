@@ -5,6 +5,8 @@ dataloader_cfg: # we see the term "dataloader" as one word?
         vhull_thresh: 0.95
         count_thresh: 6 # common views
 
+        use_aligned_cameras: True
+
         vhull_thresh_factor: 0.75
         vhull_count_factor: 1.0
 

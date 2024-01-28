@@ -10,9 +10,6 @@ from functools import reduce
 from torch_scatter import scatter
 from pytorch3d.structures import Meshes
 
-from largesteps.optimize import AdamUniform
-from largesteps.geometry import compute_matrix
-from largesteps.parameterize import from_differential, to_differential
 from pytorch3d.ops.laplacian_matrices import laplacian, cot_laplacian, norm_laplacian
 
 from easyvolcap.utils.console_utils import *
@@ -406,6 +403,10 @@ def bidirectional_icp_fitting(v0: torch.Tensor,
         svi1 = vm1.nonzero(as_tuple=True)[0]
     else:
         svi0, svi1 = None, None
+
+    from largesteps.optimize import AdamUniform
+    from largesteps.geometry import compute_matrix
+    from largesteps.parameterize import from_differential, to_differential
 
     # assume no batch dim
     M0 = compute_matrix(v0, f0, lambda_smooth)
@@ -1097,6 +1098,10 @@ def isosurface_fitting(src_verts: torch.Tensor,  # assume no batch dim
                        chunk_size: int = 1600,
                        lr: float = 1e-3,
                        ):
+
+    from largesteps.optimize import AdamUniform
+    from largesteps.geometry import compute_matrix
+    from largesteps.parameterize import from_differential, to_differential
 
     M = compute_matrix(src_verts, src_faces, param_lambda)
     param = to_differential(M, src_verts)

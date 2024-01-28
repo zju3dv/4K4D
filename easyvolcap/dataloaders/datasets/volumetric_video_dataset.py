@@ -500,7 +500,7 @@ class VolumetricVideoDataset(Dataset):
         if self.cache_raw:
             self.ims_bytes = to_tensor([load_image_from_bytes(x, normalize=True) for x in tqdm(self.ims_bytes, desc=f'Caching imgs for {blue(self.data_root)} {magenta(self.split.name)}')])  # High mem usage
             if hasattr(self, 'mks_bytes'): self.mks_bytes = to_tensor([load_image_from_bytes(x, normalize=True) for x in tqdm(self.mks_bytes, desc=f'Caching mks for {blue(self.data_root)} {magenta(self.split.name)}')])
-            if hasattr(self, 'dps_bytes'): self.dps_bytes = to_tensor([load_image_from_bytes(x, normalize=True) for x in tqdm(self.dps_bytes, desc=f'Caching dps for {blue(self.data_root)} {magenta(self.split.name)}')])
+            if hasattr(self, 'dps_bytes'): self.dps_bytes = to_tensor([load_image_from_bytes(x, normalize=False) for x in tqdm(self.dps_bytes, desc=f'Caching dps for {blue(self.data_root)} {magenta(self.split.name)}')])
             if hasattr(self, 'bgs_bytes'): self.bgs_bytes = to_tensor([load_image_from_bytes(x, normalize=True) for x in tqdm(self.bgs_bytes, desc=f'Caching bgs for {blue(self.data_root)} {magenta(self.split.name)}')])
         else:
             # Avoid splitting memory for bytes objects
@@ -1212,8 +1212,8 @@ class VolumetricVideoDataset(Dataset):
             rgb = rgb[y: y + h, x: x + w, :]
             msk = msk[y: y + h, x: x + w, :]
             wet = wet[y: y + h, x: x + w, :]
-            if dpt is not None: dpt[y: y + h, x: x + w, :]
-            if bkg is not None: bkg[y: y + h, x: x + w, :]
+            if dpt is not None: dpt = dpt[y: y + h, x: x + w, :]
+            if bkg is not None: bkg = bkg[y: y + h, x: x + w, :]
 
             output.rgb = rgb.reshape(-1, 3)  # full image in case you need it
             output.msk = msk.reshape(-1, 1)  # full mask

@@ -180,7 +180,7 @@ def numpy_to_video(numpy_array: np.ndarray,
         '-tag:v', 'hvc1',
         output_filename
     ]
-    os.makedirs(os.path.dirname(output_filename), exist_ok=True)
+    os.makedirs(dirname(output_filename), exist_ok=True)
     process = subprocess.Popen(map(str, cmd), stdin=subprocess.PIPE)
     # process.communicate(input=numpy_array.tobytes())
     for frame in numpy_array:
@@ -231,7 +231,7 @@ def video_to_numpy(input_filename):
         'ffmpeg',
         '-hwaccel', 'cuda',
         '-v', 'quiet', '-stats',
-        # '-vcodec', 'hevc_cuvid',
+        '-vcodec', 'hevc_cuvid',
         '-i', input_filename,
         '-f', 'image2pipe',
         '-pix_fmt', 'rgb24',
@@ -244,7 +244,8 @@ def video_to_numpy(input_filename):
 
     # Convert the raw data to numpy array and reshape
     video_np = np.frombuffer(raw_data, dtype=np.uint8)
-    video_np = video_np.reshape(-1, H, W, 3)
+    H2, W2 = (H + 1) // 2 * 2, (W + 1) // 2 * 2
+    video_np = video_np.reshape(-1, H2, W2, 3)[:, :H, :W, :]
     return video_np
 
 
@@ -434,11 +435,11 @@ def get_tensor_mesh_data(verts: torch.Tensor, faces: torch.Tensor, uv: torch.Ten
 
     # pytorch3d wants a tensor
     verts, faces, uv, img, uvfaces = to_tensor([verts, faces, uv, img, uvfaces])
-    verts = verts.view(-1, 3)
-    faces = faces.view(-1, 3)
-    uv = uv.view(-1, 2)
-    img = img.view(img.shape[-3:])
-    uvfaces = uvfaces.view(-1, 3)
+    verts = verts.reshape(-1, 3)
+    faces = faces.reshape(-1, 3)
+    uv = uv.reshape(-1, 2)
+    img = img.reshape(img.shape[-3:])
+    uvfaces = uvfaces.reshape(-1, 3)
 
     # textures = TexturesUV(img, uvfaces, uv)
     # meshes = Meshes(verts, faces, textures)
@@ -573,8 +574,8 @@ def export_pts(pts: torch.Tensor, color: torch.Tensor = None, normal: torch.Tens
 
     df = DataFrame(data)
     cloud = PyntCloud(df)  # construct the data
-    dirname = os.path.dirname(filename)
-    if dirname: os.makedirs(dirname, exist_ok=True)
+    dir = dirname(filename)
+    if dir: os.makedirs(dir, exist_ok=True)
     return cloud.to_file(filename)
 
 
@@ -677,8 +678,7 @@ def export_camera(c2w: torch.Tensor, ixt: torch.Tensor = None, col: torch.Tensor
 
 
 def export_mesh(verts: torch.Tensor, faces: torch.Tensor, uv: torch.Tensor = None, img: torch.Tensor = None, uvfaces: torch.Tensor = None, colors: torch.Tensor = None, normals: torch.Tensor = None, filename: str = "default.ply", subdivision=0):
-    dirname = os.path.dirname(filename)
-    if dirname: os.makedirs(dirname, exist_ok=True)
+    if dirname(filename): os.makedirs(dirname(filename), exist_ok=True)
 
     if subdivision > 0:
         from easyvolcap.utils.mesh_utils import face_normals, loop_subdivision
@@ -726,7 +726,7 @@ def export_pynt_pts_alone(pts, color=None, filename="default.ply"):
 
     df = pd.DataFrame(data)
     cloud = PyntCloud(df)  # construct the data
-    dirname = os.path.dirname(filename)
+    dirname = dirname(filename)
     if dirname: os.makedirs(dirname, exist_ok=True)
     return cloud.to_file(filename)
 
@@ -787,7 +787,7 @@ def export_pcd(pts: torch.Tensor, rgb: torch.Tensor, occ: torch.Tensor, filename
     df = pd.DataFrame(data)
 
     cloud = PyntCloud(df)  # construct the data
-    dirname = os.path.dirname(filename)
+    dirname = dirname(filename)
     if dirname: os.makedirs(dirname, exist_ok=True)
     return cloud.to_file(filename)
 
@@ -1145,8 +1145,8 @@ def save_unchanged(img_path: str, img: np.ndarray, quality=100, compression=6):
         img[..., :3] = img[..., [2, 1, 0]]
     if img_path.endswith('.hdr'):
         return cv2.imwrite(img_path, img)  # nothing to say about hdr
-    if os.path.dirname(img_path):
-        os.makedirs(os.path.dirname(img_path), exist_ok=True)
+    if dirname(img_path):
+        os.makedirs(dirname(img_path), exist_ok=True)
     return cv2.imwrite(img_path, img, [cv2.IMWRITE_JPEG_QUALITY, quality, cv2.IMWRITE_PNG_COMPRESSION, compression])
 
 
@@ -1160,8 +1160,8 @@ def save_image(img_path: str, img: np.ndarray, jpeg_quality=75, png_compression=
         if not img.flags['WRITEABLE']:
             img = img.copy()  # avoid assignment only inputs
         img[..., :3] = img[..., [2, 1, 0]]
-    if os.path.dirname(img_path):
-        os.makedirs(os.path.dirname(img_path), exist_ok=True)
+    if dirname(img_path):
+        os.makedirs(dirname(img_path), exist_ok=True)
     if img_path.endswith('.png'):
         max = np.iinfo(save_dtype).max
         img = (img * max).clip(0, max).astype(save_dtype)
@@ -1183,8 +1183,8 @@ def save_image(img_path: str, img: np.ndarray, jpeg_quality=75, png_compression=
 
 
 def save_mask(msk_path: str, msk: np.ndarray, quality=75, compression=9):
-    if os.path.dirname(msk_path):
-        os.makedirs(os.path.dirname(msk_path), exist_ok=True)
+    if dirname(msk_path):
+        os.makedirs(dirname(msk_path), exist_ok=True)
     if msk.ndim == 2:
         msk = msk[..., None]
     return cv2.imwrite(msk_path, msk[..., 0] * 255, [cv2.IMWRITE_JPEG_QUALITY, quality,
