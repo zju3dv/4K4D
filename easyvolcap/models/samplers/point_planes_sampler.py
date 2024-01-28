@@ -222,6 +222,7 @@ class PointPlanesSampler(VolumetricVideoModule):
 
             if self.points_expanded:
                 self.pcds.cuda()  # move to cuda if we're planning on using them later
+
         self._register_load_state_dict_pre_hook(self._load_state_dict_pre_hook)
         self._register_state_dict_hook(self._state_dict_hook)
 
