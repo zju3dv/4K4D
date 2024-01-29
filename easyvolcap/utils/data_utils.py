@@ -29,6 +29,13 @@ from enum import Enum, auto
 # Copied from enerf (maybe was in turn copied from dtu)
 
 
+def read_pickle(name):
+    import pickle
+    with open(name, 'rb') as f:
+        data = pickle.load(f, encoding='latin1')
+    return data
+
+
 def read_cam_file(filename):
     with open(filename) as f:
         lines = [line.rstrip() for line in f.readlines()]
@@ -1045,8 +1052,8 @@ def load_image_file(img_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-            (draft[1][2] != int(w * ratio) or
-         draft[1][3] != int(h * ratio)):
+        (draft[1][2] != int(w * ratio) or
+             draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         return img
     else:
@@ -1098,8 +1105,8 @@ def load_unchanged(img_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-            (draft[1][2] != int(w * ratio) or
-         draft[1][3] != int(h * ratio)):
+        (draft[1][2] != int(w * ratio) or
+             draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         return img
     else:
@@ -1124,8 +1131,8 @@ def load_mask(msk_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-            (draft[1][2] != int(w * ratio) or
-         draft[1][3] != int(h * ratio)):
+        (draft[1][2] != int(w * ratio) or
+             draft[1][3] != int(h * ratio)):
             msk = cv2.resize(msk.astype(np.uint8), (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_NEAREST)[..., None]
         return msk
     else:
