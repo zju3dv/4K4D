@@ -18,3 +18,7 @@ val_dataloader_cfg:
 
 viewer_cfg:
     use_window_focal: True
+
+model_cfg:
+    sampler_cfg:
+        points_aligned: True # already aligned surfs

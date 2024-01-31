@@ -1417,7 +1417,7 @@ class HardwareRendering(Splat):
         return rgb_map, acc_map, dpt_map
 
 
-class HardwarePeeling(HardwareRendering):
+class HardwarePeeling(Splat):
     def __init__(self,
                  dtype=torch.float,
                  **kwargs):
@@ -1429,6 +1429,24 @@ class HardwarePeeling(HardwareRendering):
                          )  # verts, radius, index
         # from pytorch3d.renderer import AlphaCompositor
         # self.compositor = AlphaCompositor()  # this the key to convergence, this is differentiable
+
+    @property
+    def verts_data(self):  # a heavy copy operation
+        verts = torch.cat([self.verts, self.radius], dim=-1).ravel().numpy()  # MARK: Maybe sync
+        verts = np.asarray(verts, dtype=torch_dtype_to_numpy_dtype(self.dtype), order='C')  # this should only be invoked once
+        return verts
+
+    def init_gl_buffers(self, v: int = 0, f: int = 0):
+        from cuda import cudart
+        if hasattr(self, 'cu_vbo'):
+            CHECK_CUDART_ERROR(cudart.cudaGraphicsUnregisterResource(self.cu_vbo))
+
+        super().init_gl_buffers(v, f)
+
+        # Register vertex buffer obejct
+        flags = cudart.cudaGraphicsRegisterFlags.cudaGraphicsRegisterFlagsWriteDiscard
+        self.cu_vbo = CHECK_CUDART_ERROR(cudart.cudaGraphicsGLRegisterBuffer(self.vbo, flags))\
+
 
     def use_gl_program(self, program):
         super().use_gl_program(program)

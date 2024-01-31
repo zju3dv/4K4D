@@ -10,12 +10,12 @@ from easyvolcap.utils.math_utils import affine_inverse
 
 @catch_throw
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--data_root', default='data/volcano/skateboard')
-    parser.add_argument('--intri_file', default='intri.yml')
-    parser.add_argument('--extri_file', default='extri.yml')
-    parser.add_argument('--axis_size', type=float, default=0.10)
-    args = parser.parse_args()
+    args = dotdict()
+    args.data_root = 'data/volcano/skateboard'
+    args.intri_file = 'intri.yml'
+    args.extri_file = 'extri.yml'
+    args.axis_size = 0.10
+    args = dotdict(vars(build_parser(args, description=__doc__).parse_args()))
 
     intri_path = join(args.data_root, args.intri_file)
     extri_path = join(args.data_root, args.extri_file)
