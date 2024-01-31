@@ -359,7 +359,7 @@ class VolumetricVideoViewer:
     def draw_camera_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
 
         # Camera controls
-
+        self.camera.t = imgui.slider_float('t', self.camera.t, 0, 1, format='%.6f')[1]  # temporal interpolation
         if imgui.collapsing_header('Camera'):
             self.camera.mass = imgui.slider_float('Mass', self.camera.mass, 0.01, 1.0)[1]  # temporal interpolation
             self.camera.moment_of_inertia = imgui.slider_float('Moment of inertia', self.camera.moment_of_inertia, 0.01, 1.0)[1]  # temporal interpolation

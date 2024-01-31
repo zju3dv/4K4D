@@ -7,7 +7,6 @@ from typing import Callable, Tuple, Union
 
 from tqdm import tqdm
 from functools import reduce
-from torch_scatter import scatter
 from pytorch3d.structures import Meshes
 
 from pytorch3d.ops.laplacian_matrices import laplacian, cot_laplacian, norm_laplacian
@@ -520,6 +519,8 @@ def halfedge_loop_subdivision(halfedge: dotdict[str, torch.Tensor], is_manifold=
         ntwin[i2[non_manifold_prev]] = twin_prev[non_manifold_prev]  # should store the non-manifold twin (whether previsou is non-manifold)
         nedge[i0[non_manifold]] = 2 * edge[non_manifold]
         nedge[i2[non_manifold_prev]] = 2 * edge_prev[non_manifold_prev] + 1  # should store the non-manifold edge (whether previous is non-manifold)
+
+    from torch_scatter import scatter
 
     # pre-compute vertex velance & beta values
     _, inverse, velance = vert.unique(sorted=False, return_inverse=True, return_counts=True)
