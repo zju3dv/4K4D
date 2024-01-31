@@ -2,7 +2,7 @@
 
 ## Dataset Structure
 
-***EasyVolcap*** has built-in support for both multi-view datasets and monocular datasets. Once you organize your dataset in one of the data formats listed below, you can directly use ***EasyVolcap*** for model training on your own dataset. You can also use the provided scripts to convert the exsiting multi-view or monocular datasets to the required format, you can refer to the [nerf_to_easyvolcap.py](../../scripts/nerf/nerf_to_easyvolcap.py) for an example of converting multi-view dataset, and the [colmap_to_easyvolcap.py](../../scripts/preprocess/dnerf_synthetic_to_easyvolcap.py) for an example of converting monocular dataset, more preprocessing scripts can be found in the [scripts/preprocess](../../scripts/preprocess) directory.
+***EasyVolcap*** has built-in support for both multi-view datasets and monocular datasets. Once you organize your dataset in one of the data formats listed below, you can directly use ***EasyVolcap*** for model training on your own dataset. You can also use the provided scripts to convert the exsiting multi-view or monocular datasets to the required format, you can refer to the [nerf_to_easyvolcap.py](../../scripts/nerf/nerf_to_easyvolcap.py) for an example of converting multi-view dataset, and the [colmap_to_easyvolcap.py](../../scripts/colmap/colmap_to_easyvolcap.py) for an example of converting monocular dataset, more preprocessing scripts can be found in the [scripts/preprocess](../../scripts/preprocess) directory.
 
 ### Multi-view Dataset
 
