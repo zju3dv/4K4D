@@ -147,12 +147,12 @@ Here we provide instructions on setting up the minimal dataset and rendering wit
 
 ```shell
 # For foreground datasets with masks and masked images (DNA-Rendering, NHR, ZJU-Mocap)
-python scripts/realtime4dv/extract_images.py --data_root data/renbody/0013_01
-python scripts/realtime4dv/extract_masks.py --data_root data/renbody/0013_01
+python scripts/realtime4dv/extract_images.py --data_root data/renbody/0013_01 --vcodec none --hwaccel none
+python scripts/realtime4dv/extract_masks.py --data_root data/renbody/0013_01 --vcodec none --hwaccel none
 
 # For datasets with masks and full images (ENeRF-Outdoor and dance3 of MobileStage)
-python scripts/realtime4dv/extract_images.py --data_root data/mobile_stage/dance3
-python scripts/realtime4dv/extract_images.py --data_root data/mobile_stage/dance3 --videos_dir videos_masks_libx265 --images_dir masks_libx265 --single_channel
+python scripts/realtime4dv/extract_images.py --data_root data/mobile_stage/dance3 --vcodec none --hwaccel none
+python scripts/realtime4dv/extract_images.py --data_root data/mobile_stage/dance3 --vcodec none --hwaccel none --videos_dir videos_masks_libx265 --images_dir masks_libx265 --single_channel
 ```
 
 4. Now, the minimal dataset has been prepared and you can render a model with it. The only change is to append a new config onto the command: `configs/specs/video.yaml`.
