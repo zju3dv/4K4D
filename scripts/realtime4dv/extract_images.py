@@ -1,4 +1,6 @@
-# This file will read all images and generate a video from it
+"""
+This file will read all images and generate a video from it
+"""
 
 import os
 import cv2
@@ -25,8 +27,10 @@ def main():
     args.data_root = 'data/renbody/0013_01'
     args.videos_dir = 'videos_libx265'
     args.images_dir = 'images_libx265'
+    args.vcodec = dotdict(default='hevc_cuvid', choices=['hevc_cuvid', 'libx265'])
+    args.hwaccel = dotdict(default='cuda', choices=['cuda', 'none'])
     args.single_channel = False
-    args = dotdict(vars(build_parser(args).parse_args()))
+    args = dotdict(vars(build_parser(args, description=__doc__).parse_args()))
     videos_dir = join(args.data_root, args.videos_dir)
     images_dir = join(args.data_root, args.images_dir)
     videos = sorted(os.listdir(videos_dir))

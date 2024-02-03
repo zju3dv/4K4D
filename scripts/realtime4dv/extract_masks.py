@@ -1,4 +1,6 @@
-# This file will read all images and generate a video from it
+"""
+This file will read all images and generate a video from it
+"""
 
 import os
 import cv2
@@ -29,7 +31,9 @@ def main():
     args.masks_dir = 'masks_libx265'
     args.thresh = 12
     args.denoise = False
-    args = dotdict(vars(build_parser(args).parse_args()))
+    args.vcodec = dotdict(default='hevc_cuvid', choices=['hevc_cuvid', 'libx265'])
+    args.hwaccel = dotdict(default='cuda', choices=['cuda', 'none'])
+    args = dotdict(vars(build_parser(args, description=__doc__).parse_args()))
     videos_dir = join(args.data_root, args.videos_dir)
     masks_dir = join(args.data_root, args.masks_dir)
     videos = sorted(os.listdir(videos_dir))
