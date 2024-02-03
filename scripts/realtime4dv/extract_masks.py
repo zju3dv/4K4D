@@ -31,7 +31,7 @@ def main():
     args.masks_dir = 'masks_libx265'
     args.thresh = 12
     args.denoise = False
-    args.vcodec = dotdict(default='hevc_cuvid', choices=['hevc_cuvid', 'libx265'])
+    args.vcodec = dotdict(default='hevc_cuvid', choices=['hevc_cuvid', 'libx265', 'libx264', 'none'])
     args.hwaccel = dotdict(default='cuda', choices=['cuda', 'none'])
     args = dotdict(vars(build_parser(args, description=__doc__).parse_args()))
     videos_dir = join(args.data_root, args.videos_dir)
@@ -51,6 +51,7 @@ def main():
         full[:, y:y + h, x:x + w] = vid
 
         masks = [join(masks_dir, cam, f'{i:06d}.png') for i in range(N)]  # all output images path
+        log(f'Number of masks: {len(masks)}')
         log(f'Output directory: {blue(join(masks_dir, cam))}')
         parallel_execution([i for i in full.numpy()], masks, thresh=args.thresh, FW=FW, FH=FH, denoise=args.denoise, action=save_one_image, print_progress=True)
 

@@ -27,7 +27,7 @@ def main():
     args.data_root = 'data/renbody/0013_01'
     args.videos_dir = 'videos_libx265'
     args.images_dir = 'images_libx265'
-    args.vcodec = dotdict(default='hevc_cuvid', choices=['hevc_cuvid', 'libx265'])
+    args.vcodec = dotdict(default='hevc_cuvid', choices=['hevc_cuvid', 'libx265', 'libx264', 'none'])
     args.hwaccel = dotdict(default='cuda', choices=['cuda', 'none'])
     args.single_channel = False
     args = dotdict(vars(build_parser(args, description=__doc__).parse_args()))
@@ -53,6 +53,7 @@ def main():
         full[:, y:y + h, x:x + w] = vid
 
         images = [join(images_dir, cam, f'{i:06d}.png') for i in range(N)]  # all output images path
+        log(f'Number of images: {len(images)}')
         log(f'Output directory: {blue(join(images_dir, cam))}')
         parallel_execution([i for i in full.numpy()], images, FW=FW, FH=FH, action=save_one_image, print_progress=False)
 
