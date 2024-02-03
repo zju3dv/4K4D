@@ -39,7 +39,7 @@ def main():
     for video in videos:
         log(f'Processing video: {blue(video)}')
         timer.record()
-        vid = video_to_numpy(join(videos_dir, video))
+        vid = video_to_numpy(join(videos_dir, video), vcodec=args.vcodec, hwaccel=args.hwaccel)
         timer.record('decoding')
         if args.single_channel:
             vid = vid[..., 0][..., None]  # Only save the first channel

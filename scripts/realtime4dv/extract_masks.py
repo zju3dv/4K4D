@@ -40,7 +40,7 @@ def main():
 
     for video in videos:
         log(f'Processing video: {blue(video)}')
-        vid = video_to_numpy(join(videos_dir, video))
+        vid = video_to_numpy(join(videos_dir, video), vcodec=args.vcodec, hwaccel=args.hwaccel)
         split = video.split('.')[0].split('_')
         N, h, w, C = vid.shape
         x, y, W, H, FW, FH = split[2][1:], split[3][1:], split[4][1:], split[5][1:], split[6][2:], split[7][2:]
