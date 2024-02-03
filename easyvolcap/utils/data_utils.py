@@ -222,7 +222,7 @@ def get_video_dimensions(input_filename):
     return width, height
 
 
-def video_to_numpy(input_filename):
+def video_to_numpy(input_filename, hwaccel='cuda', vcodec='hevc_cuvid'):
     """
     Convert a video file to a numpy array (T, H, W, C) using ffmpeg.
 
@@ -236,9 +236,9 @@ def video_to_numpy(input_filename):
 
     cmd = [
         'ffmpeg',
-        '-hwaccel', 'cuda',
+        '-hwaccel', hwaccel,
         '-v', 'quiet', '-stats',
-        '-vcodec', 'hevc_cuvid',
+        '-vcodec', vcodec,
         '-i', input_filename,
         '-f', 'image2pipe',
         '-pix_fmt', 'rgb24',
