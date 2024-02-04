@@ -14,7 +14,15 @@ def psnr(x: torch.Tensor, y: torch.Tensor):
 
 
 def ssim(xs: torch.Tensor, ys: torch.Tensor):
-    return np.mean([compare_ssim(x.detach().cpu().numpy(), y.detach().cpu().numpy(), channel_axis=-1, data_range=2.0) for x, y in zip(xs, ys)])
+    return np.mean([
+        compare_ssim(
+            x.detach().cpu().numpy(),
+            y.detach().cpu().numpy(),
+            channel_axis=-1,
+            data_range=2.0
+        )
+        for x, y in zip(xs, ys)
+    ]).astype(float).item()
 
 
 def lpips(x: torch.Tensor, y: torch.Tensor):
