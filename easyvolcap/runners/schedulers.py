@@ -8,6 +8,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 @SCHEDULERS.register_module()
 class MultiLR(_LRScheduler):
     def __init__(self, optimizer, decay_iter, scheduler_cfgs, last_epoch=-1, verbose=False):
+        raise ValueError('MultiLR has bugs! Please use other schedulers instead.')
         self.schedulers = dotdict()
         self.names = [param_group['name'] for param_group in optimizer.param_groups]
         # values = self._get_optimizer_lr(optimizer)

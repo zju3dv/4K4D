@@ -557,6 +557,4 @@ def compute_time_planes_smooth(embedding):
 
 def compute_ssim(x: torch.Tensor, y: torch.Tensor):
     from pytorch_msssim import ssim
-    x = x.permute(0, 3, 1, 2)
-    y = y.permute(0, 3, 1, 2)
     return ssim(x, y, data_range=1.0, win_size=11, win_sigma=1.5, K=(0.01, 0.03))
