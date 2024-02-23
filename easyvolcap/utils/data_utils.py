@@ -1057,26 +1057,26 @@ def load_image_file(img_path: str, ratio=1.0):
         img = np.asarray(im)
         if np.issubdtype(img.dtype, np.integer):
             img = img.astype(np.float32) / np.iinfo(img.dtype).max  # normalize
-        if img.ndim == 2:
-            img = img[..., None]
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-        (draft[1][2] != int(w * ratio) or
-             draft[1][3] != int(h * ratio)):
+            (draft[1][2] != int(w * ratio) or
+         draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
+        if img.ndim == 2:  # MARK: cv.resize will discard the last dimension of mask images
+            img = img[..., None]
         return img
     else:
         img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
         if img.ndim >= 3 and img.shape[-1] >= 3:
             img[..., :3] = img[..., [2, 1, 0]]  # BGR to RGB
-        if img.ndim == 2:
-            img = img[..., None]
         if np.issubdtype(img.dtype, np.integer):
             img = img.astype(np.float32) / np.iinfo(img.dtype).max  # normalize
         if ratio != 1.0:
             height, width = img.shape[:2]
             img = cv2.resize(img, (int(width * ratio), int(height * ratio)), interpolation=cv2.INTER_AREA)
+        if img.ndim == 2:  # MARK: cv.resize will discard the last dimension of mask images
+            img = img[..., None]
         return img
 
 
@@ -1090,6 +1090,9 @@ def load_depth(depth_file: str):
             depth = depth[..., None]  # H, W, 1
         depth = depth[..., :1]
     elif depth_file.endswith('.hdr') or depth_file.endswith('.exr'):
+        if depth_file.endswith('.exr'):
+            # ... https://github.com/opencv/opencv/issues/21326
+            os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
         depth = load_image(depth_file)
         depth = depth[..., :1]
     else:
@@ -1115,9 +1118,11 @@ def load_unchanged(img_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-        (draft[1][2] != int(w * ratio) or
-             draft[1][3] != int(h * ratio)):
+            (draft[1][2] != int(w * ratio) or \
+         draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
+        if img.ndim == 2:  # MARK: cv.resize will discard the last dimension of mask images
+            img = img[..., None]
         return img
     else:
         img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
@@ -1126,29 +1131,34 @@ def load_unchanged(img_path: str, ratio=1.0):
         if ratio != 1.0:
             height, width = img.shape[:2]
             img = cv2.resize(img, (int(width * ratio), int(height * ratio)), interpolation=cv2.INTER_AREA)
+        if img.ndim == 2:  # MARK: cv.resize will discard the last dimension of mask images
+            img = img[..., None]
         return img
 
 
 def load_mask(msk_path: str, ratio=1.0):
+    """
+    Load single-channel binary mask
+    """
     if msk_path.endswith('.jpg') or msk_path.endswith('.JPG') or msk_path.endswith('.jpeg') or msk_path.endswith('.JPEG'):
         msk = Image.open(msk_path)
         w, h = msk.width, msk.height
         draft = msk.draft('L', (int(w * ratio), int(h * ratio)))
         msk = np.asarray(msk).astype(int)  # read the actual file content from drafted disk
         msk = msk * 255 / msk.max()  # if max already 255, do nothing
-        # msk = msk[..., None] > 128
+        msk = msk[..., None] > 128  # make it binary
         msk = msk.astype(np.uint8)
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-        (draft[1][2] != int(w * ratio) or
-             draft[1][3] != int(h * ratio)):
+            (draft[1][2] != int(w * ratio) or
+         draft[1][3] != int(h * ratio)):
             msk = cv2.resize(msk.astype(np.uint8), (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_NEAREST)[..., None]
         return msk
     else:
         msk = cv2.imread(msk_path, cv2.IMREAD_GRAYSCALE).astype(int)  # BGR to GRAY
         msk = msk * 255 / msk.max()  # if max already 255, do nothing
-        # msk = msk[..., None] > 128  # make it binary
+        msk = msk[..., None] > 128  # make it binary
         msk = msk.astype(np.uint8)
         if ratio != 1.0:
             height, width = msk.shape[:2]
@@ -1168,8 +1178,9 @@ def save_unchanged(img_path: str, img: np.ndarray, quality=100, compression=6):
 
 
 def save_image(img_path: str, img: np.ndarray, jpeg_quality=75, png_compression=9, save_dtype=np.uint8):
-    if isinstance(img, torch.Tensor): img = img.detach().cpu().numpy()
-    if img.ndim == 4: img = np.concatenate(img, axis=0)
+    if isinstance(img, torch.Tensor): img = img.detach().cpu().numpy()  # convert to numpy arrays
+    if img.ndim == 4: img = np.concatenate(img, axis=0)  # merge into one image along y axis
+    if img.ndim == 2: img = img[..., None]  # append last dim
     if img.shape[0] < img.shape[-1] and (img.shape[0] == 3 or img.shape[0] == 4): img = np.transpose(img, (1, 2, 0))
     if np.issubdtype(img.dtype, np.integer):
         img = img / np.iinfo(img.dtype).max  # to float
@@ -1194,6 +1205,8 @@ def save_image(img_path: str, img: np.ndarray, jpeg_quality=75, png_compression=
         # should we try to discard alpha channel here?
         # exr could store alpha channel
         pass  # no transformation for other unspecified file formats
+    # log(f'Writing image to: {img_path}')
+    # breakpoint()
     return cv2.imwrite(img_path, img, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality,
                                        cv2.IMWRITE_PNG_COMPRESSION, png_compression,
                                        cv2.IMWRITE_EXR_COMPRESSION, cv2.IMWRITE_EXR_COMPRESSION_PIZ])

@@ -19,9 +19,9 @@ from easyvolcap.utils.fusion_utils import filter_global_points, depth_geometry_c
 @catch_throw
 def main():
     args = dotdict()
-    args.data_root = 'data/renbody/0023_06'
+    args.data_root = 'data/renbody/0013_01'
     args.depth_dir = 'depths'
-    args.depth = '000000.hdr'  # camera + postfix = args.depth file name
+    args.depth = '000000.exr'  # camera + postfix = args.depth file name
     args.images_dir = 'images_calib'
     args.image = '000000.jpg'
     args.cameras_dir = 'optimized'
@@ -37,7 +37,7 @@ def main():
     cameras = to_tensor(read_camera(join(args.data_root, args.cameras_dir)))
     # nv = min(len(cameras), len(os.listdir(join(args.data_root, args.depth_dir))))
     # cameras = dotdict({k: v for k in sorted(cameras)[:nv]})
-    names = os.listdir(join(args.data_root, args.depth_dir))
+    names = sorted(os.listdir(join(args.data_root, args.depth_dir)))
     cameras = dotdict({k: cameras[k] for k in names})
 
     c2ws = torch.stack([torch.cat([cameras[k].R, cameras[k].T], dim=-1) for k in cameras])  # V, 4, 4
@@ -57,16 +57,15 @@ def main():
         rgb = to_cuda(to_tensor(load_image(image_file)).float())  # H, W, 3
         dpt = to_cuda(to_tensor(load_depth(depth_file)).float()) * args.scale  # H, W, 1
 
-        H, W = dpt.shape[:2]
+        H, W = cameras[cam].H, cameras[cam].W
         K, R, T = cameras[cam].K, cameras[cam].R, cameras[cam].T
         K, R, T = to_x(to_cuda([K, R, T]), torch.float)
 
-        if args.ratio != 1.0:
-            K[0:1] *= int(W * args.ratio) / W
-            K[1:2] *= int(H * args.ratio) / H
-            H, W = int(H * args.ratio), int(W * args.ratio)
-            rgb = resize_image(rgb, size=(H, W))
-            dpt = resize_image(dpt, size=(H, W))
+        K[0:1] *= int(W * args.ratio) / W
+        K[1:2] *= int(H * args.ratio) / H
+        H, W = int(H * args.ratio), int(W * args.ratio)
+        rgb = resize_image(rgb, size=(H, W))
+        dpt = resize_image(dpt, size=(H, W))
 
         ray_o, ray_d = get_rays(H, W, K, R, T, z_depth=True)
         dpts.append(dpt)
@@ -113,7 +112,7 @@ def main():
             )
 
             # Filter points based on geometry and photometric mask
-            ind = final_mask.view(-1).nonzero()  # N, 1
+            ind = final_mask.view(-1).nonzero()  # N, 1 # MARK: SYNC
             dpt = multi_gather(depth_est_averaged.view(-1, 1), ind)  # N, 1
             dir = multi_gather(dirs[v].view(-1, 3), ind)  # N, 3
             cen = multi_gather(cens[v].view(-1, 3), ind)  # N, 3

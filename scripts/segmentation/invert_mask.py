@@ -5,22 +5,17 @@ import argparse
 from glob import glob
 from os.path import join, exists
 
-# fmt: off
-import sys
-sys.path.append('.')
-
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.parallel_utils import parallel_execution
 from easyvolcap.utils.data_utils import load_mask
-# fmt: on
 
 
 def inv_one_mask(mask_path: str, masks_dir: str, inv_masks_dir: str):
     mask = torch.as_tensor(load_mask(mask_path), dtype=torch.bool)
-    inv_mask = ~mask  # inverse
+    inv_mask = 1 - mask  # inverse
     inv_mask_path = mask_path.replace(masks_dir, inv_masks_dir)
     os.makedirs(os.path.dirname(inv_mask_path), exist_ok=True)
-    cv2.imwrite(inv_mask_path, inv_mask.numpy().astype(np.uint8) * 255)
+    cv2.imwrite(inv_mask_path, (inv_mask.numpy() * 255).astype(np.uint8))
     # print(f'Inverted mask {mask_path} -> {inv_mask_path}')
 
 

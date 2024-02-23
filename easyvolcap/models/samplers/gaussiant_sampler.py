@@ -192,7 +192,7 @@ class GaussianTSampler(PointPlanesSampler):
             tanfovx=gaussian_camera.tanfovx,
             tanfovy=gaussian_camera.tanfovy,
             bg=torch.full([3], self.bg_brightness if hasattr(self, 'bg_brightness') else 0.0, device=xyz.device),  # GPU
-            scale_modifier=self.scale_mod if hasattr(self, 'bg_brightness') else 1.0,
+            scale_modifier=self.scale_mod if hasattr(self, 'scale_mod') else 1.0,
             viewmatrix=gaussian_camera.world_view_transform,
             projmatrix=gaussian_camera.full_proj_transform,
             sh_degree=self.sh_deg if hasattr(self, 'sh_deg') else 0,
@@ -227,6 +227,7 @@ class GaussianTSampler(PointPlanesSampler):
         # Lazy imports
         from diff_point_rasterization import rasterize_points, PointRasterizationSettings, PointRasterizer
         from easyvolcap.utils.gaussian_utils import prepare_gaussian_camera
+        assert sh.ndim == 4, 'Should input 4 dim SH: B, N, C, SH'
 
         # Remove batch dimension
         xyz, sh, radius, occ1 = remove_batch([xyz, sh, radius, occ1])
@@ -241,7 +242,7 @@ class GaussianTSampler(PointPlanesSampler):
             tanfovx=gaussian_camera.tanfovx,
             tanfovy=gaussian_camera.tanfovy,
             bg=torch.full([3], self.bg_brightness if hasattr(self, 'bg_brightness') else 0.0, device=xyz.device),  # GPU
-            scale_modifier=self.scale_mod if hasattr(self, 'bg_brightness') else 1.0,
+            scale_modifier=self.scale_mod if hasattr(self, 'scale_mod') else 1.0,
             viewmatrix=gaussian_camera.world_view_transform,
             projmatrix=gaussian_camera.full_proj_transform,
             sh_degree=self.sh_deg if hasattr(self, 'sh_deg') else 0,

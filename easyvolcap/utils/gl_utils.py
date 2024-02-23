@@ -970,7 +970,7 @@ class Gaussian(Mesh):
         # Copy rendered tensor to screen
         rgba = (rgba.clip(0, 1) * 255).type(torch.uint8).flip(0)  # transform
         self.quad.copy_to_texture(rgba)
-        self.quad.draw()
+        self.quad.render()
 
     def render_imgui(mesh, viewer: 'VolumetricVideoViewer', batch: dotdict):
         super().render_imgui(viewer, batch)
@@ -986,12 +986,10 @@ class Gaussian(Mesh):
         pop_button_color()
 
 
-class PointSplat(Gaussian):
+class PointSplat(Gaussian, nn.Module):
     def __init__(self,
                  filename: str = 'assets/meshes/zju3dv.ply',
-
                  quad_cfg: dotdict = dotdict(),
-
                  view_depth: bool = False,  # show depth or show color
                  dpt_cm: str = 'linear',
 
@@ -1024,22 +1022,26 @@ class PointSplat(Gaussian):
 
         # Init rendering quad
         self.quad: Quad = call_from_cfg(Quad, quad_cfg, H=H, W=W)
+        self.cuda()  # move to cuda
 
         # Other configurations
         self.view_depth = view_depth
         self.dpt_cm = dpt_cm
+        self.radius_mult = 1.0
+        self.alpha_mult = 1.0
 
     # The actual rendering function
     @torch.no_grad()
     def render(self, camera: Camera):
         # Perform actual gaussian rendering
         batch = add_batch(to_cuda(camera.to_batch()))
-        sh0 = rgb2sh0(self.rgb)
+        sh0 = rgb2sh0(self.rgb[..., None])
         xyz = self.pts
-        occ = self.occ
-        rad = self.rad
+        occ = (self.occ * self.alpha_mult).clip(0, 1)
+        rad = self.rad * self.radius_mult
 
         rgb, acc, dpt = self.render_radius(*add_batch([xyz, sh0, rad, occ]), batch)
+        rgb, acc, dpt = rgb[0], acc[0], dpt[0]
 
         if self.view_depth:
             rgba = torch.cat([depth_curve_fn(dpt, cm=self.dpt_cm), acc], dim=-1)  # H, W, 4
@@ -1050,6 +1052,14 @@ class PointSplat(Gaussian):
         rgba = (rgba.clip(0, 1) * 255).type(torch.uint8).flip(0)  # transform
         self.quad.copy_to_texture(rgba)
         self.quad.render()
+
+    def render_imgui(mesh, viewer: 'VolumetricVideoViewer', batch: dotdict):
+        super().render_imgui(viewer, batch)
+
+        i = batch.i
+        from imgui_bundle import imgui
+        mesh.radius_mult = imgui.slider_float(f'Point radius multiplier##{i}', mesh.radius_mult, 0.1, 3.0)[1]  # 0.1mm
+        mesh.alpha_mult = imgui.slider_float(f'Point alpha multiplier##{i}', mesh.alpha_mult, 0.1, 3.0)[1]  # 0.1mm
 
 
 class Splat(Mesh):  # FIXME: Not rendering, need to debug this
@@ -1088,6 +1098,9 @@ class Splat(Mesh):  # FIXME: Not rendering, need to debug this
         self.max_H, self.max_W = H, W
         self.H, self.W = H, W
         self.init_textures()
+
+        from easyvolcap.models.samplers.gaussiant_sampler import GaussianTSampler
+        self.render_radius = MethodType(GaussianTSampler.render_radius, self)  # override the method
 
     @property
     def verts_data(self):  # a heavy copy operation

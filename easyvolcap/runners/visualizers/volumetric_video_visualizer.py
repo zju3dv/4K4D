@@ -42,7 +42,7 @@ class VolumetricVideoVisualizer:  # this should act as a base class for other ty
 
                  dpt_curve: str = 'normalize',  # looks good
                  dpt_mult: float = 1.0,
-                 dpt_cm: str = 'virdis' if args.type != 'gui' else 'linear',  # looks good
+                 dpt_cm: str = 'linear' if args.type != 'gui' else 'linear',  # looks good
                  ):
         super().__init__()
 
@@ -105,6 +105,7 @@ class VolumetricVideoVisualizer:  # this should act as a base class for other ty
             else:
                 img = depth_curve_fn(output.dpt_map, cm=self.dpt_cm)
             # img = (img - 0.5) * self.dpt_mult + 0.5
+
             img = img * self.dpt_mult
             if self.store_ground_truth and 'dpt' in batch:
                 if self.dpt_curve == 'linear':
