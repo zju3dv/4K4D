@@ -478,6 +478,7 @@ class VolumetricVideoDataset(Dataset):
 
         # Precrop image to bytes
         if self.immask_crop:  # a little bit wasteful but acceptable for now
+            # TODO: Assert that mask crop is always more aggressive than bounds crop (intersection of interested area)
             self.orig_hs, self.orig_ws = self.Hs, self.Ws
             bounds = [self.get_bounds(i) for i in range(self.n_latents)]  # N, 2, 3
             bounds = torch.stack(bounds)[None].repeat(self.n_views, 1, 1, 1)  # V, N, 2, 3
@@ -1080,17 +1081,9 @@ class VolumetricVideoDataset(Dataset):
         output = self.get_metadata(index)
         rgb, msk, wet, dpt, bkg = self.get_image(output.view_index, output.latent_index)  # H, W, 3
         H, W = rgb.shape[:2]
-        output.rgb = rgb.view(-1, 3)  # full image in case you need it
-        output.msk = msk.view(-1, 1)  # full mask (weights)
-        output.wet = wet.view(-1, 1)  # full mask (weights)
-        if dpt is not None: output.dpt = dpt.view(-1, 1)  # full depth image
-        if bkg is not None: output.bkg = bkg.view(-1, 3)  # full background image
 
         # Maybe crop images
-        if self.imbound_crop:  # crop_x has already been set by imbound_crop for ixts
-            output = self.crop_imgs_bounds(output)  # only crop target imgs
-            H, W = output.H.item(), output.W.item()
-        elif self.immask_crop:  # these variables are only available when loading gts
+        if self.immask_crop:  # these variables are only available when loading gts
             meta = dotdict()
             meta.crop_x = self.crop_xs[output.view_index, output.latent_index]
             meta.crop_y = self.crop_ys[output.view_index, output.latent_index]
@@ -1098,6 +1091,15 @@ class VolumetricVideoDataset(Dataset):
             meta.orig_w = self.orig_ws[output.view_index, output.latent_index]
             output.update(meta)
             output.meta.update(meta)
+
+        if self.imbound_crop and not self.immask_crop:  # crop_x has already been set by imbound_crop for ixts
+            x, y, w, h = output.crop_x, output.crop_y, output.W, output.H
+            rgb = rgb[y:y + h, x:x + w]
+            msk = msk[y:y + h, x:x + w]
+            wet = wet[y:y + h, x:x + w]
+            if dpt is not None: dpt = dpt[y:y + h, x:x + w]
+            if bkg is not None: bkg = bkg[y:y + h, x:x + w]
+            H, W = h, w
 
         # FIXME: Should add mutex to protect this， for now, multi-process and dataloading doesn't work well with each other
         # If Moderators are used, should set num_workers to 0 for single-process data loading
@@ -1112,12 +1114,6 @@ class VolumetricVideoDataset(Dataset):
                 render_ratio[output.view_index] != 1.0) or \
                 render_ratio != 1.0:
             render_ratio = self.render_ratio[output.view_index] if len(self.render_ratio.shape) else self.render_ratio
-            H, W = output.H.item(), output.W.item()
-            rgb = output.rgb.view(H, W, 3)
-            msk = output.msk.view(H, W, 1)
-            wet = output.wet.view(H, W, 1)
-            if dpt is not None: dpt = output.dpt.view(H, W, 1)
-            if bkg is not None: bkg = output.bkg.view(H, W, 3)
 
             output = self.scale_ixts(output, render_ratio)
             H, W = output.H.item(), output.W.item()
@@ -1128,23 +1124,11 @@ class VolumetricVideoDataset(Dataset):
             if dpt is not None: as_torch_func(partial(cv2.resize, dsize=(W, H), interpolation=cv2.INTER_AREA))(dpt)
             if bkg is not None: as_torch_func(partial(cv2.resize, dsize=(W, H), interpolation=cv2.INTER_AREA))(bkg)
 
-            output.rgb = rgb.reshape(-1, 3)  # full image in case you need it
-            output.msk = msk.reshape(-1, 1)  # full mask (weights)
-            output.wet = wet.reshape(-1, 1)  # full mask (weights)
-            if dpt is not None: output.dpt = dpt.reshape(-1, 1)
-            if bkg is not None: output.bkg = bkg.reshape(-1, 1)
-
         # Prepare for a different rendering center crop ratio
         if (len(render_center_crop_ratio.shape) and  # avoid length of 0-d tensor error, check length of shape
                 render_center_crop_ratio[output.view_index] != 1.0) or \
                 render_center_crop_ratio != 1.0:
             render_center_crop_ratio = self.render_center_crop_ratio[output.view_index] if len(self.render_center_crop_ratio.shape) else self.render_center_crop_ratio
-            H, W = output.H.item(), output.W.item()
-            rgb = output.rgb.view(H, W, 3)
-            msk = output.msk.view(H, W, 1)
-            wet = output.wet.view(H, W, 1)
-            if dpt is not None: dpt = output.dpt.view(H, W, 1)
-            if bkg is not None: bkg = output.bkg.view(H, W, 3)
 
             w, h = int(W * render_center_crop_ratio), int(H * render_center_crop_ratio)
             x, y = w // 2, h // 2
@@ -1155,12 +1139,6 @@ class VolumetricVideoDataset(Dataset):
             wet = wet[y: y + h, x: x + w, :]
             if dpt is not None: dpt[y: y + h, x: x + w, :]
             if bkg is not None: bkg[y: y + h, x: x + w, :]
-
-            output.rgb = rgb.reshape(-1, 3)  # full image in case you need it
-            output.msk = msk.reshape(-1, 1)  # full mask
-            output.wet = wet.reshape(-1, 1)  # full weights
-            if dpt is not None: output.dpt = dpt.reshape(-1, 1)
-            if bkg is not None: output.bkg = bkg.reshape(-1, 1)
 
             # Crop the intrinsics
             self.crop_ixts(output, x, y, w, h)
@@ -1186,12 +1164,6 @@ class VolumetricVideoDataset(Dataset):
 
         if should_sample_patch:
             assert n_rays == -1, 'When performing patch sampling, do not resample rays on it'
-            # Prepare images for patch sampling
-            rgb = output.rgb.view(H, W, 3)
-            msk = output.msk.view(H, W, 1)
-            wet = output.wet.view(H, W, 1)
-            if dpt is not None: dpt = output.dpt.view(H, W, 1)
-            if bkg is not None: bkg = output.bkg.view(H, W, 3)
 
             # Find the Xp Yp Wp Hp to be used for random patch sampling
             # x = 0 if W - Wp <= 0 else np.random.randint(0, W - Wp + 1)
@@ -1215,11 +1187,11 @@ class VolumetricVideoDataset(Dataset):
             if dpt is not None: dpt = dpt[y: y + h, x: x + w, :]
             if bkg is not None: bkg = bkg[y: y + h, x: x + w, :]
 
-            output.rgb = rgb.reshape(-1, 3)  # full image in case you need it
-            output.msk = msk.reshape(-1, 1)  # full mask
-            output.wet = wet.reshape(-1, 1)  # full weights
-            if dpt is not None: output.dpt = dpt.reshape(-1, 1)
-            if bkg is not None: output.bkg = bkg.reshape(-1, 1)
+        output.rgb = rgb.reshape(-1, 3)  # full image in case you need it
+        output.msk = msk.reshape(-1, 1)  # full mask
+        output.wet = wet.reshape(-1, 1)  # full weights
+        if dpt is not None: output.dpt = dpt.reshape(-1, 1)
+        if bkg is not None: output.bkg = bkg.reshape(-1, 1)
 
         if should_crop_ixt:
             # Prepare the resized ixts
@@ -1304,19 +1276,6 @@ class VolumetricVideoDataset(Dataset):
         """
         x, y, w, h = get_bound_2d_bound(output.bounds, output.K, output.R, output.T, output.meta.H, output.meta.W)
         return VolumetricVideoDataset.crop_ixts(output, x, y, w, h)
-
-    @staticmethod
-    def crop_imgs_bounds(output: dotdict):
-        """
-        Crops target images using a xywh computed from a bounds and stored in the metadata
-        """
-        x, y, w, h = output.crop_x, output.crop_y, output.W, output.H
-        H, W = output.orig_h, output.orig_w
-
-        output.rgb = output.rgb.view(H, W, -1)[y:y + h, x:x + w].reshape(-1, 3)
-        output.msk = output.msk.view(H, W, -1)[y:y + h, x:x + w].reshape(-1, 1)
-        output.wet = output.wet.view(H, W, -1)[y:y + h, x:x + w].reshape(-1, 1)
-        return output
 
     def get_viewer_batch(self, output: dotdict):
         # Source indices

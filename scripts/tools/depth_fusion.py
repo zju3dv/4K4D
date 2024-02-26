@@ -19,7 +19,7 @@ from easyvolcap.utils.fusion_utils import filter_global_points, depth_geometry_c
 @catch_throw
 def main():
     args = dotdict()
-    args.data_root = 'data/renbody/0013_01'
+    args.data_root = 'data/renbody/0008_01'
     args.depth_dir = 'depths'
     args.depth = '000000.exr'  # camera + postfix = args.depth file name
     args.images_dir = 'images_calib'
@@ -40,8 +40,8 @@ def main():
     names = sorted(os.listdir(join(args.data_root, args.depth_dir)))
     cameras = dotdict({k: cameras[k] for k in names})
 
-    c2ws = torch.stack([torch.cat([cameras[k].R, cameras[k].T], dim=-1) for k in cameras])  # V, 4, 4
-    w2cs = affine_inverse(c2ws)
+    w2cs = torch.stack([torch.cat([cameras[k].R, cameras[k].T], dim=-1) for k in cameras])  # V, 4, 4
+    c2ws = affine_inverse(w2cs)
     _, src_inds = compute_camera_similarity(c2ws, c2ws)  # V, V
 
     dpts = []
@@ -51,7 +51,7 @@ def main():
     rgbs = []
     Ks = []
 
-    for cam in tqdm(cameras, desc='Loading depths & images'):
+    for cam in tqdm(cameras, desc='Loading depths & images & rays'):
         depth_file = join(args.data_root, args.depth_dir, cam, args.depth)
         image_file = join(args.data_root, args.images_dir, cam, args.image)
         rgb = to_cuda(to_tensor(load_image(image_file)).float())  # H, W, 3
@@ -64,8 +64,10 @@ def main():
         K[0:1] *= int(W * args.ratio) / W
         K[1:2] *= int(H * args.ratio) / H
         H, W = int(H * args.ratio), int(W * args.ratio)
-        rgb = resize_image(rgb, size=(H, W))
-        dpt = resize_image(dpt, size=(H, W))
+        if rgb.shape[0] != H or rgb.shape[1] != W:
+            rgb = resize_image(rgb, size=(H, W))
+        if dpt.shape[0] != H or dpt.shape[1] != W:
+            dpt = resize_image(dpt, size=(H, W))
 
         ray_o, ray_d = get_rays(H, W, K, R, T, z_depth=True)
         dpts.append(dpt)

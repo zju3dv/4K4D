@@ -36,8 +36,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--result_dir', type=str, default='data/geometry')
     parser.add_argument('--n_srcs', type=int, default=4, help='Number of source views to use for the fusion process')
-    # parser.add_argument('--view_sample', nargs=3, default=[0, None, 1], type=int)
-    # parser.add_argument('--frame_sample', nargs=3, default=[0, None, 1], type=int)
     parser.add_argument('--msk_abs_thresh', type=float, default=0.5, help='If mask exists, filter points with too low a mask value')
     parser.add_argument('--geo_abs_thresh', type=float, default=1.0, help='The threshold for MSE in reprojection, unit: squared pixels') # aiming for a denser reconstruction
     parser.add_argument('--geo_rel_thresh', type=float, default=0.01, help='The difference in relative depth values, unit: one')
@@ -63,7 +61,6 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
 
     dataset = runner.val_dataloader.dataset
     inds = get_inds(dataset)
-    # inds = get_inds(dataset, view_sample=args.view_sample, frame_sample=args.frame_sample)
     nv, nl = inds.shape[:2]
     prefix = 'frame'
 
