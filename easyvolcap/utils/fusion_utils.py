@@ -168,7 +168,7 @@ def compute_consistency(
 
     # At least 3 source views matched
     geo_mask = geo_mask_sum >= (geo_sum_thresh * dpt_src.shape[-3])  # a pixel is considered valid when at least 3 sources matches up
-    photo_mask = dpt_ref >= pho_abs_thresh
+    photo_mask = dpt_ref > pho_abs_thresh
     final_mask = torch.logical_and(photo_mask, geo_mask)  # B, H, W
 
     return depth_est_averaged, photo_mask, geo_mask, final_mask

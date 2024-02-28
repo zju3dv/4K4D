@@ -24,22 +24,24 @@ runner_cfg:
             _scaling: 0.005
             _rotation: 0.001
     scheduler_cfg:
-        type: MultiLR
-        scheduler_cfgs:
-            '_xyz':
-                type: ExponentialLR
-                gamma: 0.01
-                min_lr: 0.0000016
-            '_features_dc':
-                type: NoopLR
-            '_features_rest':
-                type: NoopLR
-            '_opacity':
-                type: NoopLR
-            '_scaling':
-                type: NoopLR
-            '_rotation':
-                type: NoopLR
+        type: NoopLR
+    # scheduler_cfg:
+    #     type: MultiLR
+    #     scheduler_cfgs:
+    #         '_xyz':
+    #             type: ExponentialLR
+    #             gamma: 0.01
+    #             min_lr: 0.0000016
+    #         '_features_dc':
+    #             type: NoopLR
+    #         '_features_rest':
+    #             type: NoopLR
+    #         '_opacity':
+    #             type: NoopLR
+    #         '_scaling':
+    #             type: NoopLR
+    #         '_rotation':
+    #             type: NoopLR
     epochs: 60
     decay_epochs: 30
     ep_iter: 500 # 30000 by paper

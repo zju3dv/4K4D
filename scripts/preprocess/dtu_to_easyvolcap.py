@@ -59,17 +59,17 @@ def main():
             dpt_path = join(dtu_root, f'Depths_raw/{scene}/depth_map_{i:04d}.pfm')
             img_path = join(dtu_root, f'Rectified/{scene}_train/rect_{i+1:03d}_3_r5000.png')
 
-            # WTF?
             dpt = read_pfm(dpt_path)[0].astype(np.float32) / scale
             msk = (dpt > 0.).astype(np.uint8)
+            # msk = np.ones_like(dpt) # treat all pixels as valid
             msk = cv2.resize(msk, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_NEAREST)[44:-44, 80:-80]
             dpt = cv2.resize(dpt, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_LINEAR)[44:-44, 80:-80]
 
             # Writing and linking
             img_out_path = join(img_out_dir, f'{i:06d}.jpg')
-            save_image(img_out_path, cv2.imread(img_path), jpeg_quality=100)  # highest quality compression
+            save_image(img_out_path, cv2.imread(img_path)[..., [2, 1, 0]], jpeg_quality=100)  # highest quality compression
             msk_out_path = join(msk_out_dir, f'{i:06d}.jpg')
-            save_image(msk_out_path, msk * 255)
+            save_image(msk_out_path, msk[..., None] * 255)
             dpt_out_path = join(dpt_out_dir, f'{i:06d}.exr')
             save_image(dpt_out_path, dpt)
 

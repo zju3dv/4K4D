@@ -4,8 +4,10 @@
 # Need a way to store the bound info in the camera parameters file
 
 import argparse
+import subprocess
 import numpy as np
-from os.path import join
+from glob import glob
+
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.easy_utils import write_camera
 from easyvolcap.utils.math_utils import affine_inverse
@@ -13,6 +15,14 @@ from easyvolcap.utils.data_utils import as_numpy_func, export_camera
 
 
 def main():
+    """
+    Assume ./data/neural3dv/XXX
+    in easyvolcap:
+    python3 scripts/preprocess/neural3dv_to_easyvolcap.py --only XXX
+    python3 scripts/colmap/easymocap_to_colmap.py --data_root data/neural3dv/XXX --image_dir images --output_dir colmap
+    in spg_colmap:
+    python3 sfm_renbody.py --root_dir ./data/neural3dv/XXX/colmap --colmap_path $PATHTOCOLMAP
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('--neural3dv_root', type=str, default='data/neural3dv')
     parser.add_argument('--easyvolcap_root', type=str, default='data/neural3dv')
@@ -22,7 +32,24 @@ def main():
 
     scenes = os.listdir(args.neural3dv_root)
     scenes = [s for s in scenes if s in args.only]
-    for scene in tqdm(scenes):
+    # for scene in tqdm(scenes):
+    for scene in scenes:
+        videos = sorted(glob(join(args.neural3dv_root, scene, '*.mp4')))
+        for v in videos:
+            dirname = basename(v).split('.')[0][-2:]
+            if not exists(join(args.easyvolcap_root, scene, 'images', dirname)):
+                os.makedirs(join(args.easyvolcap_root, scene, 'images', dirname), exist_ok=True)
+                cmd = [
+                    'ffmpeg',
+                    '-i', v,
+                    '-vf', 'fps=30',
+                    '-q:v', '1',
+                    '-qmin', '1',
+                    '-start_number', '0',
+                    join(args.easyvolcap_root, scene, 'images', dirname) + '/%06d.jpg'
+                ]
+                subprocess.run(cmd, check=True)
+
         # https://github.com/kwea123/nerf_pl/blob/52aeb387da64a9ad9a0f914ea9b049ffc598b20c/datasets/llff.py#L177
         raw = np.load(join(args.neural3dv_root, scene, args.camera_pose), allow_pickle=True)  # 21, 17
         poses = raw[:, :15].reshape(-1, 3, 5)  # N, 3, 5

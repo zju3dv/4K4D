@@ -7,6 +7,10 @@ Including it's core functionalities:
 - Cloning? Pruning? Splitting?
 """
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
+
 import torch
 import numpy as np
 from torch import nn
@@ -58,11 +62,6 @@ class GaussianTSampler(PointPlanesSampler):
                  min_opacity: float = 0.005,
                  preload_gs: str = '',
 
-                 # DEBUG:
-                 debug: bool = False,
-                 #  kernel_size: float = 0.3,  # mip-splatting
-                 #  render_type: Literal['gs', 'mip', 'pts'] = 'gs',
-
                  # Housekeepings
                  **kwargs,
                  ):
@@ -107,15 +106,22 @@ class GaussianTSampler(PointPlanesSampler):
         self.last_output = None  # will only store the updates for one of the points
 
         # Debug options
-        self.debug = debug
-        # self.kernel_size = kernel_size
-        # self.render_type = render_type
+        self.scale_mult = 1.0
+        self.alpha_mult = 1.0
 
         # Test time controls
         self.post_handle = self.register_load_state_dict_post_hook(self._load_state_dict_post_hook)
 
         if preload_gs:
             self.load_from_file(preload_gs)
+
+    def render_imgui(self, viewer: 'VolumetricVideoViewer', batch: dotdict):
+        from imgui_bundle import imgui
+        self.scale_mult = imgui.slider_float(f'Scale multiplier', self.scale_mult, 0.1, 3.0)[1]  # 0.1mm
+        self.alpha_mult = imgui.slider_float(f'Alpha multiplier', self.alpha_mult, 0.1, 3.0)[1]  # 0.1mm
+
+        for i, pcd in enumerate(self.pcds):
+            imgui.text(f'Number of points: {len(pcd._xyz)}')
 
     def render_gaussians(self, xyz: torch.Tensor, sh: torch.Tensor, scale3: torch.Tensor, rot4: torch.Tensor, occ1: torch.Tensor, batch: dotdict):
         # Lazy imports
@@ -192,7 +198,7 @@ class GaussianTSampler(PointPlanesSampler):
             tanfovx=gaussian_camera.tanfovx,
             tanfovy=gaussian_camera.tanfovy,
             bg=torch.full([3], self.bg_brightness if hasattr(self, 'bg_brightness') else 0.0, device=xyz.device),  # GPU
-            scale_modifier=self.scale_mod if hasattr(self, 'bg_brightness') else 1.0,
+            scale_modifier=self.scale_mod if hasattr(self, 'scale_mod') else 1.0,
             viewmatrix=gaussian_camera.world_view_transform,
             projmatrix=gaussian_camera.full_proj_transform,
             sh_degree=self.sh_deg if hasattr(self, 'sh_deg') else 0,
@@ -227,6 +233,7 @@ class GaussianTSampler(PointPlanesSampler):
         # Lazy imports
         from diff_point_rasterization import rasterize_points, PointRasterizationSettings, PointRasterizer
         from easyvolcap.utils.gaussian_utils import prepare_gaussian_camera
+        assert sh.ndim == 4, 'Should input 4 dim SH: B, N, C, SH'
 
         # Remove batch dimension
         xyz, sh, radius, occ1 = remove_batch([xyz, sh, radius, occ1])
@@ -241,7 +248,7 @@ class GaussianTSampler(PointPlanesSampler):
             tanfovx=gaussian_camera.tanfovx,
             tanfovy=gaussian_camera.tanfovy,
             bg=torch.full([3], self.bg_brightness if hasattr(self, 'bg_brightness') else 0.0, device=xyz.device),  # GPU
-            scale_modifier=self.scale_mod if hasattr(self, 'bg_brightness') else 1.0,
+            scale_modifier=self.scale_mod if hasattr(self, 'scale_mod') else 1.0,
             viewmatrix=gaussian_camera.world_view_transform,
             projmatrix=gaussian_camera.full_proj_transform,
             sh_degree=self.sh_deg if hasattr(self, 'sh_deg') else 0,
@@ -382,7 +389,7 @@ class GaussianTSampler(PointPlanesSampler):
         sh = torch.stack([self.pcds[l].get_features for l in index]).mT  # B, N, C, SH
 
         # Perform points rendering
-        rgb, acc, dpt = self.render_gaussians(xyz, sh, scale3, rot4, alpha, batch)  # B, HW, C
+        rgb, acc, dpt = self.render_gaussians(xyz, sh, scale3 * self.scale_mult, rot4, alpha * self.alpha_mult, batch)  # B, HW, C
 
         # Prepare output
         batch.output.pcd = [self.pcds[l] for l in index]

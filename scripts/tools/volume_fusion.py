@@ -36,6 +36,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--result_dir', type=str, default='data/geometry')
     parser.add_argument('--n_srcs', type=int, default=4, help='Number of source views to use for the fusion process')
+    parser.add_argument('--occ_mult', type=float, default=0.2, help='Multiply the predicted transparency by this value due to overlap')
+    parser.add_argument('--msk_abs_thresh', type=float, default=0.5, help='If mask exists, filter points with too low a mask value')
     parser.add_argument('--geo_abs_thresh', type=float, default=1.0, help='The threshold for MSE in reprojection, unit: squared pixels') # aiming for a denser reconstruction
     parser.add_argument('--geo_rel_thresh', type=float, default=0.01, help='The difference in relative depth values, unit: one')
     parser.add_argument('--skip_depth_consistency', action='store_true')
@@ -70,10 +72,12 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
 
     pbar = tqdm(total=nl * nv, desc=f'Fusing rendered RGBD')
     for f in range(nl):
+        # Values used for reprojection
         dpts = []
         cens = []
         dirs = []
 
+        # Values stored to the ply files
         occs = []
         rads = []
         rgbs = []
@@ -98,13 +102,15 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
                 occ = output.gs.occ.view(H, W, -1)
                 rad = output.gs.pix.view(H, W, -1)[..., :1]
 
+            occ = occ * args.occ_mult
             dpt = output.dpt_map.view(H, W, -1)
             cen = batch.ray_o.view(H, W, -1)
             dir = batch.ray_d.view(H, W, -1)
 
+            # Zero mask points should be removed
             if 'msk' in batch:
                 msk = batch.msk.view(H, W, -1)
-                dpt = dpt * (msk > 0)  # zero mask points should be removed
+                dpt = dpt * (msk > args.msk_abs_thresh)
 
             # Store CUDA depth for later use
             dpts.append(dpt)  # keep the cuda version for later geometric fusion
@@ -116,6 +122,7 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
             pbar.update()
 
         if not args.skip_depth_consistency:
+            # Get camera parameters
             if dataset.closest_using_t:
                 c2ws = dataset.c2ws[f]
                 w2cs = dataset.w2cs[f]
@@ -125,7 +132,10 @@ def fuse(runner: "VolumetricVideoRunner", args: argparse.Namespace):
                 w2cs = dataset.w2cs[:, f]
                 Ks = dataset.Ks[:, f]
 
+            # Compute closer source views
             _, src_inds = compute_camera_similarity(c2ws, c2ws)  # V, V
+
+            # Pad the output properties for easier computation
             H, W = max([d.shape[-3] for d in dpts]), max([d.shape[-2] for d in dpts])
 
             dpts = torch.stack([pad_image(i.permute(2, 0, 1), (H, W)).permute(1, 2, 0) for i in dpts])  # V, H, W, 1

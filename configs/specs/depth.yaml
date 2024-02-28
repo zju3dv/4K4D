@@ -1,0 +1,8 @@
+# Visualize depth only
+# runner_cfg.visualizer_cfg.types=DEPTH, runner_cfg.visualizer_cfg.dpt_curve=linear runner_cfg.visualizer_cfg.vis_ext=.exr
+runner_cfg:
+    visualizer_cfg:
+        vis_ext: .exr
+        types: [DEPTH]
+        dpt_curve: linear
+        store_alpha_channel: False

@@ -502,13 +502,15 @@ class Camera:
         self.drag_ymax = np.pi + self.drag_ymin - 0.02  # remove the 0.01 of drag_ymin
 
         # Rotate about euler angle
-        m = mat4(1.0)
-        m = glm.rotate(m, np.clip(delta.x, self.drag_ymin, self.drag_ymax), self.right)
-        m = glm.rotate(m, delta.y, -self.world_up)
-        m = glm.rotate(m, delta.z, self.front)
-        center = self.center
-        self.front = m @ self.front  # might overshoot and will update center
-        self.center = center
+        EPS = 1e-7
+        if abs(delta.x) > EPS or abs(delta.y) > EPS or abs(delta.z) > EPS:
+            m = mat4(1.0)
+            m = glm.rotate(m, np.clip(delta.x, self.drag_ymin, self.drag_ymax), self.right)
+            m = glm.rotate(m, delta.y, -self.world_up)
+            m = glm.rotate(m, delta.z, self.front)
+            center = self.center
+            self.front = m @ self.front  # might overshoot and will update center
+            self.center = center
 
     @property
     def w2p(self):

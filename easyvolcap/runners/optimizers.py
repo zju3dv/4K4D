@@ -80,7 +80,7 @@ def ConfigurableOptimizer(named_params: Iterator[Tuple[str, nn.Parameter]],
             dotdict(
                 params=[value],
                 lr=v_lr,
-                v_eps=v_eps,
+                eps=v_eps,
                 weight_decay=v_weight_decay,
                 name=item
             )

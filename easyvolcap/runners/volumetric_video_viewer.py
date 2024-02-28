@@ -845,7 +845,7 @@ class VolumetricVideoViewer:
                 self.static.mesh_class = Mesh
             if imgui.button('Add point splat from file'):
                 self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['PLY Files', '*.ply'])
-                self.static.mesh_class = Splat
+                self.static.mesh_class = PointSplat
             if imgui.button('Add gaussian splat from file'):
                 self.static.add_mesh_dialog = pfd.open_file('Select file', filters=['3DGS Files', '*.ply *.npz *.pt *.pth'])
                 self.static.mesh_class = Gaussian
@@ -1215,7 +1215,8 @@ class VolumetricVideoViewer:
         curr_time = time.perf_counter()
         if first_run or curr_time - self.static.last_memory_update > self.update_mem_time:
             self.static.name = torch.cuda.get_device_name()
-            self.static.device = next(self.model.parameters()).device
+            # self.static.device = next(self.model.parameters()).device
+            self.static.device = torch.cuda.current_device()
             self.static.memory = torch.cuda.max_memory_allocated()
             self.static.last_memory_update = curr_time
         return self.static.name, self.static.device, self.static.memory
