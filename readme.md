@@ -10,6 +10,7 @@
 
 ***News***:
 
+- 24.02.27 [***4K4D***](https://zju3dv.github.io/4k4d) has been accepted to CVPR 2024.
 - 23.12.13 ***EasyVolcap*** will be presented at SIGGRAPH Asia 2023, Sydney.
 - 23.10.17 [***4K4D***](https://zju3dv.github.io/4k4d), a real-time 4D view synthesis algorithm developed using ***EasyVolcap***, has been made public.
 
