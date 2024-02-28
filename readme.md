@@ -67,6 +67,38 @@ Before writing your new volumetric video algorithm, we need a basic understandin
 1. If your new network model's structure is similar to NeRF-based ones (i.e. with the separation of `sampler`, `network` and `renderer`), you can simply swap out parts of the [`volumetric_video_network.py`](easyvolcap/models/networks/volumetric_video_network.py) by writing a new config to swap the `type` parameter of the `***_cfg` dictionaries.
 2. If you'd like to build a completely new network model: to save you some hassle, we grant the `sampler` classes the ability to directly output the core network output (`rgb_map` stored in `batch.output`). Define your rendering function and network structure however you like and reuse other parts of the codebase. An example: [`gaussiant_sampler.py`](easyvolcap/models/samplers/gaussiant_sampler.py).
 
+**A miminal custom moduling using all other ***EasyVolcap*** components should look something like this:**
+
+```python
+from easyvolcap.engine import SAMPLERS
+from easyvolcap.utils.net_utils import VolumetricVideoModule
+from easyvolcap.utils.console_utils import *
+
+@SAMPLERS.register_module() # make the custom module callable by class name
+class CustomVolumetricVideoModule(VolumetricVideoModule):
+    def __init__(self,
+                 network, # ignore noop_network
+                 ... # configurable parameters
+                 ):
+        # Initialize custom network parameters
+        ...
+    
+    def forward(self, batch: dotdict):
+        # Perform network forwarding
+        ...
+
+        # Store output for further processing
+        batch.output.rgb_map = ... # store rendered image for loss (B, N, 3)
+```
+
+In the respective config, selecte this module with:
+
+```yaml
+model_cfg:
+    sampler_cfg:
+        type: CustomVolumetricVideoModule
+```
+
 ### Importing ***EasyVolcap*** In Other Places
 
 ***EasyVolcap*** now supports direct import from other locations & codebases.
