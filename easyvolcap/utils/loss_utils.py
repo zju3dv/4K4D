@@ -22,6 +22,16 @@ class ImgLossType(Enum):
     L2 = auto()
     SSIM = auto()
 
+class DptLossType(Enum):
+    SMOOTHL1 = auto()
+    L1 = auto()
+    L2 = auto()
+    SSIMSE = auto()
+    SSIMAE = auto()
+    SILOG = auto()
+    CONTINUITY = auto()
+    RANKING = auto()
+
 # from mipnerf360
 
 
@@ -558,3 +568,251 @@ def compute_time_planes_smooth(embedding):
 def compute_ssim(x: torch.Tensor, y: torch.Tensor):
     from pytorch_msssim import ssim
     return ssim(x, y, data_range=1.0, win_size=11, win_sigma=1.5, K=(0.01, 0.03))
+
+
+# from MonoSDF
+def compute_scale_and_shift(prediction, target, mask):
+    # System matrix: A = [[a_00, a_01], [a_10, a_11]]
+    a_00 = torch.sum(mask * prediction * prediction, (1, 2))
+    a_01 = torch.sum(mask * prediction, (1, 2))
+    a_11 = torch.sum(mask, (1, 2))
+
+    # Right hand side: b = [b_0, b_1]
+    b_0 = torch.sum(mask * prediction * target, (1, 2))
+    b_1 = torch.sum(mask * target, (1, 2))
+
+    # Solution: x = A^-1 . b = [[a_11, -a_01], [-a_10, a_00]] / (a_00 * a_11 - a_01 * a_10) . b
+    x_0 = torch.zeros_like(b_0)
+    x_1 = torch.zeros_like(b_1)
+
+    det = a_00 * a_11 - a_01 * a_01
+    valid = det.nonzero()
+
+    x_0[valid] = ( a_11[valid] * b_0[valid] - a_01[valid] * b_1[valid]) / det[valid]
+    x_1[valid] = (-a_01[valid] * b_0[valid] + a_00[valid] * b_1[valid]) / det[valid]
+
+    return x_0, x_1
+
+
+def reduction_batch_based(image_loss, M):
+    # Average of all valid pixels of the batch
+    # Avoid division by 0 (if sum(M) = sum(sum(mask)) = 0: sum(image_loss) = 0)
+    divisor = torch.sum(M)
+
+    if divisor == 0: return 0
+    else: return torch.sum(image_loss) / divisor
+
+
+def reduction_image_based(image_loss, M):
+    # Mean of average of valid pixels of an image
+    # Avoid division by 0 (if M = sum(mask) = 0: image_loss = 0)
+    valid = M.nonzero()
+    image_loss[valid] = image_loss[valid] / M[valid]
+
+    return torch.mean(image_loss)
+
+
+def mse_loss(prediction, target, mask, reduction=reduction_batch_based):
+    # Number of valid pixels
+    M = torch.sum(mask, (1, 2))  # (B,)
+
+    # L2 loss
+    res = prediction - target  # (B, H, W)
+    image_loss = torch.sum(mask * res * res, (1, 2))  # (B,)
+
+    return reduction(image_loss, 2 * M)
+
+
+def gradient_loss(prediction, target, mask, reduction=reduction_batch_based):
+
+    M = torch.sum(mask, (1, 2))
+
+    diff = prediction - target
+    diff = torch.mul(mask, diff)
+
+    grad_x = torch.abs(diff[:, :, 1:] - diff[:, :, :-1])
+    mask_x = torch.mul(mask[:, :, 1:], mask[:, :, :-1])
+    grad_x = torch.mul(mask_x, grad_x)
+
+    grad_y = torch.abs(diff[:, 1:, :] - diff[:, :-1, :])
+    mask_y = torch.mul(mask[:, 1:, :], mask[:, :-1, :])
+    grad_y = torch.mul(mask_y, grad_y)
+
+    image_loss = torch.sum(grad_x, (1, 2)) + torch.sum(grad_y, (1, 2))
+
+    return reduction(image_loss, M)
+
+
+class MSELoss(nn.Module):
+    def __init__(self, reduction='batch-based'):
+        super().__init__()
+
+        if reduction == 'batch-based':
+            self.__reduction = reduction_batch_based
+        else:
+            self.__reduction = reduction_image_based
+
+    def forward(self, prediction, target, mask):
+        return mse_loss(prediction, target, mask, reduction=self.__reduction)
+
+
+class GradientLoss(nn.Module):
+    def __init__(self, scales=1, reduction='batch-based'):
+        super().__init__()
+
+        if reduction == 'batch-based':
+            self.__reduction = reduction_batch_based
+        else:
+            self.__reduction = reduction_image_based
+
+        self.__scales = scales
+
+    def forward(self, prediction, target, mask):
+        total = 0
+
+        for scale in range(self.__scales):
+            step = pow(2, scale)
+
+            total += gradient_loss(prediction[:, ::step, ::step], target[:, ::step, ::step],
+                                   mask[:, ::step, ::step], reduction=self.__reduction)
+
+        return total
+
+
+class ScaleAndShiftInvariantMSELoss(nn.Module):
+    def __init__(self, alpha=0.5, scales=4, reduction='batch-based'):
+        super().__init__()
+
+        self.__data_loss = MSELoss(reduction=reduction)
+        self.__regularization_loss = GradientLoss(scales=scales, reduction=reduction)
+        self.__alpha = alpha
+
+        self.__prediction_ssi = None
+
+    def forward(self, prediction, target, mask):
+        # Deal with the channel dimension, the input dimension may have (B, C, H, W) or (B, H, W)
+        if prediction.ndim == 4: prediction = prediction[:, 0]  # (B, H, W)
+        if target.ndim == 4: target = target[:, 0]  # (B, H, W)
+        if mask.ndim == 4: mask = mask[:, 0]  # (B, H, W)
+
+        # Compute scale and shift
+        scale, shift = compute_scale_and_shift(prediction, target, mask)
+        self.__prediction_ssi = scale.view(-1, 1, 1) * prediction + shift.view(-1, 1, 1)
+        total = self.__data_loss(self.__prediction_ssi, target, mask)
+
+        # Add regularization if needed
+        if self.__alpha > 0:
+            total += self.__alpha * self.__regularization_loss(self.__prediction_ssi, target, mask)
+
+        return total
+
+    def __get_prediction_ssi(self):
+        return self.__prediction_ssi
+
+    prediction_ssi = property(__get_prediction_ssi)
+# from MonoSDF
+
+
+def median_normalize(x, mask):
+    """ Median normalize a tensor for all valid pixels.
+        This operation is performed without batch dimension.
+    Args:
+        x (torch.Tensor): (H, W), original tensor
+        mask (torch.Tensor): (H, W), mask tensor
+    Return:
+        y (torch.Tensor): (H, W), median normalized tensor
+    """
+    M = torch.sum(mask)
+
+    # Return original tensor if there is no valid pixel
+    if M == 0:
+        return x
+
+    # Compute median and scale
+    t = torch.quantile(x[mask == 1], q=0.5)  # scalar
+    s = torch.sum(x[mask == 1] - t) / M  # scalar
+
+    # Return median normalized tensor
+    return (x - t) / s
+    
+
+def mae_loss(prediction, target, mask, reduction=reduction_batch_based):
+    # Number of valid pixels
+    M = torch.sum(mask, (1, 2))  # (B,)
+
+    # L1 loss
+    res = (prediction - target).abs()  # (B, H, W)
+    image_loss = torch.sum(mask * res, (1, 2))  # (B,)
+
+    return reduction(image_loss, 2 * M)
+
+
+class MAELoss(nn.Module):
+    def __init__(self, reduction='batch-based'):
+        super().__init__()
+
+        if reduction == 'batch-based':
+            self.__reduction = reduction_batch_based
+        else:
+            self.__reduction = reduction_image_based
+
+    def forward(self, prediction, target, mask):
+        return mae_loss(prediction, target, mask, reduction=self.__reduction)
+
+
+class ScaleAndShiftInvariantMAELoss(nn.Module):
+    def __init__(self, alpha=0.5, scales=4, reduction='batch-based'):
+        super().__init__()
+
+        self.__data_loss = MAELoss(reduction=reduction)
+        self.__regularization_loss = GradientLoss(scales=scales, reduction=reduction)
+        self.__alpha = alpha
+
+    def forward(self, prediction, target, mask):
+        # Deal with the channel dimension, the input dimension may have (B, C, H, W) or (B, H, W)
+        if prediction.ndim == 4: prediction = prediction[:, 0]  # (B, H, W)
+        if target.ndim == 4: target = target[:, 0]  # (B, H, W)
+        if mask.ndim == 4: mask = mask[:, 0]  # (B, H, W)
+
+        # TODO: Maybe there is a better way to do the batching
+        # But `torch.quantile` does not support multiple `dim` argument for now
+        for i in range(prediction.shape[0]):
+            prediction[i] = median_normalize(prediction[i], mask[i])  # (H, W)
+            target[i] = median_normalize(target[i], mask[i])  # (H, W)
+
+        # Compute the scale-and-shift invariant MAE loss
+        total = self.__data_loss(prediction, target, mask)
+
+       # Add regularization if needed
+        if self.__alpha > 0:
+            total += self.__alpha * self.__regularization_loss(self.prediction, target, mask)
+
+        return total
+
+
+# Modified version of Adabins repository
+# https://github.com/shariqfarooq123/AdaBins/blob/0952d91e9e762be310bb4cd055cbfe2448c0ce20/loss.py#L7
+class ScaleInvariantLogLoss(nn.Module):
+    def __init__(self, alpha=10.0, beta=0.15, eps=0.0):
+        super(ScaleInvariantLogLoss, self).__init__()
+
+        self.alpha = alpha
+        self.beta = beta
+        # The eps is added to avoid log(0) and division by zero
+        # But it should be gauranteed that the network output is always non-negative
+        self.eps = eps
+
+    def forward(self, prediction, target, mask):
+        # Deal with the channel dimension, the input dimension may have (B, C, H, W) or (B, H, W)
+        if prediction.ndim == 4: prediction = prediction[:, 0]  # (B, H, W)
+        if target.ndim == 4: target = target[:, 0]  # (B, H, W)
+        if mask.ndim == 4: mask = mask[:, 0]  # (B, H, W)
+
+        total = 0
+        # Maybe there is a better way to do the batching
+        for i in range(prediction.shape[0]):
+            g = torch.log(prediction[i][mask[i]] + self.eps) - torch.log(target[i][mask[i]] + self.eps)  # (N,)
+            Dg = torch.var(g) + self.beta * torch.pow(torch.mean(g), 2)  # scalar
+            total += self.alpha * torch.sqrt(Dg)
+
+        return total
