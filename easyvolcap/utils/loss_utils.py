@@ -413,6 +413,10 @@ def bce_loss(x: torch.Tensor, y: torch.Tensor):
     return F.binary_cross_entropy(x, y)
 
 
+def cos(x: torch.Tensor, y: torch.Tensor):
+    return (1 - F.cosine_similarity(x, y, dim=-1)).mean()
+
+
 def mIoU_loss(x: torch.Tensor, y: torch.Tensor):
     """
     Compute the mean intersection of union loss over masked regions

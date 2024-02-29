@@ -16,6 +16,9 @@ from easyvolcap.models.supervisors.proposal_supervisor import ProposalSupervisor
 from easyvolcap.models.supervisors.geometry_supervisor import GeometrySupervisor
 from easyvolcap.models.supervisors.temporal_supervisor import TemporalSupervisor
 from easyvolcap.models.supervisors.displacement_supervisor import DisplacementSupervisor
+from easyvolcap.models.supervisors.opacity_supervisor import OpacitySupervisor
+from easyvolcap.models.supervisors.flow_supervisor import FlowSupervisor
+from easyvolcap.models.supervisors.normal_supervisor import NormalSupervisor
 from easyvolcap.models.supervisors.volumetric_video_supervisor import VolumetricVideoSupervisor
 
 
@@ -25,12 +28,15 @@ class SequentialSupervisor(VolumetricVideoSupervisor):
                  network: nn.Module,
                  supervisor_cfgs: List[dotdict] = [
                      dotdict(type=MaskSupervisor.__name__),
+                     dotdict(type=FlowSupervisor.__name__),
                      dotdict(type=DepthSupervisor.__name__),
+                     dotdict(type=NormalSupervisor.__name__),
+                     dotdict(type=OpacitySupervisor.__name__),
                      dotdict(type=ProposalSupervisor.__name__),
                      dotdict(type=GeometrySupervisor.__name__),
                      dotdict(type=TemporalSupervisor.__name__),
                      dotdict(type=DisplacementSupervisor.__name__),
-                     dotdict(type=VolumetricVideoSupervisor.__name__),
+                     dotdict(type=VolumetricVideoSupervisor.__name__), # NOTE: Put this last for PSNR to be displayed last along with full loss
                  ],
                  **kwargs,
                  ):
