@@ -1,10 +1,16 @@
+"""
+Given images, output scalar metrics on CPU
+Used for evaluation. For training, please check out loss_utils
+"""
+
 import torch
 import numpy as np
 
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.loss_utils import mse as compute_mse
-
 from skimage.metrics import structural_similarity as compare_ssim
+
+from enum import Enum, auto
 
 
 def psnr(x: torch.Tensor, y: torch.Tensor):
@@ -37,3 +43,9 @@ def lpips(x: torch.Tensor, y: torch.Tensor):
     if y.ndim == 3: y = y.unsqueeze(0)
 
     return lpips.compute_lpips(x.cuda().permute(0, 3, 1, 2) * 2 - 1, y.cuda().permute(0, 3, 1, 2) * 2 - 1).mean().item()
+
+
+class Metrics(Enum):
+    PSNR = psnr
+    SSIM = ssim
+    LPIPS = lpips
