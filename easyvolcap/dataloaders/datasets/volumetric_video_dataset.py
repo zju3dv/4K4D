@@ -1235,7 +1235,7 @@ class VolumetricVideoDataset(Dataset):
         output.msk = msk.reshape(-1, 1)  # full mask
         output.wet = wet.reshape(-1, 1)  # full weights
         if dpt is not None: output.dpt = dpt.reshape(-1, 1)
-        if bkg is not None: output.bkg = bkg.reshape(-1, 1)
+        if bkg is not None: output.bkg = bkg.reshape(-1, 3)
         if norm is not None: output.norm = norm.reshape(-1, 3)
 
         if should_crop_ixt:
