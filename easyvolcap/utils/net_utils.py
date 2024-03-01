@@ -443,7 +443,8 @@ def save_npz(model: nn.Module,
     from easyvolcap.utils.data_utils import to_numpy
     npz_path = join(model_dir, 'latest.npz' if latest else f'{epoch}.npz')
     state_dict = model.state_dict() if not isinstance(model, DDP) else model.module.state_dict()
-    param_dict = to_numpy(state_dict)  # a shallow dict
+    param_dict = to_numpy(state_dict)  # a shallow dict (dotdict)
+    param_dict.epoch = epoch  # just 1 scalar
     os.makedirs(dirname(npz_path), exist_ok=True)
     np.savez_compressed(npz_path, **param_dict)
     log(yellow(f'Saved model {blue(npz_path)} at epoch {blue(epoch)}'))

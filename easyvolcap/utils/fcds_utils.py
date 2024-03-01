@@ -5,11 +5,12 @@ import torch
 from typing import List, Dict, Union
 
 from easyvolcap.utils.console_utils import *
+from easyvolcap.utils.net_utils import MLP
 from easyvolcap.utils.base_utils import dotdict
+from easyvolcap.utils.fusion_utils import voxel_reconstruction
 from easyvolcap.utils.raster_utils import get_ndc_perspective_matrix
 from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
 from easyvolcap.utils.math_utils import normalize_sum, affine_inverse, affine_padding
-from easyvolcap.utils.net_utils import MLP
 
 
 def estimate_occupancy_field(xyz: torch.Tensor, rad: torch.Tensor, occ: torch.Tensor):
@@ -223,24 +224,8 @@ def voxel_surface_down_sample(pcd: torch.Tensor, pcd_t: torch.Tensor = None, vox
     from easyvolcap.utils.sample_utils import point_mesh_distance
     from pytorch3d.ops import knn_points, ball_query, sample_farthest_points
 
-    # Convert torch tensor to Open3D PointCloud
-    o3d_pcd = o3d.geometry.PointCloud()
-    o3d_pcd.points = o3d.utility.Vector3dVector(pcd.view(-1, 3).detach().cpu().numpy())
-
-    # Create VoxelGrid from PointCloud
-    o3d_vox = o3d.geometry.VoxelGrid.create_from_point_cloud(o3d_pcd, voxel_size=voxel_size)
-
-    # Extract dense grid from VoxelGrid using get_voxel
-    voxels = o3d_vox.get_voxels()
-    max_index = np.array([vox.grid_index for vox in voxels]).max(axis=0)  # !: for-loop
-    dense_grid = np.zeros((max_index[0] + 1, max_index[1] + 1, max_index[2] + 1))
-
-    for vox in voxels:  # !: for-loop
-        dense_grid[vox.grid_index[0], vox.grid_index[1], vox.grid_index[2]] = 1
-
-    # Use marching cubes to obtain mesh from dense grid
-    vertices, triangles = mcubes.marching_cubes(dense_grid, 0.5)
-    vertices = vertices * voxel_size + o3d_vox.origin  # resizing
+    # Performing voxel surface reconstruction
+    vertices, triangles = voxel_reconstruction(pcd, voxel_size)
 
     # Convert mesh data to torch tensors
     triangles_torch = torch.as_tensor(vertices[triangles], device=pcd.device, dtype=pcd.dtype).float()

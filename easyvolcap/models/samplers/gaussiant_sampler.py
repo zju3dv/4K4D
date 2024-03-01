@@ -117,8 +117,8 @@ class GaussianTSampler(PointPlanesSampler):
 
     def render_imgui(self, viewer: 'VolumetricVideoViewer', batch: dotdict):
         from imgui_bundle import imgui
-        self.scale_mult = imgui.slider_float(f'Scale multiplier', self.scale_mult, 0.1, 3.0)[1]  # 0.1mm
-        self.alpha_mult = imgui.slider_float(f'Alpha multiplier', self.alpha_mult, 0.1, 3.0)[1]  # 0.1mm
+        self.scale_mult = imgui.slider_float(f'Scale multiplier', self.scale_mult, 0.1, 5.0)[1]  # 0.1mm
+        self.alpha_mult = imgui.slider_float(f'Alpha multiplier', self.alpha_mult, 0.1, 5.0)[1]  # 0.1mm
 
         for i, pcd in enumerate(self.pcds):
             imgui.text(f'Number of points: {len(pcd._xyz)}')

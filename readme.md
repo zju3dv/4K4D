@@ -235,14 +235,14 @@ https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/acd83f13
 
 The original [3DGS](https://github.com/graphdeco-inria/gaussian-splatting) uses the sparse reconstruction result of COLMAP for initialization.
 However, we found that the sparse reconstruction result often contains a lot of floating points, which is hard to prune for 3DGS and could easily make the model fail to converge.
-Thus, we opted to use the "dense" reconstruction result of our Instant-NGP+T implementation by computing the RGBD image for input views and concatenating them as the input of 3DGS. The script [`volume_fusion.py`](scripts/tools/volume_fusion.py) controls this process and it should work similarly on all models that support depth output.
+Thus, we opted to use the "dense" reconstruction result of our Instant-NGP+T implementation by computing the RGBD image for input views and concatenating them as the input of 3DGS. The script [`volume_fusion.py`](scripts/fusion/volume_fusion.py) controls this process and it should work similarly on all models that support depth output.
 
 The following script block provides an example of how to prepare an initialization for our 3DGS+T implementation.
 
 ```shell
 # Extract geometry (point cloud) for initialization from the l3mhet model
 # Tune image sample rate and resizing ratio for a denser or sparser estimation
-python scripts/tools/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_${expname}.yaml val_dataloader_cfg.dataset_cfg.ratio=0.15
+python scripts/fusion/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_${expname}.yaml val_dataloader_cfg.dataset_cfg.ratio=0.15
 
 # Move the rendering results to the dataset folder
 source_folder="data/geometry/l3mhet_${expname}/POINT"

@@ -5,13 +5,13 @@ evc -t test -c configs/exps/l3mhet/l3mhet_ipstage.yaml configs=configs/specs/geo
 evc -t test -c configs/exps/enerf/enerf_seq3.yaml exp_name=enerf_dtu configs=configs/specs/fp16.yaml,configs/specs/cubic.yaml,configs/specs/ibr.yaml val_dataloader_cfg.dataset_cfg.render_size=1080,1920 val_dataloader_cfg.dataset_cfg.smoothing_term=15.0 val_dataloader_cfg.dataset_cfg.n_render_views=300 runner_cfg.visualizer_cfg.save_tag=seq3
 evc -t test -c configs/exps/enerf/enerf_seq3.yaml exp_name=enerf_dtu configs=configs/specs/fp16.yaml,configs/specs/cubic.yaml,configs/specs/ibr.yaml runner_cfg.visualizer_cfg.save_tag=seq3 val_dataloader_cfg.dataset_cfg.render_size=1080,1920 val_dataloader_cfg.dataset_cfg.smoothing_term=15.0 val_dataloader_cfg.dataset_cfg.n_render_views=300 val_dataloader_cfg.batch_sampler_cfg.n_srcs_list=2,
 
-python scripts/tools/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_zju3dv.yaml configs=configs/specs/fp16.yaml,configs/specs/vis.yaml val_dataloader_cfg.dataset_cfg.ratio=0.5 val_dataloader_cfg.dataset_cfg.frame_sample=0,None,25
-python scripts/tools/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_dance3_static.yaml configs=configs/specs/fp16.yaml,configs/specs/vis.yaml val_dataloader_cfg.dataset_cfg.ratio=0.5 val_dataloader_cfg.view_sample=0,None,3
+python scripts/fusion/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_zju3dv.yaml configs=configs/specs/fp16.yaml,configs/specs/vis.yaml val_dataloader_cfg.dataset_cfg.ratio=0.5 val_dataloader_cfg.dataset_cfg.frame_sample=0,None,25
+python scripts/fusion/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_dance3_static.yaml configs=configs/specs/fp16.yaml,configs/specs/vis.yaml val_dataloader_cfg.dataset_cfg.ratio=0.5 val_dataloader_cfg.view_sample=0,None,3
 
 evc -t test -c configs/projects/stableenerf/enerf/enerf_my_313_se.yaml runner_cfg.visualizer_cfg.save_tag=dtu_pretrain val_dataloader_cfg.dataset_cfg.immask_crop=False val_dataloader_cfg.dataset_cfg.imbound_crop=False val_dataloader_cfg.dataset_cfg.immask_fill=True
 evc -t test -c configs/exps/l3mhet/l3mhet_seq3.yaml exp_name=l3mhet_seq3 configs=configs/specs/fp16.yaml,configs/specs/interp.yaml val_dataloader_cfg.dataset_cfg.render_size=1080,1920 val_dataloader_cfg.dataset_cfg.smoothing_term=15.0 val_dataloader_cfg.dataset_cfg.n_render_views=300
 
-python scripts/tools/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_xuzhen_static.yaml configs=configs/specs/fp16.yaml,configs/specs/vis.yaml val_dataloader_cfg.dataset_cfg.ratio=0.5 val_dataloader_cfg.dataset_cfg.view_sample=0,None,6
+python scripts/fusion/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_xuzhen_static.yaml configs=configs/specs/fp16.yaml,configs/specs/vis.yaml val_dataloader_cfg.dataset_cfg.ratio=0.5 val_dataloader_cfg.dataset_cfg.view_sample=0,None,6
 python scripts/tools/extract_mesh.py --occ_thresh 0.3 -- -c configs/exps/l3mhet/l3mhet_0008_05_static.yaml
 
 python scripts/realtime4dv/charger.py SuperChargedR4DV scr4dv_my_377_optcam -- -c configs/exps/r4dv/r4dv_my_377_optcam.yaml configs=configs/specs/super.yaml

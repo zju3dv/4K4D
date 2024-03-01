@@ -131,7 +131,7 @@ After preparing the dataset and model with COLMAP and Instant-NGP following the 
 
 The original [3DGS](https://github.com/graphdeco-inria/gaussian-splatting) uses the sparse reconstruction result of COLMAP for initialization.
 However, we found that the sparse reconstruction result often contains a lot of floating points, which is hard to prune for 3DGS and could easily make the model fail to converge.
-Thus, we opted to use the "dense" reconstruction result of our Instant-NGP+T implementation by computing the RGBD image for input views and concatenating them as the input of 3DGS. The script [`volume_fusion.py`](scripts/tools/volume_fusion.py) controls this process and it should work similarly on all models that support depth output.
+Thus, we opted to use the "dense" reconstruction result of our Instant-NGP+T implementation by computing the RGBD image for input views and concatenating them as the input of 3DGS. The script [`volume_fusion.py`](scripts/fusion/volume_fusion.py) controls this process and it should work similarly on all models that support depth output.
 
 Following the official [Instant-NGP](https://github.com/NVlabs/instant-ngp) implementation, we also perform camera parameter optimizations during the training of the Instant-NGP+T model (extrinsic parameters for now).
 The script responsible for extracting the camera parameters is [`extract_optimized_cameras.py`](scripts/tools/extract_optimized_cameras.py).
@@ -146,7 +146,7 @@ python scripts/tools/extract_optimized_cameras.py -- -c configs/exps/l3mhet/l3mh
 
 # Extract geometry (point cloud) for initialization from the l3mhet model
 # Tune image sample rate and resizing ratio for a denser or sparser estimation
-python scripts/tools/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_${expname}.yaml val_dataloader_cfg.dataset_cfg.ratio=0.25 val_dataloader_cfg.dataset_cfg.view_sample=0,null,25
+python scripts/fusion/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_${expname}.yaml val_dataloader_cfg.dataset_cfg.ratio=0.25 val_dataloader_cfg.dataset_cfg.view_sample=0,null,25
 
 # Move the rendering results to the dataset folder
 mkdir -p ${data_root}/vhulls
