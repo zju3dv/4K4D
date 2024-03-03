@@ -17,6 +17,7 @@ from easyvolcap.utils.math_utils import point_padding, affine_padding, affine_in
 from easyvolcap.utils.data_utils import add_batch, to_cuda, export_pts, export_mesh, export_pcd, to_x
 from easyvolcap.utils.fusion_utils import filter_global_points, depth_geometry_consistency, compute_consistency
 
+
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from easyvolcap.runners.volumetric_video_runner import VolumetricVideoRunner

@@ -125,7 +125,7 @@ class VolumetricVideoDataset(Dataset):
 
                  # Visual hull priors # TODO: maybe move to a different module?
                  vhulls_dir: str = 'vhulls',  # for easy reloading of visual hulls
-                 use_vhulls: bool = False,  # only usable when loading masks
+                 use_vhulls: bool = True,  # only usable when loading masks
                  vhull_thresh: float = 0.95,  # 0.9 of all valid cameras sees this point
                  count_thresh: int = 16,  # large common views
                  vhull_padding: float = 0.02,  # smaller, more accurate
@@ -232,7 +232,7 @@ class VolumetricVideoDataset(Dataset):
         self.encode_ext = encode_ext
         self.cache_raw = cache_raw  # use raw pixels to further accelerate training
         self.use_depths = use_depths  # use visual hulls as a prior
-        self.use_vhulls = use_vhulls  # use visual hulls as a prior
+        self.use_vhulls = use_vhulls and use_masks  # use visual hulls as a prior
         self.use_masks = use_masks  # always load mask if using vhulls
         self.use_smpls = use_smpls  # use smpls as a prior
         self.use_bkgds = use_bkgds  # use background images as a prior
@@ -836,7 +836,7 @@ class VolumetricVideoDataset(Dataset):
     def get_image(self, view_index: int, latent_index: int):
         # Load bytes (rgb, msk, wet, bg)
         im_bytes, mk_bytes, wt_bytes, dp_bytes, bg_bytes, nm_bytes = self.get_image_bytes(view_index, latent_index)
-        rgb, msk, wet, dpt, bkg, norm = None, None, None, None, None, None
+        rgb, msk, wet, dpt, bkg, nrm = None, None, None, None, None, None
 
         # Load image from bytes
         if self.cache_raw:
@@ -881,11 +881,11 @@ class VolumetricVideoDataset(Dataset):
         # Load normal from bytes
         if nm_bytes is not None:
             if self.cache_raw:
-                norm = torch.as_tensor(nm_bytes)
+                nrm = torch.as_tensor(nm_bytes)
             else:
-                norm = torch.as_tensor(load_image_from_bytes(nm_bytes, normalize=True))  # readin as is
+                nrm = torch.as_tensor(load_image_from_bytes(nm_bytes, normalize=True))  # readin as is
 
-        return rgb, msk, wet, dpt, bkg, norm
+        return rgb, msk, wet, dpt, bkg, nrm
 
     def get_camera_params(self, view_index, latent_index):
         latent_index = self.virtual_to_physical(latent_index)
@@ -1132,7 +1132,7 @@ class VolumetricVideoDataset(Dataset):
             output.update(meta)
             output.meta.update(meta)
 
-        if self.imbound_crop and not self.immask_crop:  # crop_x has already been set by imbound_crop for ixts
+        elif self.imbound_crop:  # crop_x has already been set by imbound_crop for ixts
             x, y, w, h = output.crop_x, output.crop_y, output.W, output.H
             rgb = rgb[y:y + h, x:x + w]
             msk = msk[y:y + h, x:x + w]
@@ -1350,12 +1350,12 @@ class VolumetricVideoDataset(Dataset):
         output.bounds[1] = torch.minimum(output.bounds[1], bounds[1])
         output.meta.bounds = output.bounds
 
-        output = self.scale_ixts(output, self.render_ratio)
-
         if self.imbound_crop:
             output = self.crop_ixts_bounds(output)
 
         if self.use_objects_priors:
             output = self.get_objects_priors(output)
+
+        output = self.scale_ixts(output, self.render_ratio)
 
         return output  # how about just passing through

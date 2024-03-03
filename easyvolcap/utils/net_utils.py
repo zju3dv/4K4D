@@ -314,7 +314,9 @@ def load_pretrained(model_dir: str, resume: bool = True, epoch: int = -1, ext: s
         pretrained = dotdict(torch.load(model_path, 'cpu'))
     else:
         from easyvolcap.utils.data_utils import to_tensor
-        pretrained = dotdict(model=to_tensor(dict(**np.load(model_path))), epoch=-1)  # the npz files do not contain training parameters
+        model = to_tensor(dict(**np.load(model_path)))
+        epoch = model.pop('epoch', -1)
+        pretrained = dotdict(model=model, epoch=epoch)  # the npz files do not contain training parameters
 
     return pretrained, model_path
 

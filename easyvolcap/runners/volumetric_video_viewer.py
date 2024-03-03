@@ -181,7 +181,22 @@ class VolumetricVideoViewer:
 
         # Others
         self.skip_exception = skip_exception
-        self.static = dotdict(batch=dotdict(), output=dotdict())  # static data store updated through the rendering
+
+        # Handle background color change (and with a random bg color switch)
+        # Check which mode are we in? Custom sampler or full model? The order matters
+        if hasattr(self.model.renderer, 'bg_brightness'):
+            bg_brightness = self.model.renderer.bg_brightness
+        elif hasattr(self.model.sampler, 'bg_brightness'):
+            bg_brightness = self.model.sampler.bg_brightness
+        else:
+            bg_brightness = 0.0
+
+        import OpenGL.GL as gl
+
+        bg_brightness = np.clip(bg_brightness, 0.0, 1.0)
+        gl.glClearColor(bg_brightness, bg_brightness, bg_brightness, 1.)
+
+        self.static = dotdict(batch=dotdict(), output=dotdict(), bg_brightness=bg_brightness)  # static data store updated through the rendering
         self.dynamic = dotdict()
 
     @property
@@ -235,8 +250,9 @@ class VolumetricVideoViewer:
         self.shutdown()
 
     def frame(self):
+        # Clear frame buffers
         import OpenGL.GL as gl
-        # Clear frame buffer
+
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         self.dynamic = dotdict()
 
@@ -511,22 +527,22 @@ class VolumetricVideoViewer:
 
                 # Tet the user's choice of background color
                 bg_brightness = -1.0 if is_random_bkgd else (bg_brightness if bg_brightness >= 0 else 0.0)  # 1-2ms faster on wsl
-                bg_brightness = imgui.slider_float('Bkgd brightness', bg_brightness, 0.0, 1.0)[1]  # not always clamp
-                set_bg_brightness(bg_brightness)
+                changed, bg_brightness = imgui.slider_float('Bkgd brightness', bg_brightness, 0.0, 1.0)  # not always clamp
+                if changed:
+                    set_bg_brightness(bg_brightness)
+                    self.static.bg_brightness = bg_brightness
 
-                if not is_random_bkgd:
-                    # Set bg color for the whole window
                     import OpenGL.GL as gl
                     bg_brightness = np.clip(bg_brightness, 0.0, 1.0)
                     gl.glClearColor(bg_brightness, bg_brightness, bg_brightness, 1.)
             else:
-                if 'bg_brightness' not in self.static: self.static.bg_brightness = 0.0
-                self.static.bg_brightness = imgui.slider_float('Bkgd brightness', self.static.bg_brightness, 0.0, 1.0)[1]  # not always clamp
+                changed, bg_brightness = imgui.slider_float('Bkgd brightness', self.static.bg_brightness, 0.0, 1.0)  # not always clamp
+                if changed:
+                    self.static.bg_brightness = bg_brightness
 
-                # Set bg color for the whole window
-                import OpenGL.GL as gl
-                bg_brightness = np.clip(self.static.bg_brightness, 0.0, 1.0)
-                gl.glClearColor(bg_brightness, bg_brightness, bg_brightness, 1.)
+                    import OpenGL.GL as gl
+                    bg_brightness = np.clip(bg_brightness, 0.0, 1.0)
+                    gl.glClearColor(bg_brightness, bg_brightness, bg_brightness, 1.)
 
             # Almost all models has this option
             if network_available: self.quad.compose_power = imgui.slider_float('Compose power', self.quad.compose_power, 1.0, 10.0)[1]  # temporal interpolation

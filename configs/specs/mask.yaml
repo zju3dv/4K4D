@@ -3,7 +3,7 @@ benchmark: False # only perform benchmarking when training
 dataloader_cfg: &dataloader_cfg
     dataset_cfg:
         use_masks: True
-        use_vhulls: True
+        # use_vhulls: True # defaults to true
         immask_crop: True
         imbound_crop: True
 

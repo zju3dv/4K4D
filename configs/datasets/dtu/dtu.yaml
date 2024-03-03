@@ -3,6 +3,7 @@ dataloader_cfg: &dataloader_cfg
         masks_dir: masks
         interp_using_t: True
         closest_using_t: True
+        use_vhulls: False
 
         frame_sample: [0, null, 1] # one training, two testing
         view_sample: [0, null, 1] # one training, two testing
