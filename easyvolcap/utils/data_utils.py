@@ -105,6 +105,7 @@ def read_pfm(filename):
 
 def generate_video(result_str: str,
                    output: str,
+                   verbose: bool = False,
                    fps: int = 30,
                    crf: int = 17,
                    cqv: int = 19,
@@ -118,14 +119,19 @@ def generate_video(result_str: str,
     cmd = [
         'ffmpeg',
         '-hwaccel', hwaccel,
+    ] + ([
         '-hide_banner',
         '-loglevel', 'error',
+    ] if not verbose else []) + ([
         '-framerate', fps,
+    ] if fps > 0 else []) + ([
         '-f', 'image2',
         '-pattern_type', 'glob',
+    ] if not (splitext(result_str)[-1] or result_str.endswith('*')) else []) + ([
+        '-r', fps,
+    ] if fps > 0 else []) + [
         '-nostdin',  # otherwise you cannot chain commands together
         '-y',
-        '-r', fps,
         '-i', result_str,
         '-c:v', vcodec,
         '-preset', preset,

@@ -28,8 +28,9 @@ class GeometryDataset(VolumetricVideoDataset):
 
         def carve_using_bytes(H, W, K, R, T, latent_index):
             if hasattr(self, 'mks_bytes'):
-                bytes = [self.mks_bytes[i * self.n_latents + latent_index] for i in range(len(H))]  # get mask bytes of this frame
-                msks = parallel_execution(bytes, normalize=True, action=load_image_from_bytes, sequential=True)
+                msks = [self.mks_bytes[i * self.n_latents + latent_index] for i in range(len(H))]  # get mask bytes of this frame
+                if not self.cache_raw:
+                    msks = parallel_execution(msks, normalize=True, action=load_image_from_bytes, sequential=True)
                 msks = to_tensor(msks)
 
                 # Fill blank canvas for each mask
@@ -77,6 +78,9 @@ class GeometryDataset(VolumetricVideoDataset):
             self.input_bounds.append(bounds)
             self.valid.append(valid)
             self.inds.append(inds)
+
+    def __len__(self):
+        return self.n_latents
 
     def __getitem__(self, index: int):
         output = self.get_metadata(index)

@@ -1,3 +1,6 @@
+"""
+Find the images folder, rename it to images_flatten, and create a new images folder with the same structure as separated cameras
+"""
 # Rearrange images and camera parameters
 import shutil
 import argparse
@@ -6,9 +9,6 @@ from easyvolcap.utils.console_utils import *
 
 @catch_throw
 def main():
-    """
-    Find the images folder, rename it to images_flatten, and create a new images folder with the same structure as separated cameras
-    """
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_root', default='data/zju/ipstage')
     parser.add_argument('--images_dirs', nargs='+', default=['images', 'masks'])
