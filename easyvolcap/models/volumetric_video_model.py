@@ -203,7 +203,7 @@ class VolumetricVideoModel(nn.Module):
             H, W, K, R, T = batch.meta.H[0].item(), batch.meta.W[0].item(), batch.K, batch.R, batch.T  # !: BATCH
             ray_o, ray_d, coords = get_rays(H, W, K, R, T, z_depth=self.use_z_depth, correct_pix=self.correct_pix, ret_coord=True)  # maybe without normalization
             ray_o, ray_d, coords = ray_o.view(-1, H * W, 3), ray_d.view(-1, H * W, 3), coords.view(-1, H * W, 2)
-            
+
             near, far = get_near_far_aabb(bounds, ray_o, ray_d)
             near, far = monotonic_near_far(near, far, n, f)
             t = t[..., None, None].expand(-1, *ray_o.shape[1:-1], 1)  # B, P, 1

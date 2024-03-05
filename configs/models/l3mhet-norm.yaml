@@ -1,0 +1,5 @@
+configs: configs/models/l3mhet.yaml
+
+model_cfg:
+    supervisor_cfg:
+        norm_smooth_weight: 0.001 # smoothing

@@ -97,7 +97,12 @@ class VolumetricVideoVisualizer:  # this should act as a base class for other ty
 
             img = norm_curve_fn(output.norm_map)
             if self.store_ground_truth and 'norm' in batch:
-                img_gt = norm_curve_fn(batch.norm)
+                norm = batch.norm
+                norm = norm * 2 - 1
+                norm[..., 1] *= -1
+                norm[..., 2] *= -1
+                norm = norm * 0.5 + 0.5
+                img_gt = norm
 
         elif type == Visualization.DEPTH:
             if self.dpt_curve == 'linear':
@@ -135,6 +140,21 @@ class VolumetricVideoVisualizer:  # this should act as a base class for other ty
             img = output.acc_map.expand(output.acc_map.shape[:-1] + (3,))
             if self.store_ground_truth and 'msk' in batch:
                 img_gt = batch.msk.expand(batch.msk.shape[:-1] + (3,))
+
+        elif type == Visualization.FLOW:
+            from torchvision.utils import flow_to_image
+            img = output.flo_map
+            B, P, C = output.flo_map.shape
+            H, W = batch.meta.H[0].item(), batch.meta.W[0].item()
+            img = output.flo_map.view(B, H, W, C).float()
+            img = img.permute(0, 3, 1, 2)  # B, 2, H, W
+            img = flow_to_image(img).view(B, -1, H * W).permute(0, 2, 1)  # B, H*W, 3
+            img = img.float() / 255.0
+            if self.store_ground_truth and 'flow' in batch:
+                img_gt = batch.flow.view(B, H, W, C).float()  # B, 2, H, W
+                img_gt = img_gt.permute(0, 3, 1, 2)  # B, 2, H, W
+                img_gt = flow_to_image(img_gt).view(B, -1, H * W).permute(0, 2, 1)  # B, H*W, 3
+                img_gt = img_gt.float() / 255.0
 
         # ... implement more
         elif type == Visualization.RENDER:

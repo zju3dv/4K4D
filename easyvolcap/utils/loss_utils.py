@@ -4,10 +4,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models.vgg as vgg
 from collections import namedtuple
+from typing import Callable
 
 from easyvolcap.utils.prop_utils import searchsorted, matchup_channels
 
 from enum import Enum, auto
+
 
 class ElasticLossReduceType(Enum):
     WEIGHT = auto()
@@ -22,6 +24,7 @@ class ImgLossType(Enum):
     L2 = auto()
     SSIM = auto()
 
+
 class DptLossType(Enum):
     SMOOTHL1 = auto()
     L1 = auto()
@@ -31,6 +34,16 @@ class DptLossType(Enum):
     SILOG = auto()
     CONTINUITY = auto()
     RANKING = auto()
+
+
+def compute_val_pair_around_range(pts: torch.Tensor, decoder: Callable[[torch.Tensor], torch.Tensor], diff_range: float):
+    # sample around input point and compute values
+    # pts and its random neighbor are concatenated in second dimension
+    # if needed, decoder should return multiple values together to save computation
+    neighbor = pts + (torch.rand_like(pts) - 0.5) * diff_range
+    full_pts = torch.cat([pts, neighbor], dim=-2)  # cat in n_masked dim
+    raw: torch.Tensor = decoder(full_pts)  # (n_batch, n_masked, 3)
+    return raw
 
 # from mipnerf360
 
@@ -592,7 +605,7 @@ def compute_scale_and_shift(prediction, target, mask):
     det = a_00 * a_11 - a_01 * a_01
     valid = det.nonzero()
 
-    x_0[valid] = ( a_11[valid] * b_0[valid] - a_01[valid] * b_1[valid]) / det[valid]
+    x_0[valid] = (a_11[valid] * b_0[valid] - a_01[valid] * b_1[valid]) / det[valid]
     x_1[valid] = (-a_01[valid] * b_0[valid] + a_00[valid] * b_1[valid]) / det[valid]
 
     return x_0, x_1
@@ -738,7 +751,7 @@ def median_normalize(x, mask):
 
     # Return median normalized tensor
     return (x - t) / s
-    
+
 
 def mae_loss(prediction, target, mask, reduction=reduction_batch_based):
     # Number of valid pixels

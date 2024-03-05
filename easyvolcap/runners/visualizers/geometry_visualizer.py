@@ -84,7 +84,7 @@ class GeometryVisualizer:
             mesh = dotdict()
             mesh.verts = verts
             mesh.faces = faces
-            log(f'Number of vertices: {verts.numel()}, faces: {faces.numel()} (frame: {batch.meta.frame_index.item()}, camera: {batch.meta.camera_index.item()})')
+            log(f'Number of vertices: {verts.numel()}, faces: {faces.numel()} (frame: {batch.meta.frame_index.item()})')
         else:
             raise NotImplementedError(f'Unimplemented visualization type: {type}')
         return mesh

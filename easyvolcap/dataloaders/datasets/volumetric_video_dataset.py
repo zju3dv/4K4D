@@ -836,7 +836,7 @@ class VolumetricVideoDataset(Dataset):
     def get_image(self, view_index: int, latent_index: int):
         # Load bytes (rgb, msk, wet, bg)
         im_bytes, mk_bytes, wt_bytes, dp_bytes, bg_bytes, nm_bytes = self.get_image_bytes(view_index, latent_index)
-        rgb, msk, wet, dpt, bkg, nrm = None, None, None, None, None, None
+        rgb, msk, wet, dpt, bkg, norm = None, None, None, None, None, None
 
         # Load image from bytes
         if self.cache_raw:
@@ -881,11 +881,11 @@ class VolumetricVideoDataset(Dataset):
         # Load normal from bytes
         if nm_bytes is not None:
             if self.cache_raw:
-                nrm = torch.as_tensor(nm_bytes)
+                norm = torch.as_tensor(nm_bytes)
             else:
-                nrm = torch.as_tensor(load_image_from_bytes(nm_bytes, normalize=True))  # readin as is
+                norm = torch.as_tensor(load_image_from_bytes(nm_bytes, normalize=True))  # readin as is
 
-        return rgb, msk, wet, dpt, bkg, nrm
+        return rgb, msk, wet, dpt, bkg, norm
 
     def get_camera_params(self, view_index, latent_index):
         latent_index = self.virtual_to_physical(latent_index)

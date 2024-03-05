@@ -211,11 +211,13 @@ class VolumetricVideoNetwork(GradientModule):
         elif resd.shape[-1] == 0: pass
         else: raise NotImplementedError
         output.occ = occ
-        output.xyz = xyz  # xyz after transformations
+        output.xyz = xyz  # remember input xyz
+        output.t = t
         output.density = density
         output.xyz_feat = xyz_feat
         output.geo_feat = geo_feat
         output.xyzt_feat = xyzt_feat
+        output.param_xyz = param_xyz
         output.resd_xyz = resd_xyz
 
         # Extra output (requires heavy computation)
@@ -248,9 +250,9 @@ class VolumetricVideoNetwork(GradientModule):
     def occ(self,
             xyz: torch.Tensor,
             t: torch.Tensor,
-            dists: torch.Tensor = 0.005,
+            dist: torch.Tensor = 0.005,
             batch: dotdict = None) -> torch.Tensor:
-        return self.compute_geometry(xyz, t, dists, batch).occ
+        return self.compute_geometry(xyz, t, dist, batch).occ
 
     def resd_xyz(self, xyz: torch.Tensor, t: torch.Tensor, batch: dotdict):
         # Pass space conversion
@@ -267,9 +269,9 @@ class VolumetricVideoNetwork(GradientModule):
     def density(self,
                 xyz: torch.Tensor,
                 t: torch.Tensor,
-                dists: torch.Tensor = 0.005,
+                dist: torch.Tensor = 0.005,
                 batch: dotdict = None):
-        return self.compute_geometry(xyz, t, dists, batch).density
+        return self.compute_geometry(xyz, t, dist, batch).density
 
     def gradient(self,
                  xyz: torch.Tensor, t: torch.Tensor,
@@ -282,17 +284,17 @@ class VolumetricVideoNetwork(GradientModule):
             px[..., 0] += self.finite_diff
             py[..., 1] += self.finite_diff
             pz[..., 2] += self.finite_diff
-            return torch.cat([self.occ(px, t, batch) - density, self.occ(px, t, batch) - density, self.occ(px, t, batch) - density], dim=-1) / self.finite_diff
+            return torch.cat([self.occ(px, t, batch=batch) - density, self.occ(px, t, batch=batch) - density, self.occ(px, t, batch=batch) - density], dim=-1) / self.finite_diff
         else:
             xyz = xyz.requires_grad_()  # inplace modified
             with torch.enable_grad():
-                density = self.occ(xyz, t, batch)
+                density = self.occ(xyz, t, batch=batch)
             return self.take_gradient(density, xyz)
 
     def normal(self,
                xyz: torch.Tensor, t: torch.Tensor,
                batch: dotdict):
-        return normalize(-self.gradient(xyz, t, batch))
+        return normalize(-self.gradient(xyz, t, batch=batch))
 
     def compute(self,
                 xyz: torch.Tensor, dir: torch.Tensor, t: torch.Tensor, dist: torch.Tensor,

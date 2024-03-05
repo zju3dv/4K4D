@@ -14,7 +14,7 @@ from easyvolcap.engine.registry import call_from_cfg
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.math_utils import normalize
 from easyvolcap.utils.parallel_utils import parallel_execution
-from easyvolcap.utils.vhull_utils import hierarchically_carve_vhull
+from easyvolcap.utils.vhull_utils import hierarchically_carve_vhull, create_meshgrid_3d
 from easyvolcap.utils.data_utils import add_batch, to_tensor, to_cuda, to_cpu, load_image_from_bytes
 from easyvolcap.dataloaders.datasets.volumetric_video_dataset import VolumetricVideoDataset
 
@@ -22,6 +22,7 @@ from easyvolcap.dataloaders.datasets.volumetric_video_dataset import VolumetricV
 @DATASETS.register_module()
 class GeometryDataset(VolumetricVideoDataset):
     def __init__(self,
+                 use_space_carving_initialization: bool = False,
                  **kwargs,
                  ):
         call_from_cfg(super().__init__, kwargs)
@@ -47,7 +48,7 @@ class GeometryDataset(VolumetricVideoDataset):
 
             # Actual carving
             inputs = H, W, K, R, T, msks, self.get_bounds(latent_index)  # this is the starting bounds
-            inputs = to_cpu(inputs)
+            inputs = to_cuda(inputs)
             vhulls, bounds, valid, inds = hierarchically_carve_vhull(
                 *inputs,
                 padding=self.vhull_padding,
@@ -61,19 +62,29 @@ class GeometryDataset(VolumetricVideoDataset):
                 intersect_camera_bounds=self.intersect_camera_bounds,
                 remove_outlier=self.remove_outlier,
             )
-            vhulls, bounds, valid, inds = to_cpu([vhulls, bounds, valid, inds])  # always blocking
+            vhulls, bounds, valid, inds = to_cpu([vhulls, bounds, valid, inds])  # always blocking # MARK: SYNC
+            torch.cuda.empty_cache()
             return vhulls, bounds, valid, inds
 
         self.xyz, self.input_bounds, self.valid, self.inds = [], [], [], []
         for i in tqdm(range(self.n_latents), desc='Preparing input xyz to extract geometry'):
-            xyz, bounds, valid, inds = carve_using_bytes(
-                self.Hs[:, i],
-                self.Ws[:, i],
-                self.Ks[:, i],
-                self.Rs[:, i],
-                self.Ts[:, i],
-                i,
-            )
+            if use_space_carving_initialization:
+                xyz, bounds, valid, inds = carve_using_bytes(
+                    self.Hs[:, i],
+                    self.Ws[:, i],
+                    self.Ks[:, i],
+                    self.Rs[:, i],
+                    self.Ts[:, i],
+                    i,
+                )
+            else:
+                bounds = self.get_bounds(i)  # 2, 3
+                xyz = create_meshgrid_3d(bounds, self.vhull_voxel_size)  # W, H, D, 3
+                valid = torch.ones_like(xyz[..., 0], dtype=torch.bool)  # W, H, D
+                # inds = valid.view(-1).nonzero()  # P, 3
+                inds = torch.arange(valid.numel(), dtype=torch.long)  # P,
+                xyz = xyz.view(-1, 3)  # P, 3
+
             self.xyz.append(xyz)
             self.input_bounds.append(bounds)
             self.valid.append(valid)

@@ -1,0 +1,92 @@
+_: &mlp_size # skip_geo_feat: True
+    geometry_cfg:
+        type: SDFRegressor
+        width: 64
+        depth: 1
+        splits: [1, 15]
+        bias: 0.5
+    appearance_cfg:
+        type: ColorRegressor
+        width: 64
+        depth: 2
+    parameterizer_cfg:
+        radius: 3.0 # strange contraction artifacts?
+        normalize: True
+
+dataloader_cfg:
+    dataset_cfg: &dataset_cfg
+        n_rays: 512
+        near: 0.5
+    batch_sampler_cfg:
+        batch_size: 8
+    num_workers: 64
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+
+runner_cfg:
+    epochs: 100
+    ep_iter: &ep_iter 500
+    test_using_inference_mode: False
+    optimizer_cfg:
+        lr: 5.0e-4
+        eps: 1.0e-15
+    scheduler_cfg:
+        type: NeuSScheduler
+        warm_up_end: 500
+        learning_rate_alpha: 0.05
+
+# Always define full model config
+model_cfg:
+    # chunkify_rays: False # faster rendering and optimization with less overhead
+    train_chunk_size: 65536
+    render_chunk_size: 65536
+    supervisor_cfg:
+        dist_loss_weight: 0.0
+        eikonal_loss_weight: 0.1
+        curvature_loss_weight: 0.0
+    sampler_cfg:
+        type: NeuSSampler
+        n_samples: [64, 16, 16, 16, 16]
+    network_cfg:
+        type: NeuSNetwork
+        xyzt_embedder_cfg:
+            xyz_embedder_cfg:
+                type: NoopEmbedder
+                in_dim: 3
+            t_embedder_cfg:
+                out_dim: 8
+        deformer_cfg:
+            type: EmptyRegressor
+        xyz_embedder_cfg:
+            type: TcnnHashEmbedder # no mipnerf360 contraction
+            in_dim: 3
+            # dtype: half
+            # bounds: [[-2.0, -2.0, -2.0], [2.0, 2.0, 2.0]]
+            n_levels: 16
+            # n_features_per_level: 8
+            n_features_per_level: 2
+            # b: 1.3195079108
+            b: 1.3819128800
+            # log2_hashmap_size: 22
+            log2_hashmap_size: 19
+            # base_resolution: 64
+            base_resolution: 16
+            interpolation: 'Linear'
+            make_mask: True
+        dir_embedder_cfg:
+            #   type: TcnnDirEmbedder
+            #   degree: 4
+            type: PositionalEncodingEmbedder
+            multires: 4
+            retain_input: True
+        <<: *mlp_size
+        geo_use_xyzt_feat: False
+        app_use_sdf_feat: True
+        use_finite_diff: False
+        use_finite_diff_schedule: False
+        use_hash_encoding_schedule: True
+        level_init: 8
+        steps_per_level: *ep_iter
+        use_curvature_loss_weight_schedule: False
