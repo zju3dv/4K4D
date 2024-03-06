@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from easyvolcap.engine import SUPERVISORS
 from easyvolcap.engine.registry import call_from_cfg
 from easyvolcap.utils.console_utils import *
-from easyvolcap.utils.loss_utils import eikonal, lossfun_zip_outer
+from easyvolcap.utils.loss_utils import eikonal, lossfun_zip_outer, reg_raw_crit, compute_val_pair_around_range
 from easyvolcap.models.supervisors.volumetric_video_supervisor import VolumetricVideoSupervisor
 
 
@@ -20,6 +20,15 @@ class GeometrySupervisor(VolumetricVideoSupervisor):
                  zip_prop_loss_weight: float = 0.0,
                  curvature_loss_weight: float = 0.0,
 
+                 # Jacobian / normal consistency loss
+                 norm_smooth_weight: float = 0.0,
+                 norm_smooth_range: float = 0.025,  # smaller smoothing range for a more consistent training
+                 surf_occ_min: float = 0.2,
+                 surf_occ_max: float = 0.8,
+                 norm_smooth_pts_start: int = 1024,  # start computing this loss only after this number of points has been reached
+                 #  norm_smooth_ann_iter: int = 10 * 500,
+                 norm_smooth_ann_iter: int = 1,
+
                  **kwargs,
                  ):
         call_from_cfg(super().__init__, kwargs, network=network)
@@ -27,9 +36,40 @@ class GeometrySupervisor(VolumetricVideoSupervisor):
         self.zip_prop_loss_weight = zip_prop_loss_weight
         self.eikonal_loss_weight = eikonal_loss_weight
         self.curvature_loss_weight = curvature_loss_weight
+        self.norm_smooth_pts_start = norm_smooth_pts_start
+        self.norm_smooth_ann_iter = norm_smooth_ann_iter
+        self.norm_smooth_weight = norm_smooth_weight
+        self.norm_smooth_range = norm_smooth_range
+        self.surf_occ_min = surf_occ_min
+        self.surf_occ_max = surf_occ_max
 
     def compute_loss(self, output: dotdict, batch: dotdict, loss: torch.Tensor, scalar_stats: dotdict, image_stats: dotdict):
         # Compute the actual loss here
+        if self.norm_smooth_weight > 0.0:
+            # Find points close to the surface, by thresholding the occupancy value (0.2-0.8)
+            # Sample new points around them by adding a small purturbing vector (0.025 2.5cm)
+            # Compute their respective gradient vector (call the network's respective APIs)
+            # Regularize the difference in their jacobian vector
+            mask = (output.occ[..., 0] > self.surf_occ_min) & (output.occ[..., 0] < self.surf_occ_max)  # valid point mask
+            if mask.sum() > 0:
+                xyz = output.xyz[mask][None]  # MARK: SYNC, 1, N, 3
+                time = batch.t[:, None, None].expand(output.xyz[..., :1].shape).to(output.xyz.dtype)
+                time = time[mask][None]   # MARK: SYNC, 1, N, 1
+
+                neighbor = xyz + (torch.rand_like(xyz) - 0.5) * self.norm_smooth_range
+                xyz = torch.cat([xyz, neighbor], dim=-2)  # cat in n_masked dim
+                time = time.repeat(1, 2, 1)
+
+                norm_smooth = 0
+                weight = 0
+                for network in self.network.networks[-1:]:  # only last level
+                    diff = network.gradient(xyz, time, batch)  # (n_batch, n_masked, 3)
+                    norm, weight = reg_raw_crit(diff, batch.meta.iter.item(), self.norm_smooth_weight, self.norm_smooth_ann_iter)
+                    norm_smooth += norm
+
+                scalar_stats.norm_smooth = norm_smooth
+                loss += weight * norm_smooth
+
         if self.eikonal_loss_weight > 0.0 and 'gradients' in output:
             gradients = output.gradients
             eikonal_loss = eikonal(gradients)

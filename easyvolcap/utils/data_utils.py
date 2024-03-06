@@ -105,6 +105,7 @@ def read_pfm(filename):
 
 def generate_video(result_str: str,
                    output: str,
+                   verbose: bool = False,
                    fps: int = 30,
                    crf: int = 17,
                    cqv: int = 19,
@@ -118,14 +119,19 @@ def generate_video(result_str: str,
     cmd = [
         'ffmpeg',
         '-hwaccel', hwaccel,
+    ] + ([
         '-hide_banner',
         '-loglevel', 'error',
+    ] if not verbose else []) + ([
         '-framerate', fps,
+    ] if fps > 0 else []) + ([
         '-f', 'image2',
         '-pattern_type', 'glob',
+    ] if not (splitext(result_str)[-1] or result_str.endswith('*')) else []) + ([
+        '-r', fps,
+    ] if fps > 0 else []) + [
         '-nostdin',  # otherwise you cannot chain commands together
         '-y',
-        '-r', fps,
         '-i', result_str,
         '-c:v', vcodec,
         '-preset', preset,
@@ -1060,8 +1066,8 @@ def load_image_file(img_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-            (draft[1][2] != int(w * ratio) or
-         draft[1][3] != int(h * ratio)):
+        (draft[1][2] != int(w * ratio) or
+             draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         if img.ndim == 2:  # MARK: cv.resize will discard the last dimension of mask images
             img = img[..., None]
@@ -1118,8 +1124,8 @@ def load_unchanged(img_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-            (draft[1][2] != int(w * ratio) or \
-         draft[1][3] != int(h * ratio)):
+        (draft[1][2] != int(w * ratio) or \
+             draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         if img.ndim == 2:  # MARK: cv.resize will discard the last dimension of mask images
             img = img[..., None]
@@ -1151,8 +1157,8 @@ def load_mask(msk_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-            (draft[1][2] != int(w * ratio) or
-         draft[1][3] != int(h * ratio)):
+        (draft[1][2] != int(w * ratio) or
+             draft[1][3] != int(h * ratio)):
             msk = cv2.resize(msk.astype(np.uint8), (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_NEAREST)[..., None]
         return msk
     else:
@@ -1704,6 +1710,7 @@ def decode_crop_fill_im_bytes(im_bytes: BytesIO,
 
     # Update the final size and intrinsics
     x, y, w, h = bx + mx, by + my, mw, mh  # w and h will always be the smaller one, xy will be accumulated
+    K = K.copy()  # stupid copy bug...
     K[0, 2] -= x
     K[1, 2] -= y
 

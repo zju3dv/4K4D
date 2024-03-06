@@ -71,4 +71,4 @@ from easyvolcap.utils.console_utils import *
 ```
 
 This will create a global `console` variable along with a set of convenience functions.
-See some of my latest scripts for examples ([`depth_fusion.py`](../../scripts/tools/depth_fusion.py), [`volume_fusion`](../../scripts/tools/volume_fusion.py)).
+See some of my latest scripts for examples ([`depth_fusion.py`](../../scripts/fusion/depth_fusion.py), [`volume_fusion`](../../scripts/fusion/volume_fusion.py)).

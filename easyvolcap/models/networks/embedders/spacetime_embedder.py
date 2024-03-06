@@ -42,7 +42,6 @@ class SpacetimeEmbedder(nn.Module):
     def forward(self, t: torch.Tensor, batch: dotdict):
         # B, P, 1
         v = batch.v[:, None, None].expand(t.shape).to(t.dtype)
-        t = batch.t[:, None, None].expand(t.shape).to(t.dtype)
         space_feat = self.space_embedding(v, batch)
         time_feat = self.time_embedding(v, batch)
         feat = torch.cat([space_feat, time_feat], dim=-1)

@@ -36,12 +36,14 @@ class GeometryVisualizer:
                      Visualization.POINT.name: (lambda mesh, filename: export_pts(**mesh, filename=filename)),
                  },
                  verbose: bool = True,
-                 max_pending_pools: int = 100,  # maximum number of pending tasks in the thread pool
+                 pool_limit: int = 10,  # maximum number of pending tasks in the thread pool
 
                  occ_thresh: float = 0.5,
+                 sdf_thresh: float = 0.0,
                  **kwargs,
                  ):
         self.occ_thresh = occ_thresh
+        self.sdf_thresh = sdf_thresh
 
         result_dir = join(result_dir, cfg.exp_name)  # MARK: global configuration
         result_dir = join(result_dir, save_tag) if save_tag != '' else result_dir
@@ -49,27 +51,32 @@ class GeometryVisualizer:
         self.types = [Visualization[t] for t in types]  # types of visualization
         self.exts = exts  # file extensions for each type of visualization
         self.exports = exports
+        self.verbose = verbose
 
         self.thread_pools: List[ThreadPool] = []
-        self.max_pending_pools = max_pending_pools
+        self.pool_limit = pool_limit
         self.geo_pattern = f'{{type}}/frame{{frame:04d}}_camera{{camera:04d}}{{ext}}'
 
         if verbose:
-            log(f'Visualization output: {yellow(join(result_dir, os.path.dirname(self.geo_pattern)))}')  # use yellow for output path
+            log(f'Visualization output: {yellow(join(result_dir, dirname(self.geo_pattern)))}')  # use yellow for output path
             log(f'Visualization types:', line(types))
 
     def generate_type(self, output: dotdict, batch: dotdict, type: Visualization = Visualization.MESH):
         if type == Visualization.MESH:
-            occ = output.occ
+            if 'sdf' in output:
+                occ = -output.sdf + 0.5
+                self.occ_thresh = -self.sdf_thresh + 0.5
+            else:
+                occ = output.occ
             voxel_size = batch.meta.voxel_size
             W, H, D = batch.meta.W[0].item(), batch.meta.H[0].item(), batch.meta.D[0].item()  # !: BATCH
-            cube = torch.zeros(np.prod(batch.valid.shape), dtype=occ.dtype, device='cpu')[None]  # 1, WHD
-            cube = multi_scatter_(cube[..., None], batch.inds.to('cpu', non_blocking=True), occ.to('cpu', non_blocking=True))  # dim = -2 # B, WHD, 1 assigned B, P, 1
+            cube = torch.full((np.prod(batch.valid.shape),), -10.0, dtype=occ.dtype, device='cpu')[None]  # 1, WHD
+            cube = multi_scatter_(cube[..., None], batch.inds.cpu(), occ.cpu())  # dim = -2 # B, WHD, 1 assigned B, P, 1
             cube = cube.view(-1, W, H, D)  # B, W, H, D
 
             # We leave the results on CPU but as tensors instead of numpy arrays
             torch.cuda.synchronize()  # some of the batched data are asynchronously moved to the cpu
-            verts, faces = mcubes.marching_cubes(cube.detach().cpu().float().numpy()[0], self.occ_thresh)
+            verts, faces = mcubes.marching_cubes(cube.float().numpy()[0], self.occ_thresh)
             verts = torch.as_tensor(verts, dtype=torch.float)[None]
             faces = torch.as_tensor(faces.astype(np.int32), dtype=torch.int)[None]
             verts = verts * voxel_size.to(verts.dtype) + batch.meta.bounds[:, 0].to(verts.dtype)  # !: BATCH
@@ -77,6 +84,7 @@ class GeometryVisualizer:
             mesh = dotdict()
             mesh.verts = verts
             mesh.faces = faces
+            log(f'Number of vertices: {verts.numel()}, faces: {faces.numel()} (frame: {batch.meta.frame_index.item()})')
         else:
             raise NotImplementedError(f'Unimplemented visualization type: {type}')
         return mesh
@@ -119,11 +127,11 @@ class GeometryVisualizer:
         return geo_stats
 
     def limit_thread_pools(self):
-        if len(self.thread_pools) > self.max_pending_pools:
-            for pool in self.thread_pools[:self.max_pending_pools]:
+        if len(self.thread_pools) > self.pool_limit:
+            for pool in self.thread_pools[:self.pool_limit]:
                 pool.close()
                 pool.join()
-            self.thread_pools = self.thread_pools[self.max_pending_pools:]
+            self.thread_pools = self.thread_pools[self.pool_limit:]
 
     def summarize(self):
         for pool in self.thread_pools:  # finish all pending taskes before generating videos

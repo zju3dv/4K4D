@@ -939,6 +939,9 @@ class Gaussian(Mesh):
         del self.point_radius
         del self.render_normal
 
+        self.scale_mult = 1.0
+        self.alpha_mult = 1.0
+
     # Disabling initialization
     def load_from_file(self, *args, **kwargs):
         pass
@@ -960,7 +963,11 @@ class Gaussian(Mesh):
     def render(self, camera: Camera):
         # Perform actual gaussian rendering
         batch = add_batch(to_cuda(camera.to_batch()))
-        rgb, acc, dpt = self.gaussian_model.render(batch)
+        rgb, acc, dpt = self.gaussian_model.render(
+            batch=batch,
+            scale_mult=self.scale_mult,
+            alpha_mult=self.alpha_mult
+        )
 
         if self.view_depth:
             rgba = torch.cat([depth_curve_fn(dpt, cm=self.dpt_cm), acc], dim=-1)  # H, W, 4
@@ -972,7 +979,7 @@ class Gaussian(Mesh):
         self.quad.copy_to_texture(rgba)
         self.quad.render()
 
-    def render_imgui(mesh, viewer: 'VolumetricVideoViewer', batch: dotdict):
+    def render_imgui(self, viewer: 'VolumetricVideoViewer', batch: dotdict):
         super().render_imgui(viewer, batch)
 
         from imgui_bundle import imgui
@@ -980,10 +987,13 @@ class Gaussian(Mesh):
 
         i = batch.i
         imgui.same_line()
-        push_button_color(0x55cc33ff if not mesh.view_depth else 0x8855aaff)
-        if imgui.button(f'Color##{i}' if not mesh.view_depth else f' Depth ##{i}'):
-            mesh.view_depth = not mesh.view_depth
+        push_button_color(0x55cc33ff if not self.view_depth else 0x8855aaff)
+        if imgui.button(f'Color##{i}' if not self.view_depth else f' Depth ##{i}'):
+            self.view_depth = not self.view_depth
         pop_button_color()
+
+        self.scale_mult = imgui.slider_float(f'Scale multiplier', self.scale_mult, 0.1, 5.0)[1]  # 0.1mm
+        self.alpha_mult = imgui.slider_float(f'Alpha multiplier', self.alpha_mult, 0.1, 5.0)[1]  # 0.1mm
 
 
 class PointSplat(Gaussian, nn.Module):

@@ -76,6 +76,15 @@ class OptimizableCamera(nn.Module):
         if freeze_camera:
             freeze_module(self)
 
+        self.pre_handle = self._register_load_state_dict_pre_hook(self._load_state_dict_pre_hook)
+
+    def _load_state_dict_pre_hook(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+
+        # Historical reasons
+        if prefix + 'pose_resd' in state_dict:
+            if state_dict[prefix + 'pose_resd'].shape[0] == self.n_views and state_dict[prefix + 'pose_resd'].shape[1] == self.n_frames:
+                state_dict[prefix + 'pose_resd'] = state_dict[prefix + 'pose_resd'].transpose(0, 1)
+
     def forward_srcs(self, batch: dotdict):
         s_inds = batch.src_inds  # B, S, selected source views
         t_inds = batch.t_inds

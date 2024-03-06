@@ -10,7 +10,7 @@ from easyvolcap.models.cameras.optimizable_camera import OptimizableCamera
 
 @REGRESSORS.register_module()
 class ContractRegressor(nn.Module):
-    radius = (OptimizableCamera.bounds[1] - OptimizableCamera.bounds[0]).max() / 2
+    radius = (OptimizableCamera.bounds[1] - OptimizableCamera.bounds[0]).max()  # make it easier on object-centric datasets
 
     def __init__(self,
                  in_dim: int = 3,

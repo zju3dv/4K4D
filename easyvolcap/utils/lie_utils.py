@@ -32,8 +32,8 @@ def exp_map_SO3xR3(tangent_vector: torch.Tensor) -> torch.Tensor:
     """
     # code for SO3 map grabbed from pytorch3d and stripped down to bare-bones
     log_rot = tangent_vector[..., 3:]  # B, N, 3
-    nrms = (log_rot * log_rot).sum(-1)  # B, N
-    rot_angles = torch.clamp(nrms, 1e-4).sqrt()  # B, N
+    norms = (log_rot * log_rot).sum(-1)  # B, N
+    rot_angles = torch.clamp(norms, 1e-4).sqrt()  # B, N
     rot_angles_inv = 1.0 / rot_angles  # B, N
     fac1 = rot_angles_inv * rot_angles.sin()  # B, N
     fac2 = rot_angles_inv * rot_angles_inv * (1.0 - rot_angles.cos())  # B, N
