@@ -280,6 +280,7 @@ class Visualization(Enum):
     DEPTH = auto()  # needs a little bit extra computation
     ALPHA = auto()  # occupancy (rendered volume density)
     NORMAL = auto()  # needs extra computation
+    FLOW = auto()
     FEATURE = auto()  # embedder results
     SEMANTIC = auto()  # semantic nerf related
     SRCINPS = auto()  # Souce input images for image based rendering
