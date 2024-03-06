@@ -22,10 +22,12 @@ class GeometrySupervisor(VolumetricVideoSupervisor):
 
                  # Jacobian / normal consistency loss
                  norm_smooth_weight: float = 0.0,
-                 norm_smooth_range: float = 0.025,
+                 norm_smooth_range: float = 0.025,  # smaller smoothing range for a more consistent training
                  surf_occ_min: float = 0.2,
                  surf_occ_max: float = 0.8,
                  norm_smooth_pts_start: int = 1024,  # start computing this loss only after this number of points has been reached
+                 #  norm_smooth_ann_iter: int = 10 * 500,
+                 norm_smooth_ann_iter: int = 1,
 
                  **kwargs,
                  ):
@@ -35,6 +37,7 @@ class GeometrySupervisor(VolumetricVideoSupervisor):
         self.eikonal_loss_weight = eikonal_loss_weight
         self.curvature_loss_weight = curvature_loss_weight
         self.norm_smooth_pts_start = norm_smooth_pts_start
+        self.norm_smooth_ann_iter = norm_smooth_ann_iter
         self.norm_smooth_weight = norm_smooth_weight
         self.norm_smooth_range = norm_smooth_range
         self.surf_occ_min = surf_occ_min
@@ -61,7 +64,7 @@ class GeometrySupervisor(VolumetricVideoSupervisor):
                 weight = 0
                 for network in self.network.networks[-1:]:  # only last level
                     diff = network.gradient(xyz, time, batch)  # (n_batch, n_masked, 3)
-                    norm, weight = reg_raw_crit(diff, batch.meta.iter.item(), self.norm_smooth_weight)
+                    norm, weight = reg_raw_crit(diff, batch.meta.iter.item(), self.norm_smooth_weight, self.norm_smooth_ann_iter)
                     norm_smooth += norm
 
                 scalar_stats.norm_smooth = norm_smooth

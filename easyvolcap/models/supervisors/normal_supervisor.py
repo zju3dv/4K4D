@@ -30,13 +30,13 @@ class NormalSupervisor(VolumetricVideoSupervisor):
             norm_map = normalize(norm_map)
 
             # Process the ground truth normal map
-            # TODO: Determine whether it is general case? omnidata does it
-            norm = batch.norm * 2. - 1.
+            norm = batch.norm * 2. - 1.  # this is generally how normals are stored on disk
             norm = normalize(norm)
 
             # Compute normal loss
-            norm_loss = l1(norm_map, norm)
-            norm_loss += cos(norm_map, norm)
+            mask = batch.msk[..., 0] > 0.5
+            norm_loss = l1(norm_map[mask], norm[mask])  # MARK: SYNC
+            norm_loss += cos(norm_map[mask], norm[mask])  # MARK: SYNC
 
             scalar_stats.norm_loss = norm_loss
             loss += self.norm_loss_weight * norm_loss

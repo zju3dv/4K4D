@@ -18,7 +18,8 @@ val_dataloader_cfg:
 model_cfg:
     move_to_cpu: True
     print_render_progress: True
-    render_chunk_size: 8388608
+    render_chunk_size: 1048576
+    # render_chunk_size: 8388608
     # render_chunk_size: 33554432
 
 runner_cfg:

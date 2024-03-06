@@ -1,5 +1,4 @@
 # Use normal as training prior and visualize normal
-test_using_inference_mode: False
 
 dataloader_cfg:
     dataset_cfg: &dataset_cfg
@@ -13,9 +12,9 @@ model_cfg:
     network_cfg:
         train_store_norm: True
     supervisor_cfg:
-        norm_loss_weight: 0.01
+        norm_loss_weight: 1.0e-6
 
 runner_cfg:
+    test_using_inference_mode: False
     visualizer_cfg:
         types: [RENDER, DEPTH, ALPHA, NORMAL]
-        store_alpha_channel: False

@@ -504,12 +504,16 @@ class VolumetricVideoDataset(Dataset):
             self.orig_hs, self.orig_ws = self.Hs, self.Ws
             bounds = [self.get_bounds(i) for i in range(self.n_latents)]  # N, 2, 3
             bounds = torch.stack(bounds)[None].repeat(self.n_views, 1, 1, 1)  # V, N, 2, 3
+
+            if hasattr(self, 'dps_bytes'): self.dps_bytes, mks_bytes, Ks, Hs, Ws, crop_xs, crop_ys = \
+                decode_crop_fill_ims_bytes(self.dps_bytes, self.mks_bytes, self.Ks.numpy(), self.Rs.numpy(), self.Ts.numpy(), bounds.numpy(), f'Cropping msks dpts for {blue(self.data_root)} {magenta(self.split.name)}', encode_ext=['.exr', self.encode_ext])
+
+            if hasattr(self, 'nms_bytes'): self.nms_bytes, mks_bytes, Ks, Hs, Ws, crop_xs, crop_ys = \
+                decode_crop_fill_ims_bytes(self.nms_bytes, self.mks_bytes, self.Ks.numpy(), self.Rs.numpy(), self.Ts.numpy(), bounds.numpy(), f'Cropping msks nrms for {blue(self.data_root)} {magenta(self.split.name)}', encode_ext=self.encode_ext)
+
             self.ims_bytes, self.mks_bytes, self.Ks, self.Hs, self.Ws, self.crop_xs, self.crop_ys = \
                 decode_crop_fill_ims_bytes(self.ims_bytes, self.mks_bytes, self.Ks.numpy(), self.Rs.numpy(), self.Ts.numpy(), bounds.numpy(), f'Cropping msks imgs for {blue(self.data_root)} {magenta(self.split.name)}', encode_ext=self.encode_ext)
-            if hasattr(self, 'dps_bytes'): self.dps_bytes, self.mks_bytes, self.Ks, self.Hs, self.Ws, self.crop_xs, self.crop_ys = \
-                decode_crop_fill_ims_bytes(self.dps_bytes, self.mks_bytes, self.Ks.numpy(), self.Rs.numpy(), self.Ts.numpy(), bounds.numpy(), f'Cropping msks dpts for {blue(self.data_root)} {magenta(self.split.name)}', encode_ext=['.exr', self.encode_ext])
-            if hasattr(self, 'nms_bytes'): self.nms_bytes, self.mks_bytes, self.Ks, self.Hs, self.Ws, self.crop_xs, self.crop_ys = \
-                decode_crop_fill_ims_bytes(self.nms_bytes, self.mks_bytes, self.Ks.numpy(), self.Rs.numpy(), self.Ts.numpy(), bounds.numpy(), f'Cropping msks norm for {blue(self.data_root)} {magenta(self.split.name)}', encode_ext=self.encode_ext)
+
             self.corp_xs = torch.as_tensor(self.crop_xs)
             self.corp_ys = torch.as_tensor(self.crop_ys)
             self.Ks = torch.as_tensor(self.Ks)
