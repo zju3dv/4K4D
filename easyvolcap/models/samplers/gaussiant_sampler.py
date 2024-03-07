@@ -393,6 +393,5 @@ class GaussianTSampler(PointPlanesSampler):
 
         # Prepare output
         batch.output.pcd = [self.pcds[l] for l in index]
-        batch.output.idx = index  # for updating gaussians
         self.store_output(None, xyz, rgb, acc, dpt, batch)
         self.last_output = batch.output  # retain gradients after updates
