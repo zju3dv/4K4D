@@ -82,8 +82,8 @@ def main():
             cameras[key].K[0, 2] = W / 2
             cameras[key].K[1, 2] = H / 2
             cameras[key].K[2, 2] = 1.0
-            cameras[key].n = bounds[i, 0]  # camera has near and far
-            cameras[key].f = bounds[i, 1]  # camera has near and far
+            # cameras[key].n = bounds[i, 0]  # camera has near and far
+            # cameras[key].f = bounds[i, 1]  # camera has near and far
 
         write_camera(cameras, join(args.easyvolcap_root, scene))
         log(yellow(f'Converted cameras saved to {blue(join(args.easyvolcap_root, scene, "{intri.yml,extri.yml}"))}'))

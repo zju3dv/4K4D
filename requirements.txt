@@ -7,5 +7,6 @@ ruamel.yaml
 imgui-bundle
 opencv-python
 
-diff_gauss @ git+https://github.com/dendenxu/diff-gaussian-rasterization
-diff_point_rasterization @ git+https://github.com/dendenxu/diff-point-rasterization
+# Stupid PyTorch CUDA extension building... Unable to ensure pytorch is installed before the building happens...
+# diff_gauss @ git+https://github.com/dendenxu/diff-gaussian-rasterization
+# diff_point_rasterization @ git+https://github.com/dendenxu/diff-point-rasterization
