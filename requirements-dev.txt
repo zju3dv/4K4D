@@ -2,7 +2,6 @@
 # cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
 # otherwise one single compilation error could eat away like 20 minutes for nothing.
 # pip install -e . --no-build-isolation --no-deps
-
 # Core dependencies
 torch # if you've used environment.yml, this will be a no-op
 
