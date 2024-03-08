@@ -2,8 +2,8 @@ dataloader_cfg:
     dataset_cfg: &dataset_cfg
         ratio: 0.5 # scale images down during loading (thus affects rendering and testing)
         near: 12.0 # camera near far range, affects ray sampling and some cost volume based algorithms
-        far: 40.0 # camera near far range, affects ray sampling and some cost volume based algorithms
-        bounds: [[-15, -12, 2], [15, 12, 20]] # axis-aligned bounding box of the scene, affects ray sampling and bounding box of some explicit algorithms
+        far: 60.0 # camera near far range, affects ray sampling and some cost volume based algorithms
+        bounds: [[-20, -15, 4.0], [20, 15, 25]] # axis-aligned bounding box of the scene, affects ray sampling and bounding box of some explicit algorithms
         view_sample: [0, 21, 1] # these can be omitted if the dataset is present (defaults to [0, null, 1], will inference frame count from number of images)
         frame_sample: [0, 300, 1] # these can be omitted if the dataset is present (defaults to [0, null, 1], will inference frame count from number of cameras)
 

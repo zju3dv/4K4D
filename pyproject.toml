@@ -9,8 +9,8 @@ description = "EasyVolcap: Accelerating Neural Volumetric Video Research"
 readme = "readme.md"
 license = { file = "license" }
 authors = [{ email = "zhenx@zju.edu.cn" }, { name = "Zhen Xu" }]
-# requires-python = ">=3.10"
-dependencies = [] # NOTE: should manually install dependencies
+requires-python = ">=3.10"
+dynamic = ["dependencies", "optional-dependencies"]
 
 [project.urls]
 homepage = "https://github.com/dendenxu/easyvolcap"
@@ -76,3 +76,7 @@ volcap-prof = "easyvolcap.scripts.wrap:prof_entrypoint"
 
 # This should only serve as a commanline registration
 # Dependencies are expected to be installed separatedly
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+optional-dependencies = { dev = { file = ["requirements-dev.txt"] } }

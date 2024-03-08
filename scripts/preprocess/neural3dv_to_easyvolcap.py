@@ -7,6 +7,9 @@ import argparse
 import subprocess
 import numpy as np
 from glob import glob
+import subprocess
+from pathlib import Path
+from tqdm import tqdm
 
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.easy_utils import write_camera
@@ -27,7 +30,7 @@ def main():
     parser.add_argument('--neural3dv_root', type=str, default='data/neural3dv')
     parser.add_argument('--easyvolcap_root', type=str, default='data/neural3dv')
     parser.add_argument('--camera_pose', type=str, default='poses_bounds.npy')
-    parser.add_argument('--only', nargs='+', default=['sear_steak', 'coffee_martini', 'flame_steak'])
+    parser.add_argument('--only', nargs='+', default=['sear_steak', 'cook_spinach', 'coffee_martini', 'flame_steak', 'flame_salmon'])  # NOTE: do not add cut_roasted_beef for 4k4d
     args = parser.parse_args()
 
     scenes = os.listdir(args.neural3dv_root)
@@ -86,5 +89,29 @@ def main():
         log(yellow(f'Converted cameras saved to {blue(join(args.easyvolcap_root, scene, "{intri.yml,extri.yml}"))}'))
 
 
+def convert_colmap_ws_to_evc():
+    """
+    Assuming SfM is finished, convert the colmap point clouds to easyvolcap format.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--root_dir', type=str, default='data/neural3dv/flame_salmon_1')
+    parser.add_argument('--colmap_path', type=str, default='/usr/local/bin/colmap')
+    args = parser.parse_args()
+
+    root_dir = Path(args.root_dir)
+    frames = [folder.name for folder in root_dir.glob('colmap_*') if folder.is_dir()]
+
+    for frame in tqdm(frames):
+        frame_dir = root_dir / frame
+        sfm_dir = frame_dir / 'sparse' / '0'
+
+        os.makedirs(root_dir / 'pcds', exist_ok=True)
+        frame_id = frame.split('_')[1]
+        cmd = [args.colmap_path, 'model_converter', '--input_path', str(sfm_dir), '--output_path', f'{root_dir}/pcds/{frame_id}.ply', '--output_type', 'PLY']
+        # print(cmd)
+        subprocess.call(cmd)
+
+
 if __name__ == '__main__':
     main()
+    # convert_colmap_ws_to_evc()

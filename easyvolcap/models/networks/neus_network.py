@@ -299,7 +299,7 @@ class NeuSNetwork(GradientModule):
         # Extra output (require heavy computation)
         if compute_grad:
             output.gradients = gradients
-            output.normals = normalize(gradients)
+            output.norm = normalize(gradients)
             if sampled_sdf is not None:
                 output.sampled_sdf = sampled_sdf
         if compute_jacob:

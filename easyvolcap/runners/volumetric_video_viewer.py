@@ -420,7 +420,7 @@ class VolumetricVideoViewer:
                 imgui.push_item_width(self.static.slider_width * 0.5)
                 self.camera.n = imgui.slider_float('Near', self.camera.n, 0.002, self.camera.f - 0.01, format='%.6f')[1]
                 imgui.same_line()  # near bound
-                self.camera.f = imgui.slider_float('Far', self.camera.f, self.camera.n + 0.01, 100, format='%.6f')[1]  # far bound
+                self.camera.f = imgui.slider_float('Far', self.camera.f, self.camera.n + 0.01, 500.0, format='%.6f')[1]  # far bound
                 imgui.pop_item_width()
                 imgui.tree_pop()
 
@@ -897,6 +897,8 @@ class VolumetricVideoViewer:
         if imgui.collapsing_header('Debugging'):
             imgui.text('The UI will freeze to switch control to pdbr')
             imgui.text('Use "c" in pdbr to continue normal execution')
+            imgui.text('Do not use these in fullscreen mode since you\'ll be unable to switch to the terminal')
+            imgui.text('Unless you\'ve got a second monitor and the GUI and terminal are on different screens')
             push_button_color(0xff3355ff)
             if imgui.button('Invoke pdbr (go see the terminal)'):
                 breakpoint()  # preserve tqdm (do not use debugger())
@@ -919,11 +921,11 @@ class VolumetricVideoViewer:
         imgui.pop_font()
 
         # Full frame timings
-        self.runner.collect_timing = imgui_toggle.toggle('Collect timing', self.runner.collect_timing, config=self.static.toggle_ios_style)[1]
-        changed, value = imgui_toggle.toggle('Record timing', self.runner.timer_record_to_file, config=self.static.toggle_ios_style)
+        self.runner.collect_timing = imgui_toggle.toggle('Record timing', self.runner.collect_timing, config=self.static.toggle_ios_style)[1]
+        changed, value = imgui_toggle.toggle('Save timing', self.runner.timer_record_to_file, config=self.static.toggle_ios_style)
         if changed:
             self.runner.timer_record_to_file = value
-        self.runner.timer_sync_cuda = imgui_toggle.toggle('Sync timing', self.runner.timer_sync_cuda, config=self.static.toggle_ios_style)[1]
+        self.runner.timer_sync_cuda = not imgui_toggle.toggle('Unsync timing', not self.runner.timer_sync_cuda, config=self.static.toggle_ios_style)[1]
         changed, self.use_vsync = imgui_toggle.toggle('Enable VSync', self.use_vsync, config=self.static.toggle_ios_style)
         if changed:
             glfw.swap_interval(self.use_vsync)

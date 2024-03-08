@@ -358,6 +358,7 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
             self.scaler.scale(loss).backward()  # maybe perform AMP
             if self.clip_grad_norm > 0: torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_grad_norm)
             if self.clip_grad_value > 0: torch.nn.utils.clip_grad_value_(self.model.parameters(), self.clip_grad_value)
+            self.model.decorate_grad(self, batch) # perform some action on the gradients
             self.scaler.step(self.optimizer)
             if not self.retain_last_grad: self.optimizer.zero_grad(set_to_none=True)
             self.scheduler.step()
