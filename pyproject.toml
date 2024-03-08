@@ -9,7 +9,7 @@ description = "EasyVolcap: Accelerating Neural Volumetric Video Research"
 readme = "readme.md"
 license = { file = "license" }
 authors = [{ email = "zhenx@zju.edu.cn" }, { name = "Zhen Xu" }]
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 dynamic = ["dependencies", "optional-dependencies"]
 
 [project.urls]
