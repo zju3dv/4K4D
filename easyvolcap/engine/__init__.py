@@ -67,8 +67,8 @@ RECORDERS = Registry('recorders')  # (rarely changed)
 @catch_throw
 def get_parser():
     parser = argparse.ArgumentParser(prog='evc', description='EasyVolcap Project')
-    parser.add_argument('-c', '--config', type=str, default="", help='config file path')
-    parser.add_argument('-t', "--type", type=str, choices=['train', 'test', 'gui'], default="train", help='execution mode, train, test or gui')  # evalute, visualize, network, dataset? (only valid when run)
+    parser.add_argument('-c', '--config', type=str, default="", help='Config file path')
+    parser.add_argument('-t', "--type", type=str, choices=['train', 'test', 'gui'], default="train", help='Execution mode, train, test or gui')  # evalute, visualize, network, dataset? (only valid when run)
     parser.add_argument("opts", action=DictAction, nargs=argparse.REMAINDER)
     return parser
 

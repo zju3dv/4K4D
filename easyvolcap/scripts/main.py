@@ -262,7 +262,7 @@ def train(
 
 
 def main():
-    if cfg.mocking: log(f'Modules imported. No config loaded for: {yellow(args.type)}, pass config file using `-c <PATH_TO_CONFIG>`')  # MARK: GLOBAL
+    if cfg.mocking: log(f'Modules imported. Mode: {yellow(args.type)}. No config loaded, pass config file using `-c <PATH_TO_CONFIG>`')  # MARK: GLOBAL
     else: globals()[args.type](cfg)  # invoke this (call callable_from_cfg -> call_from_cfg)
 
 

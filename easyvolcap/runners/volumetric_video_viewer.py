@@ -921,11 +921,11 @@ class VolumetricVideoViewer:
         imgui.pop_font()
 
         # Full frame timings
-        self.runner.collect_timing = imgui_toggle.toggle('Collect timing', self.runner.collect_timing, config=self.static.toggle_ios_style)[1]
-        changed, value = imgui_toggle.toggle('Record timing', self.runner.timer_record_to_file, config=self.static.toggle_ios_style)
+        self.runner.collect_timing = imgui_toggle.toggle('Record timing', self.runner.collect_timing, config=self.static.toggle_ios_style)[1]
+        changed, value = imgui_toggle.toggle('Save timing', self.runner.timer_record_to_file, config=self.static.toggle_ios_style)
         if changed:
             self.runner.timer_record_to_file = value
-        self.runner.timer_sync_cuda = imgui_toggle.toggle('Sync timing', self.runner.timer_sync_cuda, config=self.static.toggle_ios_style)[1]
+        self.runner.timer_sync_cuda = not imgui_toggle.toggle('Unsync timing', not self.runner.timer_sync_cuda, config=self.static.toggle_ios_style)[1]
         changed, self.use_vsync = imgui_toggle.toggle('Enable VSync', self.use_vsync, config=self.static.toggle_ios_style)
         if changed:
             glfw.swap_interval(self.use_vsync)

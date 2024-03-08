@@ -154,11 +154,11 @@ def build_scaling_rotation(s: torch.Tensor, r: torch.Tensor):
 
 
 def fov2focal(fov, pixels):
-    return pixels / (2 * math.tan(fov / 2))
+    return pixels / (2 * np.tan(fov / 2))
 
 
 def focal2fov(focal, pixels):
-    return 2 * math.atan(pixels / (2 * focal))
+    return 2 * np.arctan(pixels / (2 * focal))
 
 
 def getWorld2View(R: torch.Tensor, t: torch.Tensor):
@@ -262,8 +262,8 @@ def convert_to_gaussian_camera(K: torch.Tensor,
     output.camera_center = output.world_view_transform.inverse()[3:, :3]
 
     # Set up rasterization configuration
-    output.tanfovx = math.tan(output.FoVx * 0.5)
-    output.tanfovy = math.tan(output.FoVy * 0.5)
+    output.tanfovx = np.tan(output.FoVx * 0.5)
+    output.tanfovy = np.tan(output.FoVy * 0.5)
 
     return output
 
