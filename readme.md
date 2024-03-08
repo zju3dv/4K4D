@@ -36,7 +36,7 @@ Or install all dependencies for development:
 pip install -e .[dev]
 ```
 
-If your pip install command fails, try using installing the dependencies separatedly in this way:
+If your `pip install` command fails due to one or two packages, try installing the dependencies one by one in this way:
 
 ```shell
 # Install pip dependencies
