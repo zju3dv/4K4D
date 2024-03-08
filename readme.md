@@ -20,6 +20,51 @@ https://github.com/zju3dv/EasyVolcap/assets/43734697/14fdfb46-5277-4963-ba75-067
 
 ## Installation
 
+### Install Using `pip`
+
+Install only the core dependencies for running the viewer locally:
+
+```shell
+# Editable install, with dependencies from requirements.txt
+pip install -e . 
+```
+
+Or install all dependencies for development:
+
+```shell
+# Editable install, with dependencies from requirements-dev.txt
+pip install -e .[dev]
+```
+
+If your pip install command fails, try using installing the dependencies separatedly in this way:
+
+```shell
+# Install pip dependencies
+cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
+# cat requirements-dev.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
+
+# Register EasyVolcp for imports
+pip install -e . --no-build-isolation --no-deps
+```
+
+Note that the `--no-build-isolation` gives faster install by not creating a virtual environment for building dependencies.
+But it does require the latest `setuptools` and `pip` to work correctly.
+So if the result of running the `pip install -e . --no-build-isolation --no-deps` command contains a package name of `UNKNOWN`,
+try updating `setuptools` and `pip` with:
+
+```shell
+python -m pip install -U pip setuptools
+```
+
+Optionally if you only want to use ***EasyVolcap*** in other projects by directly importing its components, you can install it from GitHub with:
+
+```shell
+pip install "git+https://github.com/zju3dv/EasyVolcap"
+# pip install "git+https://github.com/zju3dv/EasyVolcap#egg=easyvolcap[dev]" # or with full dependencies
+```
+
+### Install Using `conda`
+
 Copy-and-paste version of the installation process listed below. For a more thorough explanation, read on.
 ```shell
 # Prepare conda environment
@@ -31,7 +76,8 @@ conda activate easyvolcap
 mamba env update
 
 # Install pip dependencies
-cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | xargs -n 1 pip install
+cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
+# cat requirements-dev.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
 
 # Register EasyVolcp for imports
 pip install -e . --no-build-isolation --no-deps
@@ -49,10 +95,15 @@ Note: `pip` dependencies can sometimes fail to install & build. However, not all
   - Just be sure to check how we listed the missing package in [`requirements.txt`](requirements.txt) before performing `pip install` on them. Some packages require to be installed from GitHub.
   - If the `mamba env update` step fails due to network issues, it is OK to proceed with pip installs since `PyTorch` will also be installed by pip.
 
+### Updating ***EasyVolcap***
+
+Aside from running `git pull`, you might also need to reregister the command lines and code path by running `pip install -e . --no-build-isolation --no-deps` again.
+A notable example is when updating to [***4K4D***](https://github.com/zju3dv/4K4D], you're required to rerun the editable install command to use that repository instead of this one.
+
 
 ## Usage
 
-### Expanding Upon ***EasyVolcap***
+### Expanding & Customizing ***EasyVolcap***
 
 Most of the time when we want to build a new set of algorithms on top of the framework, we only have to worry about the actual network itself.
 Before writing your new volumetric video algorithm, we need a basic understanding of the network's input and output:

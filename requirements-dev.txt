@@ -1,0 +1,154 @@
+# please install pip requirements using: 
+# cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
+# otherwise one single compilation error could eat away like 20 minutes for nothing.
+# pip install -e . --no-build-isolation --no-deps
+
+# Core dependencies
+torch # if you've used environment.yml, this will be a no-op
+
+# other requirements
+# for terminal image visualization
+timg
+tyro
+yacs
+yapf
+tqdm
+rich
+shtab
+sympy
+pillow
+addict
+trimesh
+imageio
+termcolor
+tensorboard
+scikit-image
+scikit-learn
+pytorch_msssim
+fast-autocomplete
+torch-tb-profiler
+
+# other requirements not available in conda
+pymcubes
+torchdiffeq
+opencv-python
+
+# dev requirements
+h5py
+
+# for plenoctree conversion
+# svox # never used
+ipdb
+pdbr
+ninja
+lpips
+ujson
+pandas
+
+# for unwrapping to get StVK properly
+xatlas
+kornia
+msgpack
+jupyter
+openpyxl
+autopep8
+pyntcloud
+pyturbojpeg
+matplotlib
+ruamel.yaml
+commentjson
+
+# to support visualization, we need:
+gpustat @ git+https://github.com/wookayin/gpustat
+# for winding_number_remesh
+nvdiffrast @ git+https://github.com/NVlabs/nvdiffrast
+torchmcubes @ git+https://github.com/tatsy/torchmcubes
+# cholespy @ git+https://github.com/dendenxu/cholespy
+# installing from conda leads to just numerous problems...
+# NOTE: IMPORTANT
+pytorch3d @ git+https://github.com/facebookresearch/pytorch3d
+detectron2 @ git+https://github.com/facebookresearch/detectron2
+# git+https://github.com/dendenxu/large-steps-pytorch # FIXME: FIX THIS
+# git+https://github.com/dendenxu/bvh-ray-tracing # FIXME: FIX THIS
+# git+https://github.com/YuliangXiu/bvh-distance-queries
+
+# external dependency: easymocap-public (this repo is not publicly available yet)
+# for easymocap's vposer: human_pose_prior, this looks like my DotDict implementation... just way more complex
+dotmap
+# for easymocap loading of SMPL (maybe all pickle loading of SMPL?)
+chumpy
+mediapipe
+func_timeout
+pycocotools
+tensorboardX
+# pyopengl @ git+https://github.com/mmatl/pyopengl # MARK: might not render
+human_body_prior @ git+https://github.com/nghorbani/human_body_prior
+
+# https://storage.googleapis.com/open3d-releases-master/python-wheels/open3d-0.16.0-cp310-cp310-manylinux_2_27_x86_64.whl
+# http://www.open3d.org/docs/latest/getting_started.html (install the development version from here if the previsou link is expired and python is too new)
+# python3.10 support for open3d finally here
+# if failed to install open3d (even when installing from latest release?), try to skip it using
+# pip install $(grep -v '^ *#\|^open3d' requirements.txt | grep .)
+# NOTE: IMPORTANT
+open3d
+
+# pip install $(grep -v '^ *#\|^.*open3d\|^torch-sparse\|^torch-geometric\|^.*cholespy\|^.*pytorch3d\|^.*pyopengl' requirements.txt | grep .)
+# cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | xargs -n 1 pip install
+
+# Blender utils
+# bpy
+memory-tempfile
+
+# dearpygui # TOO SLOW
+# imgui[glfw] # replaced with imgui_bundle
+glfw
+PyGLM
+pyperclip
+pyopengl
+clang-format
+imgui-bundle
+opencv-contrib-python
+
+# MARK: The torchvision version has a memory leak
+# https://github.com/pytorch/vision/issues/4378
+# pynvjpeg
+
+# MARK: Requires some compiling and may easily fail, but not needed for most of the implementations
+tinycudann @ git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch
+
+# MARK: prone to change pytorch version, please install these on demand and manually
+# spconv-cu118
+# functorch
+torch-scatter
+# torch-sparse
+# torch-geometric
+
+# pip install -e . --no-build-isolation --no-deps
+
+# not needed unless you're using ali's implemenetation of VectorQuantize
+einops
+# not needed unless you're trying to debug torch memory usage using this package directly
+pytorch_memlab
+
+# for ply file io
+plyfile
+# cuda driver for python, so nice for cuda opengl and pytorch interop, no hassle!
+cuda-python
+
+# For extracting meshes
+pymeshlab
+
+# For encode jpeg
+pyturbojpeg
+
+# For gaussian
+simple_knn @ git+https://gitlab.inria.fr/bkerbl/simple-knn
+diff_gauss @ git+https://github.com/dendenxu/diff-gaussian-rasterization
+diff_gaussian_rasterization @ git+https://github.com/graphdeco-inria/diff-gaussian-rasterization
+# diff_gauss @ git+https://github.com/slothfulxtx/diff-gaussian-rasterization
+diff_point_rasterization @ git+https://github.com/dendenxu/diff-point-rasterization # rasterization of 4k4d's point representation, gradient might still crash
+diff_mip_rasterization @ git+https://github.com/dendenxu/diff-mip-rasterization
+# TODO: Figure out a way to install taichi-nightly both from pip install -r and xargs
+# -i https://pypi.taichi.graphics/simple taichi-nightly
+# taichi-splatting # depends on nightly build of taichi, install later than that one
+gsplat

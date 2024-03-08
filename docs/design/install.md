@@ -139,14 +139,14 @@ For example, the real-time viewer does not require packages like `pytorch3d` or 
 We've also tested the viewer functionality (run `evc-gui` to test) on Windows, which requires the following OpenGL and ImGUI related packages:
 
 ```
-glfw
+torch
+pdbr
+ujson
 PyGLM
 pyperclip
-pyopengl
+ruamel.yaml
 imgui-bundle
 opencv-python
-cuda-python
-pdbr
 ```
 
 These packages should be able to be installed directly from the command-line using `pip`.

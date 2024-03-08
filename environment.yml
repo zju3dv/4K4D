@@ -16,13 +16,12 @@ dependencies:
     - torchvision
     - torchaudio
 
-    - git
-    - vim
-    - tmux # conda(mamba) is a good thing
-    - cmake
-    - conda-forge::ffmpeg
-    - conda-forge::ncurses # vim: /home/xuzhen/miniconda3/envs/phdeform/bin/../lib/libtinfo.so.6: no version information available (required by vim)
-
+    # - git
+    # - vim
+    # - tmux # conda(mamba) is a good thing
+    # - cmake
+    # - conda-forge::ffmpeg
+    # - conda-forge::ncurses # vim: /home/xuzhen/miniconda3/envs/phdeform/bin/../lib/libtinfo.so.6: no version information available (required by vim)
     - pip
       # - pip:
       # - -r requirements.txt
