@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
+    from easyvolcap.runners.volumetric_video_runner import VolumetricVideoRunner
 
 import time
 import torch
@@ -79,13 +80,20 @@ class VolumetricVideoModel(nn.Module):
         if hasattr(self.renderer, 'render_imgui'): self.renderer.render_imgui(viewer, batch)
         if hasattr(self.supervisor, 'render_imgui'): self.supervisor.render_imgui(viewer, batch)
 
+    def decorate_grad(self, runner: 'VolumetricVideoRunner', batch: dotdict):
+        if hasattr(self.camera, 'decorate_grad'): self.camera.decorate_grad(runner, batch)
+        if hasattr(self.sampler, 'decorate_grad'): self.sampler.decorate_grad(runner, batch)
+        if hasattr(self.network, 'decorate_grad'): self.network.decorate_grad(runner, batch)
+        if hasattr(self.renderer, 'decorate_grad'): self.renderer.decorate_grad(runner, batch)
+        if hasattr(self.supervisor, 'decorate_grad'): self.supervisor.decorate_grad(runner, batch)
+
     def render_volume(self, xyz: torch.Tensor, dir: torch.Tensor, t: torch.Tensor, dist: torch.Tensor, batch: dotdict):
         # Network
         rgb, occ = self.network.compute(xyz, dir, t, dist, batch)  # how to get annotation on forward params?
 
         # Prepare special data passing object
         output = batch.output  # will be integrated
-        del batch.output
+        # del batch.output
         return output
 
     def render_rays(self,  # used for vanialla NeRF training
