@@ -420,7 +420,8 @@ def l1_reg(x: torch.Tensor):
 
 
 def l2_reg(x: torch.Tensor) -> torch.Tensor:
-    return (x**2).sum(dim=-1).mean()
+    # return (x**2).sum(dim=-1).mean()
+    return (x**2).mean()
 
 
 def bce_loss(x: torch.Tensor, y: torch.Tensor):
