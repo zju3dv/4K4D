@@ -433,7 +433,7 @@ class VolumetricVideoViewer:
                 self.discrete_t = imgui_toggle.toggle('Discrete time', self.discrete_t, config=self.static.toggle_ios_style)[1]
                 imgui.pop_item_width()
                 if self.discrete_t: self.playing_fps = imgui.slider_int('Video FPS', self.playing_fps, 10, 120)[1]  # temporal interpolation
-                else: self.playing_speed = imgui.slider_float('Video Speed', self.playing_speed, 0.0001, 0.1)[1]  # temporal interpolation
+                else: self.playing_speed = imgui.slider_float('Video speed', self.playing_speed, 0.0001, 0.01, format='%.6f')[1]  # temporal interpolation
                 imgui.tree_pop()
 
         # Other updates
