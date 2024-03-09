@@ -100,7 +100,7 @@ val_dataloader_cfg: # we see the term "dataloader" a one word?
     max_iter: -1
     dataset_cfg:
         <<: *dataset_cfg
-        type: VolumetricVideoDataset
+        type: WillChangeToNoopIfGUIDataset
         split: VAL
         supply_decoded: True # pass the image to the network directly
         encode_ext: .png # save bandwidth for rendering

@@ -19,6 +19,7 @@ class ImageBasedInferenceDataset(VolumetricVideoInferenceDataset):
                  extra_src_pool: int = 1,
                  supply_decoded: bool = False,
                  barebone: bool = False,
+                 skip_loading_images: bool = False,
 
                  #  closest_using_t: bool = False,
                  #  src_view_sample: List[int] = [0, None, 1],  # use these as input source views
@@ -29,7 +30,7 @@ class ImageBasedInferenceDataset(VolumetricVideoInferenceDataset):
         # Thus functions reusing implementation from that class should explicit define this
         # self.closest_using_t = closest_using_t  # MARK: transpose
         # self.src_view_sample = src_view_sample
-        call_from_cfg(super().__init__, kwargs)  # will have prepared other parts of the dataset (interpolation or orbit)
+        call_from_cfg(super().__init__, kwargs, skip_loading_images=skip_loading_images)  # will have prepared other parts of the dataset (interpolation or orbit)
         if self.src_view_sample != [0, None, 1] and self.view_sample != [0, None, 1]: log(yellow(f'Using `src_view_sample = {self.src_view_sample}` when `view_sample = {self.view_sample}` is not default'))
 
         # ImageBasedDataset.load_source_params(self)  # no extra dependencies

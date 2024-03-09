@@ -1,25 +1,26 @@
-from easyvolcap.utils.console_utils import *
-from easyvolcap.engine import DATASETS
-
 import torch
 from torch.utils.data import Dataset
+from typing import List, Optional
+
+from easyvolcap.engine import DATASETS, cfg, args
+from easyvolcap.utils.console_utils import *
+from easyvolcap.utils.math_utils import normalize, affine_inverse
+
 from easyvolcap.dataloaders.datasets.volumetric_video_dataset import VolumetricVideoDataset
+from easyvolcap.models.cameras.optimizable_camera import OptimizableCamera
 
 
 @DATASETS.register_module()
 class NoopDataset(Dataset):
     def __init__(self,
-                 frame_sample,
-                 view_sample,
-                 closest_using_t=False,
-                 near=0.02,
-                 far=20,
-                 bounds=torch.as_tensor([[-5, -5, -5], [5, 5, 5]]),
-                 render_ratio=1.0,
+                 frame_sample: List[float],
+                 view_sample: List[float],
+                 closest_using_t: bool = False,
+                 near: float = 0.02,
+                 far: float = 100.0,
+                 bounds: List[List[float]] = torch.as_tensor([[-5, -5, -5], [5, 5, 5]]),
+                 render_ratio: float = 1.0,
                  focal_ratio: float = 1.0,
-
-                 Rv=[[-0.9977766275405884, 0.06664637476205826, 0.0], [0.004728599451482296, 0.07079283893108368, -0.9974799156188965], [-0.0664784237742424, -0.9952622056007385, -0.07095059007406235]],
-                 Tv=[[-2.059340476989746e-5], [2.5779008865356445e-6], [-3.000047445297241]],
 
                  imbound_crop: bool = True,
                  use_objects_priors: bool = False,
@@ -32,8 +33,6 @@ class NoopDataset(Dataset):
         self.n_frames_total = self.n_latents
         self.n_view_total = self.n_views
 
-        self.Rv = torch.as_tensor(Rv, dtype=torch.float)  # 3, 3
-        self.Tv = torch.as_tensor(Tv, dtype=torch.float)  # 3, 1
         self.near = near
         self.far = far
         self.bounds = torch.as_tensor(bounds, dtype=torch.float)

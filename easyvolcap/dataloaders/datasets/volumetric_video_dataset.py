@@ -37,7 +37,7 @@ from typing import List
 from functools import lru_cache, partial
 from torch.utils.data import Dataset, get_worker_info
 
-from easyvolcap.engine import DATASETS
+from easyvolcap.engine import DATASETS, cfg, args
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.timer_utils import timer
 from easyvolcap.utils.base_utils import dotdict
@@ -156,7 +156,7 @@ class VolumetricVideoDataset(Dataset):
                  render_ratio: float = 1.0,  # might need to resize just before sampling
                  render_center_crop_ratio: float = 1.0,  # might need to center crop just before sampling
                  dist_mask: List[bool] = [1] * 5,
-                 skip_loading_images: bool = False,  # for debugging and visualization
+                 skip_loading_images: bool = args.type == 'gui',  # for debugging and visualization
 
                  # Patch sampling related
                  patch_size: List[int] = [-1, -1],  # empty list -> no patch sampling
@@ -707,7 +707,10 @@ class VolumetricVideoDataset(Dataset):
             })
             # TODO: Handle avg export and loading for such monocular dataset
         else:
-            raise NotImplementedError(f'Could not find {{{self.intri_file},{self.extri_file}}} or {self.cameras_dir} directory in {self.data_root}, check your dataset configuration')
+            log(red('Could not find camera information in the dataset, check your dataset configuration'))
+            log(red('If you want to render the model without loading anything from the dataset:'))
+            log(red('Try appending val_dataloader_cfg.dataset_cfg.type=NoopDataset to your command or add the `configs/specs/turbom.yaml` to your `-c` parameter'))
+            raise NotImplementedError(f'Could not find {{{self.intri_file},{self.extri_file}}} or {self.cameras_dir} directory in {self.data_root}, check your dataset configuration or use NoopDataset')
 
         # Expectation:
         # self.camera_names: a list containing all camera names
@@ -1368,3 +1371,8 @@ class VolumetricVideoDataset(Dataset):
         output = self.scale_ixts(output, self.render_ratio)
 
         return output  # how about just passing through
+
+
+@DATASETS.register_module()
+class WillChangeToNoopIfGUIDataset(VolumetricVideoDataset): # HACK: hacky api for no-data rendering
+    pass

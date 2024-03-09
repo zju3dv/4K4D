@@ -1,4 +1,5 @@
 torch # if you've used environment.yml, this will be a no-op
+tqdm
 pdbr
 ujson
 PyGLM

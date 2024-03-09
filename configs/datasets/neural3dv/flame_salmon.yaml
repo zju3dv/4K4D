@@ -2,7 +2,7 @@ configs: configs/datasets/neural3dv/neural3dv.yaml # inherit from this config
 dataloader_cfg:
     dataset_cfg: &dataset_cfg
         data_root: data/neural3dv/flame_salmon
-        far: 1000.0 # camera near far range, affects ray sampling and some cost volume based algorithms
+        far: 2000.0 # camera near far range, affects ray sampling and some cost volume based algorithms
 
 val_dataloader_cfg:
     dataset_cfg:

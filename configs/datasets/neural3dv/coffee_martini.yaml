@@ -2,7 +2,7 @@ configs: configs/datasets/neural3dv/neural3dv.yaml
 dataloader_cfg: # we see the term "dataloader" as one word?
     dataset_cfg: &dataset_cfg
         data_root: data/neural3dv/coffee_martini
-        far: 200.0 # camera near far range, affects ray sampling and some cost volume based algorithms
+        far: 2000.0 # camera near far range, affects ray sampling and some cost volume based algorithms
 
 val_dataloader_cfg:
     dataset_cfg:

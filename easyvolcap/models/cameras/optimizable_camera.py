@@ -29,6 +29,7 @@ class OptimizableCamera(nn.Module):
     square_bounds = torch.stack([center - radius, center + radius])
     scene_scale = cfg.dataloader_cfg.dataset_cfg.scene_scale if 'scene_scale' in cfg.dataloader_cfg.dataset_cfg else 1.0  # is the scene of real world scale?
     duration = cfg.dataloader_cfg.dataset_cfg.duration if 'duration' in cfg.dataloader_cfg.dataset_cfg else 1.0  # length in real world time
+    # world_up = cfg.viewer_cfg.camera_cfg.world_up if 'world_up' in cfg.dataloader_cfg.dataset_cfg else [0, 0, 1]  # only used for initialization
 
     data_root = cfg.dataloader_cfg.dataset_cfg.data_root if 'data_root' in cfg.dataloader_cfg.dataset_cfg else ''
     vhulls_dir = cfg.dataloader_cfg.dataset_cfg.vhulls_dir if 'vhulls_dir' in cfg.dataloader_cfg.dataset_cfg else 'vhulls'
