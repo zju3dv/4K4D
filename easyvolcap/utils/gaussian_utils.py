@@ -101,6 +101,7 @@ def inverse_sigmoid(x):
     return torch.log(x / (1 - x))
 
 
+@torch.jit.script
 def strip_lowerdiag(L: torch.Tensor):
     uncertainty = torch.zeros((L.shape[0], 6), dtype=torch.float, device=L.device)
 
@@ -117,6 +118,7 @@ def strip_symmetric(sym):
     return strip_lowerdiag(sym)
 
 
+@torch.jit.script
 def build_rotation(r: torch.Tensor):
     norm = torch.sqrt(r[:, 0] * r[:, 0] + r[:, 1] * r[:, 1] + r[:, 2] * r[:, 2] + r[:, 3] * r[:, 3])
 

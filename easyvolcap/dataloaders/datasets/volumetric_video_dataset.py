@@ -69,7 +69,6 @@ class VolumetricVideoDataset(Dataset):
                  view_sample: List = [0, None, 1],  # begin, end, step
                  frame_sample: List = [0, None, 1],  # begin, end, step
                  correct_pix: bool = True,  # move pixel coordinates to the middle of the pixel
-                 use_loaded_time: bool = False,  # use the time provided by the datasets, rare
 
                  # Other default configurations
                  intri_file: str = 'intri.yml',
@@ -141,7 +140,10 @@ class VolumetricVideoDataset(Dataset):
                  reload_vhulls: bool = False,  # reload visual hulls to vhulls_dir
                  vhull_only: bool = False,
 
-                 # Volume based config
+                 # Spacetime based config
+                 use_loaded_time: bool = False,  # use the time provided by the datasets, rare
+                 duration: float = None,
+                 scene_scale: float = 1.0,
                  bounds: List[List[float]] = [[-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]],
                  near: float = 0.2,  # lets hope the cameras are not too close
                  far: float = 20,  # TODO: Notify the user about setting up near and far manually or project computed vhull or bounds for better near and far bounds
@@ -215,10 +217,13 @@ class VolumetricVideoDataset(Dataset):
         else: self.n_view_total = len(os.listdir(join(self.data_root, self.images_dir)))  # total number of cameras before filtering
         if self.frame_sample[1] is not None: self.n_frames_total = self.frame_sample[1]
         else: self.n_frames_total = min([len(glob(join(self.data_root, self.images_dir, cam, '*'))) for cam in os.listdir(join(self.data_root, self.images_dir))])  # total number of images before filtering
-        self.use_loaded_time = use_loaded_time
 
         # Rendering and space carving bounds
+        assert not (duration is None and use_loaded_time), "When using loaded time, expect the user to provide the dataset duration"
+        self.use_loaded_time = use_loaded_time  # when using loaded time, will normalize to 0-1 with duration
+        self.duration = duration if duration is not None else 1.0
         self.bounds = torch.as_tensor(bounds, dtype=torch.float)
+        self.scene_scale = scene_scale
         self.near = near
         self.far = far
 
@@ -1031,7 +1036,7 @@ class VolumetricVideoDataset(Dataset):
         meta.n, meta.f = n, f
         meta.w2c, meta.c2w = w2c, c2w
         meta.view_index, meta.latent_index, meta.camera_index, meta.frame_index = view_index, latent_index, camera_index, frame_index
-        meta.t = t if self.use_loaded_time else self.frame_to_t(frame_index)
+        meta.t = (t / self.duration) if self.use_loaded_time else self.frame_to_t(frame_index)  # for duration of 1.0, this is a no-op
         meta.t = torch.as_tensor(meta.t, dtype=torch.float)  # the dataset provided time or the time fraction
         meta.v = self.camera_to_v(camera_index)
         meta.v = torch.as_tensor(meta.v, dtype=torch.float)  # the time fraction

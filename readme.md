@@ -29,14 +29,14 @@ Install only the core dependencies for running the viewer locally:
 pip install -e . 
 ```
 
-Or install all dependencies for development:
+Or install all dependencies for development (this requires you to have a valid [CUDA building environment with PyTorch already installed](docs/design/install.md#cuda-related-compilations)):
 
 ```shell
 # Editable install, with dependencies from requirements-dev.txt
 pip install -e .[dev]
 ```
 
-If your `pip install` command fails due to one or two packages, try installing the dependencies one by one in this way:
+Alternatively, if your `pip install` command fails due to one or two packages, try installing the dependencies one by one in this way:
 
 ```shell
 # Install pip dependencies
