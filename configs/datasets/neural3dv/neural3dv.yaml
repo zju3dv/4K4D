@@ -3,6 +3,7 @@ dataloader_cfg:
         ratio: 0.5 # scale images down during loading (thus affects rendering and testing)
         near: 4.0 # camera near far range, affects ray sampling and some cost volume based algorithms
         far: 60.0 # camera near far range, affects ray sampling and some cost volume based algorithms
+        scene_scale: 13.3333333
         bounds: [[-20, -15, 4.0], [20, 15, 25]] # axis-aligned bounding box of the scene, affects ray sampling and bounding box of some explicit algorithms
         view_sample: [0, 21, 1] # these can be omitted if the dataset is present (defaults to [0, null, 1], will inference frame count from number of images)
         frame_sample: [0, 300, 1] # these can be omitted if the dataset is present (defaults to [0, null, 1], will inference frame count from number of cameras)
@@ -18,3 +19,12 @@ val_dataloader_cfg:
 viewer_cfg:
     camera_cfg:
         world_up: [0, -1, 0] # this dataset uses a strange camera system, align it when using the viewer
+        # prettier-ignore
+        K: [[736.5288696289062,0.0,682.7473754882812],[0.0,736.4380493164062,511.99737548828125],[0.0,0.0,1.0]]
+        # prettier-ignore
+        R: [[0.9938720464706421,0.0,-0.11053764075040817],[-0.0008741595083847642,0.9999688267707825,-0.007859790697693825],[0.1105341762304306,0.007908252067863941,0.9938408732414246]]
+        T: [[-0.2975313067436218], [-1.2581647634506226], [0.2818146347999573]]
+        n: 0.02
+        f: 1000.0
+        movement_speed: 10.0
+        movement_force: 10.0

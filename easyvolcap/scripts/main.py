@@ -15,8 +15,8 @@ discover_modules() # will launch through this interface
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
+    from easyvolcap.dataloaders.datasets.volumetric_video_dataset import VolumetricVideoDataset, WillChangeToNoopIfGUIDataset
     from easyvolcap.dataloaders.datasamplers import SequentialSampler, DistributedSampler, BatchSampler
-    from easyvolcap.dataloaders.datasets.volumetric_video_dataset import VolumetricVideoDataset
     from easyvolcap.dataloaders.volumetric_video_dataloader import VolumetricVideoDataloader
     from easyvolcap.models.volumetric_video_model import VolumetricVideoModel
     from easyvolcap.runners.volumetric_video_runner import VolumetricVideoRunner
@@ -112,6 +112,15 @@ def gui(
     #     Note that the viewer should also be a type of runner, we need to write it in a similar way to trainer or tester
     #     The camera class could only get K, R, T, and the rest like height or width are directly read from the viewer?
     #     * Should we just integrate the camera inside the viewer?
+
+    # Use NoopDataset if the original validation dataset is WillChangeToNoopIfGUIDataset
+    try:
+        kwargs = dotdict(kwargs)
+        if kwargs.val_dataloader_cfg.dataset_cfg.type == 'WillChangeToNoopIfGUIDataset':
+            kwargs.val_dataloader_cfg.dataset_cfg.type = 'NoopDataset'  # HACK: insider config
+    except:
+        pass
+
     runner: "VolumetricVideoRunner" = globals()[invokation_type](kwargs,
                                                                  base_device=base_device,
                                                                  dry_run=True,

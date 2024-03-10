@@ -103,7 +103,7 @@ memory-tempfile
 glfw
 PyGLM
 pyperclip
-pyopengl
+PyOpenGL
 clang-format
 imgui-bundle
 opencv-contrib-python

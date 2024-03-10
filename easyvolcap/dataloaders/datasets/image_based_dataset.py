@@ -40,6 +40,7 @@ class ImageBasedDataset(VolumetricVideoDataset):
                  closest_using_t: bool = False,  # find the closest view using the temporal dimension
                  supply_decoded: bool = False,
                  barebone: bool = False,
+                 skip_loading_images: bool = False,
 
                  src_view_sample: List[int] = [0, None, 1],  # use these as input source views
                  force_sparse_view: bool = True,  # The user will be responsible for setting up the correct view count
@@ -49,7 +50,7 @@ class ImageBasedDataset(VolumetricVideoDataset):
         # Ignore things, since this will serve as a base class of classes supporting *args and **kwargs
         # The inspection of registration and config system only goes down one layer
         # Otherwise it would be to inefficient
-        call_from_cfg(super().__init__, kwargs)
+        call_from_cfg(super().__init__, kwargs, skip_loading_images=skip_loading_images)
 
         self.closest_using_t = closest_using_t
         self.src_view_sample = src_view_sample

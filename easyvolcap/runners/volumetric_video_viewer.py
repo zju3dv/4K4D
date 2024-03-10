@@ -37,8 +37,8 @@ from easyvolcap.utils.color_utils import cm_cpu_store
 from easyvolcap.utils.image_utils import interpolate_image, resize_image
 from easyvolcap.utils.prof_utils import setup_profiler, profiler_step, profiler_start, profiler_stop
 from easyvolcap.utils.imgui_utils import push_button_color, pop_button_color, tooltip, colored_wrapped_text
-from easyvolcap.utils.viewer_utils import Camera, CameraPath, visualize_cameras, visualize_cube, add_debug_line, add_debug_text, visualize_axes, add_debug_text_2d
 from easyvolcap.utils.data_utils import add_batch, add_iter, to_cpu, to_cuda, to_tensor, to_x, default_convert, default_collate, save_image, load_image, Visualization
+from easyvolcap.utils.viewer_utils import Camera, CameraPath, visualize_cameras, visualize_cube, add_debug_line, add_debug_text, visualize_axes, add_debug_text_2d, lookat_bounds
 
 
 @RUNNERS.register_module()
@@ -433,7 +433,7 @@ class VolumetricVideoViewer:
                 self.discrete_t = imgui_toggle.toggle('Discrete time', self.discrete_t, config=self.static.toggle_ios_style)[1]
                 imgui.pop_item_width()
                 if self.discrete_t: self.playing_fps = imgui.slider_int('Video FPS', self.playing_fps, 10, 120)[1]  # temporal interpolation
-                else: self.playing_speed = imgui.slider_float('Video Speed', self.playing_speed, 0.0001, 0.1)[1]  # temporal interpolation
+                else: self.playing_speed = imgui.slider_float('Video speed', self.playing_speed, 0.0001, 0.01, format='%.6f')[1]  # temporal interpolation
                 imgui.tree_pop()
 
         # Other updates
@@ -1345,6 +1345,7 @@ class VolumetricVideoViewer:
         # Everything should have been prepared in the dataset
         # We load the first camera out of it
         dataset = self.dataset
+        camera_cfg = deepcopy(camera_cfg)
         H, W = self.window_size  # dimesions
         M = max(H, W)
 
@@ -1362,14 +1363,28 @@ class VolumetricVideoViewer:
                 K = dataset.Ks[view_index, 0].clone()
                 ratio = M / max(dataset.Hs[view_index, 0], dataset.Ws[view_index, 0])
             K[:2] *= ratio
+        K = camera_cfg.pop('K', K)
 
         if view_index is None:
-            R, T = dataset.Rv.clone(), dataset.Tv.clone()  # intrinsics and extrinsics
+            # Performing initialization
+            if hasattr(dataset, 'Rv') and hasattr(dataset, 'Tv'):
+                R, T = dataset.Rv.clone(), dataset.Tv.clone()
+            else:
+                # Compute from bbox
+                world_up = camera_cfg.world_up if 'world_up' in camera_cfg else [0, 0, 1]
+                R, T = lookat_bounds(dataset.bounds, world_up)
+            R = camera_cfg.pop('R', R)
+            T = camera_cfg.pop('T', T)
+
         else:
+            # Select dataset camera
             R, T = dataset.Rs[view_index, 0], dataset.Ts[view_index, 0]
 
-        n, f, t, v = dataset.near, dataset.far, 0, 0  # use 0 for default t
-        bounds = dataset.bounds.clone()  # avoids modification
+        n = camera_cfg.pop('n', dataset.near)
+        f = camera_cfg.pop('f', dataset.far)
+        t = camera_cfg.pop('t', 0)
+        v = camera_cfg.pop('v', 0)
+        bounds = camera_cfg.pop('bounds', dataset.bounds.clone())   # avoids modification
         self.camera = Camera(H, W, K, R, T, n, f, t, v, bounds, **camera_cfg)
         self.camera.front = self.camera.front  # perform alignment correction
         self.snap_camera_index = view_index if view_index is not None else 0

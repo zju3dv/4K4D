@@ -73,9 +73,11 @@ sudo apt install ffmpeg
 
 ## CUDA Related Compilations
 
-To use any compiled CUDA modules, you need to have the CUDA Toolkit installed and configured.
+To use any compiled `CUDAExtension`, you need to have the CUDA Toolkit and PyTorch installed and configured.
 
-Typically your system administration would have already done so if you're using a shared server for AI realted research. Check under `/usr/local` to find anything related to CUDA.
+For PyTorch, running `pip install -e .` (the non-dev install of ***EasyVolcap***) will have already taken care of that.
+
+For the CUDA Toolkit, typically your system administration would have already done so if you're using a shared server for AI realted research. Check under `/usr/local` to find anything related to CUDA.
 
 Then, add these lines to your `.zshrc` or `.bashrc` to expose related paths for compilation:
 ```shell
