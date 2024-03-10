@@ -33,7 +33,7 @@ Or install all dependencies for development (this requires you to have a valid [
 
 ```shell
 # Editable install, with dependencies from requirements-dev.txt
-pip install -e .[dev]
+pip install -e ".[dev]"
 ```
 
 Alternatively, if your `pip install` command fails due to one or two packages, try installing the dependencies one by one in this way:
