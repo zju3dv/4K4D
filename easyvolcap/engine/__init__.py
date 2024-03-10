@@ -64,7 +64,6 @@ RECORDERS = Registry('recorders')  # (rarely changed)
 # This file is the effective entry point of the code
 # We'd like the cfg object to be accessible from anywhere, thus this file exists and anyone can import from it
 
-@catch_throw
 def get_parser():
     parser = argparse.ArgumentParser(prog='evc', description='EasyVolcap Project')
     parser.add_argument('-c', '--config', type=str, default="", help='Config file path')
@@ -73,7 +72,6 @@ def get_parser():
     return parser
 
 
-@catch_throw
 def update_cfg(cfg: Config):
     # Here, we define some logics for updating the config object
     # i.e. when experiment name is given, the output directory is automatically updated
@@ -84,7 +82,6 @@ def update_cfg(cfg: Config):
     return cfg  # although this return is not fully needed
 
 
-@catch_throw
 def parse_cfg(args):
     args.config = args.config.split(',')  # maybe the user used commas
     configs = args.config[1:]  # other files are considered as base files
@@ -119,9 +116,15 @@ def parse_cfg(args):
         # raise FileNotFoundError(f"Config file {markup_to_ansi(blue(args.config))} not found")
 
 
-parser = get_parser()
-args, argv = parser.parse_known_args()  # commandline arguments
-argv = [v.strip('-') for v in argv]  # arguments starting with -- will not automatically go to the ops dict, need to parse them again
-argv = parser.parse_args(argv)  # the reason for -- arguments is that almost all shell completion requires a prefix for optional arguments
-args.opts.update(argv.opts)
-cfg = parse_cfg(args)
+@catch_throw
+def main():
+    parser = get_parser()
+    args, argv = parser.parse_known_args()  # commandline arguments
+    argv = [v.strip('-') for v in argv]  # arguments starting with -- will not automatically go to the ops dict, need to parse them again
+    argv = parser.parse_args(argv)  # the reason for -- arguments is that almost all shell completion requires a prefix for optional arguments
+    args.opts.update(argv.opts)
+    cfg = parse_cfg(args)
+    return cfg, args, argv
+
+
+cfg, args, argv = main()  # store these global variables

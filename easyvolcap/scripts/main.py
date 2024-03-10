@@ -80,7 +80,6 @@ def preflight(
     log(f"Starting experiment: {magenta(cfg.exp_name)}, command: {magenta(args.type)}")  # MARK: GLOBAL
 
 
-@catch_throw
 @callable_from_cfg
 def gui(
     viewer_cfg: dotdict = dotdict(type="VolumetricVideoViewer"),  # use different naming for config here, is this good?
@@ -131,7 +130,6 @@ def gui(
     launcher(**kwargs, runner_function=viewer.run, runner_object=runner)
 
 
-@catch_throw
 @callable_from_cfg
 def test(
     model_cfg: dotdict = dotdict(type="VolumetricVideoModel"),
@@ -183,7 +181,6 @@ def test(
     launcher(**kwargs, runner_function=runner.test, runner_object=runner)
 
 
-@catch_throw
 @callable_from_cfg
 def train(
     model_cfg: dotdict = dotdict(type="VolumetricVideoModel"),
@@ -269,7 +266,7 @@ def train(
     # The actual calling, with grace full exit
     launcher(**kwargs, runner_function=runner.train, runner_object=runner)
 
-
+@catch_throw
 def main():
     if cfg.mocking: log(f'Modules imported. Mode: {yellow(args.type)}. No config loaded, pass config file using `-c <PATH_TO_CONFIG>`')  # MARK: GLOBAL
     else: globals()[args.type](cfg)  # invoke this (call callable_from_cfg -> call_from_cfg)

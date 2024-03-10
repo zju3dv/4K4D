@@ -23,6 +23,7 @@ imgui-bundle
 opencv-python
 
 # Stupid PyTorch CUDA extension building... Unable to ensure pytorch is installed before the building happens...
+# simple_knn @ git+https://gitlab.inria.fr/bkerbl/simple-knn
 # diff_gauss @ git+https://github.com/dendenxu/diff-gaussian-rasterization
 # diff_point_rasterization @ git+https://github.com/dendenxu/diff-point-rasterization
 # tinycudann @ git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch

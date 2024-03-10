@@ -380,17 +380,27 @@ def run_if_not_exists(cmd, outname, *args, **kwargs):
         run(cmd, *args, **kwargs)
 
 
-def catch_throw(func: Callable):
-    # This function catches errors and stops the execution for easier inspection
-    def inner(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            if isinstance(e, BdbQuit): return
-            log(red(f'Runtime exception: {e}'))
-            stacktrace()
-            post_mortem()
-    return inner
+def catch_throw(fatal: Union[Callable, bool] = True):
+    def wrapper(func: Callable):
+        # This function catches errors and stops the execution for easier inspection
+        def inner(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                if isinstance(e, BdbQuit): return  # so that nested catch_throw will respect each other
+                log(red(f'Runtime exception: {e}'))
+                stacktrace()
+                post_mortem()
+                if fatal: exit(1)  # catched variable
+        return inner
+
+    if callable(fatal):
+        func = fatal
+        fatal = True
+        return wrapper(func)  # just a regular function decorator
+    else:
+        fatal = fatal  # whether this is a fatal post_mortem
+        return wrapper
 
 
 def print(*stuff,

@@ -95,9 +95,22 @@ Note: `pip` dependencies can sometimes fail to install & build. However, not all
   - Just be sure to check how we listed the missing package in [`requirements.txt`](requirements.txt) before performing `pip install` on them. Some packages require to be installed from GitHub.
   - If the `mamba env update` step fails due to network issues, it is OK to proceed with pip installs since `PyTorch` will also be installed by pip.
 
+### Missing Imports
+
+If you encounter import errors, they can usually be safely ignored if the code runs since we lazy load a lot of the trikcy-to-install ones, especially when there's CUDA kernel compilation involved.
+
+If the import error gets in the way of the actual code you want to use, you might want to search the reported package name in [`requirements-dev.txt`](requirements-dev.txt) and install them manually.
+
+For example, for the missing `diff_gauss` package, you can find the line `diff_gauss @ git+https://github.com/dendenxu/diff-gaussian-rasterization` there and install it with:
+
+```shell
+pip install git+https://github.com/dendenxu/diff-gaussian-rasterization # will try to compile this package and install it
+```
+
 ### Updating ***EasyVolcap***
 
 Aside from running `git pull`, you might also need to reregister the command lines and code path by running `pip install -e . --no-build-isolation --no-deps` again.
+
 A notable example is when updating to [***4K4D***](https://github.com/zju3dv/4K4D], you're required to rerun the editable install command to use that repository instead of this one.
 
 
