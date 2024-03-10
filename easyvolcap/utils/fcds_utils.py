@@ -7,7 +7,6 @@ from typing import List, Dict, Union
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.net_utils import MLP
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.fusion_utils import voxel_reconstruction
 from easyvolcap.utils.raster_utils import get_ndc_perspective_matrix
 from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
 from easyvolcap.utils.math_utils import normalize_sum, affine_inverse, affine_padding
@@ -222,6 +221,7 @@ def voxel_surface_down_sample(pcd: torch.Tensor, pcd_t: torch.Tensor = None, vox
     import numpy as np
     import mcubes
     from easyvolcap.utils.sample_utils import point_mesh_distance
+    from easyvolcap.utils.fusion_utils import voxel_reconstruction
     from pytorch3d.ops import knn_points, ball_query, sample_farthest_points
 
     # Performing voxel surface reconstruction

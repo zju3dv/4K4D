@@ -1,13 +1,28 @@
 torch # if you've used environment.yml, this will be a no-op
 tqdm
 pdbr
+yapf
+h5py
 ujson
 PyGLM
+scipy
+addict
+PyYaml
+trimesh
+imageio
+PyMCubes
 pyperclip
+pyntcloud
+PyTurboJPEG
+tensorboard
+torchvision
 ruamel.yaml
+cuda-python
+scikit-image
 imgui-bundle
 opencv-python
 
 # Stupid PyTorch CUDA extension building... Unable to ensure pytorch is installed before the building happens...
 # diff_gauss @ git+https://github.com/dendenxu/diff-gaussian-rasterization
 # diff_point_rasterization @ git+https://github.com/dendenxu/diff-point-rasterization
+# tinycudann @ git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch
