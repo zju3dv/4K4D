@@ -220,11 +220,11 @@ We would like to acknowledge the following inspiring prior work:
 If you find this code useful for your research, please cite us using the following BibTeX entry.
 
 ```bibtex
-@article{xu20234k4d,
+@inproceedings{xu20234k4d,
   title={4K4D: Real-Time 4D View Synthesis at 4K Resolution},
   author={Xu, Zhen and Peng, Sida and Lin, Haotong and He, Guangzhao and Sun, Jiaming and Shen, Yujun and Bao, Hujun and Zhou, Xiaowei},
-  booktitle={arXiv preprint arXiv:2310.11448},
-  year={2023}
+  booktitle={CVPR},
+  year={2024}
 }
 
 @article{xu2023easyvolcap,
