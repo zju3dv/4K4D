@@ -1084,13 +1084,15 @@ def eval_shfs_4d_32(sh: torch.Tensor, dirs: torch.Tensor, dirs_t: torch.Tensor, 
 
 
 def eval_shfs_4d(deg: int, deg_t: int, sh: torch.Tensor, dirs: torch.Tensor, dirs_t: torch.Tensor, l: torch.Tensor):
-    if deg <= 0: return eval_shfs_4d_00(sh, dirs, dirs_t, l)
-    elif deg <= 1: return eval_shfs_4d_10(sh, dirs, dirs_t, l)
-    elif deg <= 2: return eval_shfs_4d_20(sh, dirs, dirs_t, l)
+    # fmt: off
+    if deg <= 0:                  return eval_shfs_4d_00(sh, dirs, dirs_t, l)
+    elif deg <= 1:                return eval_shfs_4d_10(sh, dirs, dirs_t, l)
+    elif deg <= 2:                return eval_shfs_4d_20(sh, dirs, dirs_t, l)
     elif deg <= 3 and deg_t <= 0: return eval_shfs_4d_30(sh, dirs, dirs_t, l)
     elif deg <= 3 and deg_t <= 1: return eval_shfs_4d_31(sh, dirs, dirs_t, l)
     elif deg <= 3 and deg_t <= 2: return eval_shfs_4d_32(sh, dirs, dirs_t, l)
-    else: raise NotImplementedError('Unsupported SH dimension')
+    else: raise NotImplementedError('Unsupported 4DSH dimension')
+    # fmt: on
 
 
 @torch.jit.script
