@@ -32,8 +32,15 @@ pip install -e .
 Or install all dependencies for development (this requires you to have a valid [CUDA building environment with PyTorch already installed](docs/design/install.md#cuda-related-compilations)):
 
 ```shell
-# Editable install, with dependencies from requirements-dev.txt
-pip install -e ".[dev]"
+# Editable install, with dependencies from requirements-devel.txt
+pip install -e ".[devel]"
+```
+
+Note that you can just run these two in tandem for to take care of `PyTorch` before compiling CUDA extensions:
+
+```shell
+pip install -e . # will install from requirements.txt
+pip install -e ".[devel]" # will install from requirements-devel.txt
 ```
 
 Alternatively, if your `pip install` command fails due to one or two packages, try installing the dependencies one by one in this way:
@@ -41,7 +48,9 @@ Alternatively, if your `pip install` command fails due to one or two packages, t
 ```shell
 # Install pip dependencies
 cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
-# cat requirements-dev.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
+
+# Install development pip dependencies
+cat requirements-devel.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
 
 # Register EasyVolcp for imports
 pip install -e . --no-build-isolation --no-deps
@@ -59,8 +68,11 @@ python -m pip install -U pip setuptools
 Optionally if you only want to use ***EasyVolcap*** in other projects by directly importing its components, you can install it from GitHub with:
 
 ```shell
+# Install core dependencies
 pip install "git+https://github.com/zju3dv/EasyVolcap"
-# pip install "git+https://github.com/zju3dv/EasyVolcap#egg=easyvolcap[dev]" # or with full dependencies
+
+# Maybe also install development required dependencies (might require CUDA compilation)
+pip install "git+https://github.com/zju3dv/EasyVolcap#egg=easyvolcap[devel]"
 ```
 
 ### Install Using `conda`
@@ -77,7 +89,7 @@ mamba env update
 
 # Install pip dependencies
 cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
-# cat requirements-dev.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
+# cat requirements-devel.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
 
 # Register EasyVolcp for imports
 pip install -e . --no-build-isolation --no-deps
@@ -99,7 +111,7 @@ Note: `pip` dependencies can sometimes fail to install & build. However, not all
 
 If you encounter import errors, they can usually be safely ignored if the code runs since we lazy load a lot of the trikcy-to-install ones, especially when there's CUDA kernel compilation involved.
 
-If the import error gets in the way of the actual code you want to use, you might want to search the reported package name in [`requirements-dev.txt`](requirements-dev.txt) and install them manually.
+If the import error gets in the way of the actual code you want to use, you might want to search the reported package name in [`requirements-devel.txt`](requirements-devel.txt) and install them manually.
 
 For example, for the missing `diff_gauss` package, you can find the line `diff_gauss @ git+https://github.com/dendenxu/diff-gaussian-rasterization` there and install it with:
 

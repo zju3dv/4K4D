@@ -16,10 +16,10 @@ dynamic = ["dependencies", "optional-dependencies"]
 homepage = "https://github.com/dendenxu/easyvolcap"
 
 [tool.setuptools]
-# Automatic finding of packages is slow as xxx due to symlink to large datasets (tons of images)
+# Automatic finding of packages is too slow due to symlink to large datasets (tons of images)
 # It's never just runtime speed, we'd like the overall user experiment to be smooth
 # Including the process of creating commandline interfaces
-packages = [ # ................?????
+packages = [
     'easyvolcap',
     'easyvolcap.engine',
     'easyvolcap.engine.handlers',
@@ -79,4 +79,8 @@ volcap-prof = "easyvolcap.scripts.wrap:prof_entrypoint"
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
-optional-dependencies = { dev = { file = ["requirements-dev.txt"] } }
+# NOTE: Somehow, installing with pip install -e ".[dev]" will cause pip to try to install other packages with the dev feature as well..
+# Like running: pip install mediapipe[dev], however such feature doesn't exist in mediapipe, thus the installation fails
+# So we opted to change the name for a full development install from "dev" to "devel"
+# optional-dependencies = { dev = { file = ["requirements-devel.txt"] } }
+optional-dependencies = { devel = { file = ["requirements-devel.txt"] } }

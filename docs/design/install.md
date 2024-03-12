@@ -32,7 +32,7 @@ conda install -n base mamba -c conda-forge -y
 # And update the environtment.yaml file to use python 3.9 instead of 3.10
 # mamba create -n easyvolcap "python==3.10" -y
 # mamba create -n easyvolcap "python>=3.10,<3.10" -y
-mamba create -n easyvolcap "python>=3.10" -y
+mamba create -n easyvolcap "python>=3.11,<3.12" -y
 conda activate easyvolcap
 mamba env update # picks up environment.yml
 
@@ -44,7 +44,7 @@ mamba env update # picks up environment.yml
 # Install all pip dependencies one by one in case some fails
 # pip dependencies might fail to install, check the root cause and try this script again
 # Possible caveats: cuda version? pytorch version? python version?
-cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | xargs -n 1 pip install 
+cat requirements-devel.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
 
 # Registers command-line interfaces like `evc` `evc-train` `evc-test` etc.
 pip install -e . --no-build-isolation --no-deps

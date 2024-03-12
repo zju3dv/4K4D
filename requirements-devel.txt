@@ -1,4 +1,5 @@
-# FIXME: For now, installing with pip install -e .[dev] does not work due to passed feature request: dev
+# NOTE: Somehow, installing with pip install -e ".[dev]" will cause pip to try to install other packages with the dev feature as well.. thus ours is called `devel
+
 # please install pip requirements using: 
 # cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
 # otherwise one single compilation error could eat away like 20 minutes for nothing.
