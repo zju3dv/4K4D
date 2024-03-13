@@ -1282,6 +1282,8 @@ class VolumetricVideoViewer:
             log(red('Mouse button callback falling through'), button)
 
     def glfw_cursor_pos_callback(self, window, x, y):
+        if (imgui.get_io().want_capture_mouse):
+            imgui.backends.glfw_cursor_pos_callback(self.window_address, x, y)
         self.camera.update_dragging(x, y)
         return imgui.backends.glfw_cursor_pos_callback(self.window_address, x, y)
 
