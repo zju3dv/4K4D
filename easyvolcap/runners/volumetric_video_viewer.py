@@ -16,7 +16,7 @@ from functools import partial
 from collections import deque
 from datetime import datetime
 from copy import copy, deepcopy
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Optional
 from glm import vec3, vec4, mat3, mat4, mat4x3
 from imgui_bundle import imgui_color_text_edit as ed
 from imgui_bundle import portable_file_dialogs as pfd
@@ -89,6 +89,7 @@ class VolumetricVideoViewer:
 
                  fullscreen: bool = False,
                  camera_cfg: dotdict = dotdict(type=Camera.__name__),
+                 init_camera_index: Optional[int] = None,
 
                  # Debugging elements
                  load_keyframes_at_init: bool = False,
@@ -102,6 +103,7 @@ class VolumetricVideoViewer:
         self.window_title = window_title
         self.use_vsync = use_vsync
         self.use_window_focal = use_window_focal
+        self.init_camera_index = init_camera_index
 
         # Quad related configurations
         self.use_quad_draw = use_quad_draw
@@ -126,7 +128,7 @@ class VolumetricVideoViewer:
         self.model = self.runner.model
         self.model.eval()
 
-        self.init_camera(camera_cfg)  # prepare for the actual rendering now, needs dataset -> needs runner
+        self.init_camera(camera_cfg, init_camera_index)  # prepare for the actual rendering now, needs dataset -> needs runner
         self.init_glfw()  # ?: this will open up the window and let the user wait, should we move this up?
         self.init_imgui()
         self.init_opengl()
@@ -1249,7 +1251,7 @@ class VolumetricVideoViewer:
         glfw.terminate()
 
     def reset(self):
-        self.init_camera(self.camera_cfg)
+        self.init_camera(self.camera_cfg, self.init_camera_index)
         self.playing = False
         self.exposure = 1.0
         self.offset = 0.0

@@ -22,7 +22,7 @@ from easyvolcap.utils.data_utils import export_pts, to_x, load_pts
 from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
 from easyvolcap.utils.net_utils import make_params, make_buffer, VolumetricVideoModule
 from easyvolcap.utils.math_utils import normalize, affine_inverse, affine_padding, point_padding
-from easyvolcap.utils.fcds_utils import voxel_down_sample, farthest_down_sample, remove_outlier, get_pytorch3d_camera_params, surface_points, sample_filter_random_points, get_pulsar_camera_params, voxel_surface_down_sample, duplicate, farthest, random, filter_bounds
+from easyvolcap.utils.fcds_utils import voxel_down_sample, farthest_down_sample, remove_outlier, get_pytorch3d_camera_params, surface_points, sample_filter_random_points, get_pulsar_camera_params, voxel_surface_down_sample, duplicate, farthest, random, filter_bounds, SamplingType
 
 from easyvolcap.engine import cfg, args
 from easyvolcap.engine import EMBEDDERS, REGRESSORS, SAMPLERS
@@ -56,16 +56,6 @@ from pytorch3d.renderer import (
     NormWeightedCompositor,
     PulsarPointsRenderer
 )
-
-
-from enum import Enum, auto
-
-
-class SamplingType(Enum):
-    MARCHING_CUBES_RECONSTRUCTION = auto()  # use surface reconstruction and distance thresholding
-    POISSON_RECONSTRUCTION = auto()  # use surface reconstruction and distance thresholding
-    FARTHEST_DOWN_SAMPLE = auto()  # use the fartherest down sampling algorithm
-    SURFACE_DISTRIBUTION = auto()
 
 
 @SAMPLERS.register_module()
@@ -361,6 +351,8 @@ class PointPlanesSampler(VolumetricVideoModule):
                 self.apply_to_pcds(partial(farthest, length=None, n_points=self.n_points), range=[i, i + 1])  # n_points number of points
             elif self.sampling_type == SamplingType.POISSON_RECONSTRUCTION:
                 pass
+            elif self.sampling_type == SamplingType.RANDOM_DOWN_SAMPLE:
+                self.apply_to_pcds(partial(random, n_points=self.n_points))  # n_points number of points
             elif self.sampling_type == SamplingType.MARCHING_CUBES_RECONSTRUCTION:
                 # breakpoint()
                 # self.apply_to_pcds(partial(filter_bounds, bounds=bounds), range=[i, i + 1])  # duplication (n_points * 2)
