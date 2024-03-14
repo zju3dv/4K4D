@@ -122,12 +122,12 @@ def generate_video(result_str: str,
     ] + ([
         '-hide_banner',
         '-loglevel', 'error',
-    ] if not verbose else []) + ([
+    ] if verbose else []) + ([
         '-framerate', fps,
     ] if fps > 0 else []) + ([
         '-f', 'image2',
         '-pattern_type', 'glob',
-    ] if not (splitext(result_str)[-1] or result_str.endswith('*')) else []) + ([
+    ] if '*' in result_str else []) + ([
         '-r', fps,
     ] if fps > 0 else []) + [
         '-nostdin',  # otherwise you cannot chain commands together
