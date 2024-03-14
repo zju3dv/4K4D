@@ -122,7 +122,7 @@ def generate_video(result_str: str,
     ] + ([
         '-hide_banner',
         '-loglevel', 'error',
-    ] if verbose else []) + ([
+    ] if not verbose else []) + ([
         '-framerate', fps,
     ] if fps > 0 else []) + ([
         '-f', 'image2',
