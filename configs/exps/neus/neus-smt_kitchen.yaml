@@ -12,5 +12,9 @@ runner_cfg:
     save_latest_ep: 10
     eval_ep: 10
 
+model_cfg:
+    supervisor_cfg:
+        eikonal_loss_weight: 0.01
+
 # prettier-ignore
 exp_name: {{fileBasenameNoExtension}}
