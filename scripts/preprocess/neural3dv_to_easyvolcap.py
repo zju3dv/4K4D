@@ -1,7 +1,16 @@
-# Convert neural3dv dataset to easyvolcap format
-# Assume we've got the images processed by haotong
-# Need some validation since we're kind of blindly converting from pose_bounds.npy
-# Need a way to store the bound info in the camera parameters file
+"""
+Convert neural3dv dataset to easyvolcap format
+Assume we've got the images processed by haotong
+Need some validation since we're kind of blindly converting from pose_bounds.npy
+Need a way to store the bound info in the camera parameters file
+
+Assume ./data/neural3dv/XXX
+in easyvolcap:
+python3 scripts/preprocess/neural3dv_to_easyvolcap.py --only XXX
+python3 scripts/colmap/easymocap_to_colmap.py --data_root data/neural3dv/XXX --image_dir images --output_dir colmap
+in spg_colmap:
+python3 sfm_renbody.py --root_dir ./data/neural3dv/XXX/colmap --colmap_path $PATHTOCOLMAP
+"""
 
 import argparse
 import subprocess
@@ -18,15 +27,7 @@ from easyvolcap.utils.data_utils import as_numpy_func, export_camera
 
 
 def main():
-    """
-    Assume ./data/neural3dv/XXX
-    in easyvolcap:
-    python3 scripts/preprocess/neural3dv_to_easyvolcap.py --only XXX
-    python3 scripts/colmap/easymocap_to_colmap.py --data_root data/neural3dv/XXX --image_dir images --output_dir colmap
-    in spg_colmap:
-    python3 sfm_renbody.py --root_dir ./data/neural3dv/XXX/colmap --colmap_path $PATHTOCOLMAP
-    """
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--neural3dv_root', type=str, default='data/neural3dv')
     parser.add_argument('--easyvolcap_root', type=str, default='data/neural3dv')
     parser.add_argument('--camera_pose', type=str, default='poses_bounds.npy')

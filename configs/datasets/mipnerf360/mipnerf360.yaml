@@ -1,0 +1,7 @@
+dataloader_cfg:
+    dataset_cfg: &dataset_cfg
+        images_dir: images_easyvolcap
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
