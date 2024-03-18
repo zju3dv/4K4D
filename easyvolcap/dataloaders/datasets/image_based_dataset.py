@@ -3,17 +3,19 @@ import torch
 import random
 import numpy as np
 from functools import lru_cache
-
 from typing import List, Dict, Union
-from easyvolcap.engine import cfg, args
+
 from easyvolcap.engine import DATASETS
+from easyvolcap.engine import cfg, args
 from easyvolcap.engine.registry import call_from_cfg
+from easyvolcap.dataloaders.datasets.volumetric_video_dataset import VolumetricVideoDataset
+
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.parallel_utils import parallel_execution
-from easyvolcap.utils.data_utils import DataSplit, pin_memory, to_tensor, as_torch_func
 from easyvolcap.utils.math_utils import affine_padding, affine_inverse
-from easyvolcap.dataloaders.datasets.volumetric_video_dataset import VolumetricVideoDataset
+from easyvolcap.utils.data_utils import DataSplit, pin_memory, to_tensor, as_torch_func
+from easyvolcap.utils.cam_utils import compute_camera_similarity, compute_camera_zigzag_similarity, Sourcing
 
 
 # We have a tricky situation here:
@@ -38,6 +40,7 @@ class ImageBasedDataset(VolumetricVideoDataset):
                  append_gt_prob: float = 0.1,
                  extra_src_pool: int = 1,
                  closest_using_t: bool = False,  # find the closest view using the temporal dimension
+                 source_type: str = Sourcing.DISTANCE.name,  # Sourcing.DISTANCE or Sourcing.ZIGZAG
                  supply_decoded: bool = False,
                  barebone: bool = False,
                  skip_loading_images: bool = False,
@@ -61,6 +64,7 @@ class ImageBasedDataset(VolumetricVideoDataset):
         # if tar_view_sample != [0, None, 1] and view_sample != [0, None, 1]: log(red(f'Using `src_view_sample = {tar_view_sample}` when `view_sample = {self.view_sample}` is not default'))
         # self.tar_view_sample = tar_view_sample
 
+        self.source_type = Sourcing[source_type]
         # Views are selected and loaded
         # Frames are selected and loaded
         self.load_source_params()
@@ -103,16 +107,17 @@ class ImageBasedDataset(VolumetricVideoDataset):
             self.src_exts = affine_padding(self.w2cs[view_inds])  # N, L, 4, 4
 
     def load_source_indices(self):
+        # Get the target views and source views
         tar_c2ws = self.c2ws.permute(1, 0, 2, 3) if self.closest_using_t else self.c2ws  # MARK: transpose
         src_c2ws = affine_inverse(self.src_exts)
-        centers_target = tar_c2ws[..., :3, 3]  # N, L, 3
-        centers_source = src_c2ws[..., :3, 3]  # N, L, 3
-
-        # Using distance between centers for camera selection
-        sims: torch.Tensor = 1 / (centers_source[None] - centers_target[:, None]).norm(dim=-1)  # N, N, L,
 
         # Source view index and there similarity
-        self.src_sims, self.src_inds = sims.sort(dim=1, descending=True)  # similarity to source views # Target, Source, Latent
+        if self.source_type == Sourcing.DISTANCE:
+            self.src_sims, self.src_inds = compute_camera_similarity(tar_c2ws, src_c2ws)  # similarity to source views # Target, Source, Latent
+        elif self.source_type == Sourcing.ZIGZAG:
+            self.src_sims, self.src_inds = compute_camera_zigzag_similarity(tar_c2ws, src_c2ws)  # similarity to source views # Target, Source, Latent
+        else:
+            raise NotImplementedError
 
     def get_metadata(self, index: dotdict):
         if isinstance(index, dotdict): index, n_srcs = index.index, index.n_srcs
