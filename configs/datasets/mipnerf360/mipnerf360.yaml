@@ -5,3 +5,4 @@ dataloader_cfg:
 val_dataloader_cfg:
     dataset_cfg:
         <<: *dataset_cfg
+        view_sample: [0, null, 50] # evaluate on less images for faster training

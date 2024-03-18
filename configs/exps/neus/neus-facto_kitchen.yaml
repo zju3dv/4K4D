@@ -1,7 +1,7 @@
 configs:
     - configs/base.yaml # default arguments for the whole codebase
-    - configs/models/l3mhet.yaml # network model configuration
-    - configs/datasets/mipnerf360/kitchen.yaml
+    - configs/models/neus-facto.yaml # network model configuration
+    - configs/datasets/mipnerf360/kitchen.yaml # dataset usage configuration
     - configs/specs/blurry.yaml # empty temporal embedder
     - configs/specs/optcam.yaml # optimize camera parameters
     - configs/specs/transient.yaml # add per-image coding
