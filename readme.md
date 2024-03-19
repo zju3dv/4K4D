@@ -29,6 +29,13 @@ Install only the core dependencies for running the viewer locally:
 pip install -e . 
 ```
 
+On Windows, you might end up with a CPU-only PyTorch installation by only running the above command since only the CPU version for Windows is available on PyPI ([more info](https://github.com/pmeier/light-the-torch?tab=readme-ov-file#why-do-i-need-it)).
+To install a cuda-enabled PyTorch, append the above command with an extra search link:
+
+```shell
+pip install -e . -f https://download.pytorch.org/whl/torch_stable.html
+```
+
 Or install all dependencies for development (this requires you to have a valid [CUDA building environment with PyTorch already installed](docs/design/install.md#cuda-related-compilations)):
 
 ```shell
@@ -43,14 +50,18 @@ pip install -e . # will install from requirements.txt
 pip install -e ".[devel]" # will install from requirements-devel.txt
 ```
 
+
 Alternatively, if your `pip install` command fails due to one or two packages, try installing the dependencies one by one in this way:
 
 ```shell
+# Install PyTorch
+pip install torch torchvision torchaudio -f https://download.pytorch.org/whl/torch_stable.html
+
 # Install pip dependencies
-cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
+cat requirements.txt | sed -e '/^\s*-.*$/d' -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "#"); if (length(a) > 1) print a[1]; else print $0;}' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
 
 # Install development pip dependencies
-cat requirements-devel.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
+cat requirements-devel.txt | sed -e '/^\s*-.*$/d' -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "#"); if (length(a) > 1) print a[1]; else print $0;}' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
 
 # Register EasyVolcp for imports
 pip install -e . --no-build-isolation --no-deps

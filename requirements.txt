@@ -1,22 +1,24 @@
-torch # if you've used environment.yml, this will be a no-op
-pytorch-cuda # will ensure that you install the GPU version of pytorch
+torch>=1.12.0 # if you've used environment.yml, this will be a no-op
 tqdm
 pdbr
 yapf
 h5py
 ujson
+regex
 PyGLM
 scipy
 addict
 PyYaml
+ipython
 trimesh
 imageio
 PyMCubes
 pyperclip
 pyntcloud
+torchaudio
+torchvision
 PyTurboJPEG
 tensorboard
-torchvision
 ruamel.yaml
 cuda-python
 scikit-image
