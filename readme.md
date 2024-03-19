@@ -30,11 +30,14 @@ pip install -e .
 ```
 
 On Windows, you might end up with a CPU-only PyTorch installation by only running the above command since only the CPU version for Windows is available on PyPI ([more info](https://github.com/pmeier/light-the-torch?tab=readme-ov-file#why-do-i-need-it)).
+
 To install a cuda-enabled PyTorch, append the above command with an extra search link:
 
 ```shell
 pip install -e . -f https://download.pytorch.org/whl/torch_stable.html
 ```
+
+### Development Install Using `pip`
 
 Or install all dependencies for development (this requires you to have a valid [CUDA building environment with PyTorch already installed](docs/design/install.md#cuda-related-compilations)):
 
@@ -49,7 +52,6 @@ Note that you can just run these two in tandem for to take care of `PyTorch` bef
 pip install -e . # will install from requirements.txt
 pip install -e ".[devel]" # will install from requirements-devel.txt
 ```
-
 
 Alternatively, if your `pip install` command fails due to one or two packages, try installing the dependencies one by one in this way:
 
@@ -75,6 +77,8 @@ try updating `setuptools` and `pip` with:
 ```shell
 python -m pip install -U pip setuptools
 ```
+
+### No-Clone Install Using `pip`
 
 Optionally if you only want to use ***EasyVolcap*** in other projects by directly importing its components, you can install it from GitHub with:
 
