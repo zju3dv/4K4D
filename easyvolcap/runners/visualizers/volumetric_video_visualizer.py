@@ -319,10 +319,10 @@ class VolumetricVideoVisualizer:  # this should act as a base class for other ty
                 result_str = f'"{result_dir}/*{self.vis_ext}"'
                 output_path = result_str[1:].split('*')[0][:-1] + '.mp4'
                 try:
-                    generate_video(result_str, output_path, self.video_fps)  # one video for one type?
+                    generate_video(result_str, output_path, fps=self.video_fps)  # one video for one type?
                 except RuntimeError as e:
                     log(yellow('Error encountered during video composition, will retry without hardware encoding'))
-                    generate_video(result_str, output_path, self.video_fps, hwaccel='none', preset='veryslow', vcodec='libx265')  # one video for one type?
+                    generate_video(result_str, output_path, fps=self.video_fps, hwaccel='none', preset='veryslow', vcodec='libx265')  # one video for one type?
                 log(f'Video generated: {blue(output_path)}')
                 # TODO: use timg/tiv to visaulize the video / image on disk to the commandline
 

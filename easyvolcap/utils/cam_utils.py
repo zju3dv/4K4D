@@ -11,6 +11,7 @@ from scipy import interpolate
 from scipy.spatial.transform import Rotation
 
 from easyvolcap.utils.console_utils import *
+from easyvolcap.utils.chunk_utils import multi_gather
 from easyvolcap.utils.data_utils import get_rays, get_near_far
 from easyvolcap.utils.math_utils import affine_inverse, affine_padding
 
@@ -30,6 +31,54 @@ def compute_camera_similarity(tar_c2ws: torch.Tensor, src_c2ws: torch.Tensor):
     # Source view index and there similarity
     src_sims, src_inds = sims.sort(dim=1, descending=True)  # similarity to source views # Target, Source, Latent
     return src_sims, src_inds  # N, N, L
+
+
+def compute_camera_zigzag_similarity(tar_c2ws: torch.Tensor, src_c2ws: torch.Tensor):
+    # Get the camera centers
+    centers_target = tar_c2ws[..., :3, 3]  # (Vt, F, 3)
+    centers_source = src_c2ws[..., :3, 3]  # (Vs, F, 3)
+
+    # Compute the distance between the centers
+    sims: torch.Tensor = 1 / (centers_source[None] - centers_target[:, None]).norm(dim=-1)  # (Vt, Vs, F)
+    # Source view index and there similarity
+    src_sims, src_inds = sims.sort(dim=1, descending=True)  # (Vt, Vs, F), (Vt, Vs, F)
+
+    # Select the closest source view as the reference view for each target view
+    ref_view = multi_gather(centers_source.permute(1, 0, 2), src_inds.permute(2, 0, 1)[..., 0]).permute(1, 0, 2)  # (Vt, F, 3)
+
+    # Compute the cross product between the reference view and target view, and the cross product between the source views and the target view
+    ref_cross = torch.cross(ref_view, centers_target, dim=-1)  # (Vt, F, 3)
+    src_cross = torch.cross(centers_source[None], centers_target[:, None], dim=-1)  # (Vt, Vs, F, 3)
+
+    # Compute the inner product between the cross products to determine the zigzag placing
+    zigzag = (ref_cross[:, None] * src_cross).sum(dim=-1)  # (Vt, Vs, F)
+
+    zigzag_src_sims, zigzag_src_inds = src_sims.clone(), src_inds.clone()
+    # Re-indexing the similarity and indices
+    for v in range(len(zigzag)):
+        # Get the sorted zig and zag similarity and indices respectively
+        zig_msk = torch.sum(torch.eq(torch.arange(len(centers_source))[zigzag[v, :, 0] > 0][:, None], src_inds[v, :, 0]), dim=0).bool()
+        zig_src_sims, zig_src_inds = src_sims[v][zig_msk], src_inds[v][zig_msk]  # (L, F), (L, F)
+        zag_msk = torch.sum(torch.eq(torch.arange(len(centers_source))[zigzag[v, :, 0] < 0][:, None], src_inds[v, :, 0]), dim=0).bool()
+        zag_src_sims, zag_src_inds = src_sims[v][zag_msk], src_inds[v][zag_msk]  # (R, F), (R, F)
+
+        # Concatenate the zig and zag similarity and indices in order zig-zag-zig-zag-...
+        size = min(len(zig_src_sims), len(zag_src_sims))
+        zigzag_src_sims[v, 0:size * 2:2], zigzag_src_sims[v, 1:size * 2:2] = zig_src_sims[:size], zag_src_sims[:size]  # (S*2, F), (S*2, F)
+        zigzag_src_inds[v, 0:size * 2:2], zigzag_src_inds[v, 1:size * 2:2] = zig_src_inds[:size], zag_src_inds[:size]  # (S*2, F), (S*2, F)
+
+        # Concatenate the remaining similarity and indices
+        if len(zig_src_sims) > len(zag_src_sims): zigzag_src_sims[v, size * 2:], zigzag_src_inds[v, size * 2:] = zig_src_sims[size:], zig_src_inds[size:]
+        else: zigzag_src_sims[v, size * 2:], zigzag_src_inds[v, size * 2:] = zag_src_sims[size:], zag_src_inds[size:]
+
+    # Return the zigzag similarity and indices
+    return zigzag_src_sims, zigzag_src_inds
+
+
+class Sourcing(Enum):
+    # Type of source indexing
+    DISTANCE = auto()  # the default source indexing
+    ZIGZAG = auto()  # will index the source view in zigzag order
 
 
 class Interpolation(Enum):

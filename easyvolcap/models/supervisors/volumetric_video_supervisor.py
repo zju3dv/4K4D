@@ -41,6 +41,7 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
                            H: int, W: int,
                            type=ImgLossType.HUBER):
         rgb_gt = rgb_gt + bg_color * (1 - msk_gt)  # MARK: modifying gt for supervision
+        rgb_gt, rgb_map = rgb_gt[:, :H * W], rgb_map[:, :H * W]
 
         # https://stackoverflow.com/questions/181530/styling-multi-line-conditions-in-if-statements
         resd_sq = (rgb_map - rgb_gt)**2

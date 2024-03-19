@@ -1,0 +1,9 @@
+configs: configs/datasets/mipnerf360/mipnerf360.yaml
+
+dataloader_cfg:
+    dataset_cfg: &dataset_cfg
+        data_root: data/mipnerf360/counter
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg

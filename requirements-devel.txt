@@ -1,3 +1,5 @@
+# NOTE: Somehow, installing with pip install -e ".[dev]" will cause pip to try to install other packages with the dev feature as well.. thus ours is called `devel
+
 # please install pip requirements using: 
 # cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
 # otherwise one single compilation error could eat away like 20 minutes for nothing.
@@ -58,6 +60,7 @@ ruamel.yaml
 commentjson
 
 # to support visualization, we need:
+nvitop
 gpustat @ git+https://github.com/wookayin/gpustat
 # for winding_number_remesh
 nvdiffrast @ git+https://github.com/NVlabs/nvdiffrast

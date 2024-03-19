@@ -84,7 +84,7 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
                  # Debugging
                  collect_timing: bool = False,  # will lose 1 fps over copying
                  timer_sync_cuda: bool = True,  # will explicitly call torch.cuda.synchronize() before collecting
-                 timer_record_to_file: bool = False, # will write to a json file for collected analysis of the timing
+                 timer_record_to_file: bool = False,  # will write to a json file for collected analysis of the timing
                  ):
         self.model = model  # possibly already a ddp model?
 
@@ -358,7 +358,8 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
             self.scaler.scale(loss).backward()  # maybe perform AMP
             if self.clip_grad_norm > 0: torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_grad_norm)
             if self.clip_grad_value > 0: torch.nn.utils.clip_grad_value_(self.model.parameters(), self.clip_grad_value)
-            self.model.decorate_grad(self, batch) # perform some action on the gradients
+            if hasattr(self.model, 'decorate_grad'): self.model.decorate_grad(self, batch)  # perform some action on the gradients
+            elif hasattr(self.model, 'module') and hasattr(self.model.module, 'decorate_grad'): self.model.module.decorate_grad(self, batch)  # perform some action on the gradients
             self.scaler.step(self.optimizer)
             if not self.retain_last_grad: self.optimizer.zero_grad(set_to_none=True)
             self.scheduler.step()

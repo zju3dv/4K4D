@@ -103,15 +103,17 @@ def inverse_sigmoid(x):
 
 @torch.jit.script
 def strip_lowerdiag(L: torch.Tensor):
-    uncertainty = torch.zeros((L.shape[0], 6), dtype=torch.float, device=L.device)
+    # uncertainty = torch.zeros((L.shape[0], 6), dtype=L.dtype, device=L.device)
 
-    uncertainty[:, 0] = L[:, 0, 0]
-    uncertainty[:, 1] = L[:, 0, 1]
-    uncertainty[:, 2] = L[:, 0, 2]
-    uncertainty[:, 3] = L[:, 1, 1]
-    uncertainty[:, 4] = L[:, 1, 2]
-    uncertainty[:, 5] = L[:, 2, 2]
-    return uncertainty
+    # uncertainty[:, 0] = L[:, 0, 0]
+    # uncertainty[:, 1] = L[:, 0, 1]
+    # uncertainty[:, 2] = L[:, 0, 2]
+    # uncertainty[:, 3] = L[:, 1, 1]
+    # uncertainty[:, 4] = L[:, 1, 2]
+    # uncertainty[:, 5] = L[:, 2, 2]
+    # return uncertainty
+    inds = torch.triu_indices(3, 3, device=L.device)  # 2, 6
+    return L[:, inds[0], inds[1]]
 
 
 def strip_symmetric(sym):
@@ -119,12 +121,14 @@ def strip_symmetric(sym):
 
 
 @torch.jit.script
-def build_rotation(r: torch.Tensor):
-    norm = torch.sqrt(r[:, 0] * r[:, 0] + r[:, 1] * r[:, 1] + r[:, 2] * r[:, 2] + r[:, 3] * r[:, 3])
+def build_rotation(q: torch.Tensor):
+    assert q.shape[-1] == 4
+    # norm = torch.sqrt(r[:, 0] * r[:, 0] + r[:, 1] * r[:, 1] + r[:, 2] * r[:, 2] + r[:, 3] * r[:, 3])
 
-    q = r / norm[:, None]
+    # q = r / norm[:, None]
+    q = F.normalize(q, dim=-1)
 
-    R = torch.zeros((q.size(0), 3, 3), device=r.device)
+    R = torch.zeros((q.size(0), 3, 3), dtype=q.dtype, device=q.device)
 
     r = q[:, 0]
     x = q[:, 1]
@@ -143,9 +147,10 @@ def build_rotation(r: torch.Tensor):
     return R
 
 
-def build_scaling_rotation(s: torch.Tensor, r: torch.Tensor):
-    L = torch.zeros((s.shape[0], 3, 3), dtype=torch.float, device=s.device)
-    R = build_rotation(r)
+@torch.jit.script
+def build_scaling_rotation(s: torch.Tensor, q: torch.Tensor):
+    L = torch.zeros((s.shape[0], 3, 3), dtype=s.dtype, device=s.device)
+    R = build_rotation(q)
 
     L[:, 0, 0] = s[:, 0]
     L[:, 1, 1] = s[:, 1]
@@ -163,25 +168,30 @@ def focal2fov(focal, pixels):
     return 2 * np.arctan(pixels / (2 * focal))
 
 
+@torch.jit.script
 def getWorld2View(R: torch.Tensor, t: torch.Tensor):
     """
     R: ..., 3, 3
     T: ..., 3, 1
     """
     sh = R.shape[:-2]
-    T = torch.zeros((*sh, 4, 4), dtype=R.dtype, device=R.device)
+    T = torch.eye(4, dtype=R.dtype, device=R.device)  # 4, 4
+    for i in range(len(sh)):
+        T = T.unsqueeze(0)
+    T = T.expand(sh + (4, 4))
     T[..., :3, :3] = R
     T[..., :3, 3:] = t
-    T[..., 3, 3] = 1.0
     return T
 
 
-def getProjectionMatrix(K: torch.Tensor, H: float, W: float, znear=0.001, zfar=1000):
+@torch.jit.script
+def getProjectionMatrix(K: torch.Tensor, H: torch.Tensor, W: torch.Tensor, znear: torch.Tensor, zfar: torch.Tensor):
     fx = K[0, 0]
     fy = K[1, 1]
     cx = K[0, 2]
     cy = K[1, 2]
     s = K[0, 1]
+    one = K[2, 2]
 
     P = torch.zeros(4, 4, dtype=K.dtype, device=K.device)
 
@@ -195,17 +205,18 @@ def getProjectionMatrix(K: torch.Tensor, H: float, W: float, znear=0.001, zfar=1
     P[2, 2] = 1 * (zfar + znear) / (zfar - znear)
     P[2, 3] = -1 * zfar * znear / (zfar - znear)
 
-    P[3, 2] = 1
+    P[3, 2] = one
 
     return P
 
 
 def prepare_gaussian_camera(batch):
     output = dotdict()
-    H, W, K, R, T, n, f = batch.meta.H.item(), batch.meta.W.item(), batch.K[0], batch.R[0], batch.T[0], batch.meta.n.item(), batch.meta.f.item()
+    H, W, K, R, T, n, f = batch.H[0], batch.W[0], batch.K[0], batch.R[0], batch.T[0], batch.n[0], batch.f[0]
+    cpu_H, cpu_W, cpu_K, cpu_R, cpu_T, cpu_n, cpu_f = batch.meta.H[0], batch.meta.W[0], batch.meta.K[0], batch.meta.R[0], batch.meta.T[0], batch.meta.n[0], batch.meta.f[0]
 
-    output.image_height = H
-    output.image_width = W
+    output.image_height = cpu_H
+    output.image_width = cpu_W
 
     output.K = K
     output.R = R
@@ -214,13 +225,13 @@ def prepare_gaussian_camera(batch):
     fl_x = batch.meta.K[0][0, 0]  # use cpu K
     fl_y = batch.meta.K[0][1, 1]  # use cpu K
 
-    output.FoVx = focal2fov(fl_x, output.image_width)
-    output.FoVy = focal2fov(fl_y, output.image_height)
+    output.FoVx = focal2fov(fl_x, cpu_W)
+    output.FoVy = focal2fov(fl_y, cpu_H)
 
-    output.world_view_transform = getWorld2View(output.R, output.T).transpose(0, 1)
-    output.projection_matrix = getProjectionMatrix(output.K, output.image_height, output.image_width, n, f).transpose(0, 1)
+    output.world_view_transform = getWorld2View(R, T).transpose(0, 1)
+    output.projection_matrix = getProjectionMatrix(K, H, W, n, f).transpose(0, 1)
     output.full_proj_transform = torch.matmul(output.world_view_transform, output.projection_matrix)
-    output.camera_center = output.world_view_transform.float().inverse()[3:, :3].to(output.world_view_transform)
+    output.camera_center = (-R.mT @ T)[..., 0]  # B, 3, 1 -> 3,
 
     # Set up rasterization configuration
     output.tanfovx = math.tan(output.FoVx * 0.5)
@@ -232,36 +243,37 @@ def prepare_gaussian_camera(batch):
 def convert_to_gaussian_camera(K: torch.Tensor,
                                R: torch.Tensor,
                                T: torch.Tensor,
-                               meta_K: torch.Tensor,
-                               meta_R: torch.Tensor,
-                               meta_T: torch.Tensor,
-                               H: int,
-                               W: int,
-                               znear: float = 0.01,
-                               zfar: float = 100.,
+                               H: torch.Tensor,
+                               W: torch.Tensor,
+                               n: torch.Tensor,
+                               f: torch.Tensor,
+                               cpu_K: torch.Tensor,
+                               cpu_R: torch.Tensor,
+                               cpu_T: torch.Tensor,
+                               cpu_H: int,
+                               cpu_W: int,
+                               cpu_n: float = 0.01,
+                               cpu_f: float = 100.,
                                ):
     output = dotdict()
 
-    output.image_height = H
-    output.image_width = W
+    output.image_height = cpu_H
+    output.image_width = cpu_W
 
     output.K = K
     output.R = R
     output.T = T
-    output.meta_K = meta_K
-    output.meta_R = meta_R
-    output.meta_T = meta_T
 
-    output.znear = znear
-    output.zfar = zfar
+    output.znear = cpu_n
+    output.zfar = cpu_f
 
-    output.FoVx = focal2fov(meta_K[0, 0], output.image_width)
-    output.FoVy = focal2fov(meta_K[1, 1], output.image_height)
+    output.FoVx = focal2fov(cpu_K[0, 0].cpu(), cpu_W.cpu())  # MARK: MIGHT SYNC IN DIST TRAINING, WHY?
+    output.FoVy = focal2fov(cpu_K[1, 1].cpu(), cpu_H.cpu())  # MARK: MIGHT SYNC IN DIST TRAINING, WHY?
 
-    output.world_view_transform = getWorld2View(output.R, output.T).transpose(0, 1)
-    output.projection_matrix = getProjectionMatrix(output.K, float(output.image_height), float(output.image_width), znear, zfar).transpose(0, 1)
+    output.world_view_transform = getWorld2View(R, T).transpose(0, 1)
+    output.projection_matrix = getProjectionMatrix(K, H, W, n, f).transpose(0, 1)
     output.full_proj_transform = torch.matmul(output.world_view_transform, output.projection_matrix)  # 4, 4
-    output.camera_center = output.world_view_transform.inverse()[3:, :3]
+    output.camera_center = (-R.mT @ T)[..., 0]  # B, 3, 1 -> 3,
 
     # Set up rasterization configuration
     output.tanfovx = np.tan(output.FoVx * 0.5)

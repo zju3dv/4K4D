@@ -1,0 +1,20 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/neus-smt.yaml # network model configuration
+    - configs/datasets/mipnerf360/kitchen.yaml # dataset usage configuration
+    - configs/specs/blurry.yaml # empty temporal embedder
+    - configs/specs/optcam.yaml # optimize camera parameters
+    - configs/specs/transient.yaml # add per-image coding
+
+runner_cfg:
+    epochs: 60
+    save_ep: 30
+    save_latest_ep: 10
+    eval_ep: 10
+
+model_cfg:
+    supervisor_cfg:
+        eikonal_loss_weight: 0.01
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

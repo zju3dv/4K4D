@@ -46,8 +46,8 @@ from easyvolcap.utils.easy_utils import read_camera
 from easyvolcap.utils.ray_utils import weighted_sample_rays
 from easyvolcap.utils.parallel_utils import parallel_execution
 from easyvolcap.utils.vhull_utils import hierarchically_carve_vhull
-from easyvolcap.utils.cam_utils import average_c2ws, align_c2ws, average_w2cs
 from easyvolcap.utils.dist_utils import get_rank, get_world_size, get_distributed
+from easyvolcap.utils.cam_utils import average_c2ws, align_c2ws, average_w2cs, Sourcing
 from easyvolcap.utils.math_utils import affine_inverse, affine_padding, torch_inverse_3x3, point_padding
 from easyvolcap.utils.bound_utils import get_bound_2d_bound, get_bounds, monotonic_near_far, get_bound_3d_near_far
 from easyvolcap.utils.data_utils import DataSplit, UnstructuredTensors, load_resize_undist_ims_bytes, load_image_from_bytes, as_torch_func, to_cuda, to_cpu, to_tensor, export_pts, load_pts, decode_crop_fill_ims_bytes, decode_fill_ims_bytes
@@ -168,6 +168,7 @@ class VolumetricVideoDataset(Dataset):
                  n_srcs_list: List[int] = [8],
                  n_srcs_prob: List[int] = [1.0],
                  append_gt_prob: float = 0.0,
+                 source_type: str = Sourcing.DISTANCE.name,  # Sourcing.DISTANCE or Sourcing.ZIGZAG
                  temporal_range: List[float] = [0, 1],
                  interp_using_t: bool = False,
                  closest_using_t: bool = False,  # for backwards compatibility
@@ -313,6 +314,7 @@ class VolumetricVideoDataset(Dataset):
         self.n_srcs_list = n_srcs_list
         self.n_srcs_prob = n_srcs_prob
         self.append_gt_prob = append_gt_prob
+        self.source_type = Sourcing[source_type]
         self.interp_using_t = interp_using_t
         self.closest_using_t = closest_using_t
         self.force_sparse_view = force_sparse_view

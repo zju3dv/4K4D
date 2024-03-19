@@ -11,6 +11,17 @@ from easyvolcap.utils.raster_utils import get_ndc_perspective_matrix
 from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
 from easyvolcap.utils.math_utils import normalize_sum, affine_inverse, affine_padding
 
+from enum import Enum, auto
+
+
+class SamplingType(Enum):
+    MARCHING_CUBES_RECONSTRUCTION = auto()  # use surface reconstruction and distance thresholding
+    POISSON_RECONSTRUCTION = auto()  # use surface reconstruction and distance thresholding
+    FARTHEST_DOWN_SAMPLE = auto()  # use the fartherest down sampling algorithm
+    SURFACE_DISTRIBUTION = auto()
+    RANDOM_DOWN_SAMPLE = auto()
+    VOXEL_DOWN_SAMPLE = auto()
+
 
 def estimate_occupancy_field(xyz: torch.Tensor, rad: torch.Tensor, occ: torch.Tensor):
     # This method builds a function to evaluate the occupancy field of the point cloud density field

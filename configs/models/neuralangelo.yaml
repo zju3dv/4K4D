@@ -1,14 +1,14 @@
 _: &mlp_size # skip_geo_feat: True
     geometry_cfg:
         type: SDFRegressor
-        width: 64
+        width: 256
         depth: 1
-        splits: [1, 15]
+        splits: [1, 256]
         bias: 0.5
     appearance_cfg:
         type: ColorRegressor
-        width: 64
-        depth: 2
+        width: 256
+        depth: 4
     parameterizer_cfg:
         radius: 3.0 # strange contraction artifacts?
         normalize: True
@@ -16,6 +16,7 @@ _: &mlp_size # skip_geo_feat: True
 dataloader_cfg:
     dataset_cfg: &dataset_cfg
         cache_raw: True
+        n_rays: 1024
         near: 0.5
     batch_sampler_cfg:
         batch_size: 16 # will sample from all images (this should be only used for static scenes)
@@ -28,28 +29,28 @@ val_dataloader_cfg:
 
 runner_cfg:
     epochs: 100
-    ep_iter: &ep_iter 500
-    test_using_inference_mode: False
+    ep_iter: &ep_iter 5000
     optimizer_cfg:
-        lr: 5.0e-4
+        lr: 1.0e-3
         eps: 1.0e-15
+        weight_decay: 1.0e-4
     scheduler_cfg:
-        type: NeuSScheduler
-        warm_up_end: 500
-        learning_rate_alpha: 0.05
+        type: MultiStepWarmupScheduler
+        warm_up_end: *ep_iter
+        milestones: [300000, 400000]
 
 # Always define full model config
 model_cfg:
     # chunkify_rays: False # faster rendering and optimization with less overhead
-    train_chunk_size: 65536
-    render_chunk_size: 65536
+    train_chunk_size: 8192
+    render_chunk_size: 8192
     supervisor_cfg:
         dist_loss_weight: 0.0
         eikonal_loss_weight: 0.1
-        curvature_loss_weight: 0.0
+        curvature_loss_weight: 5.0e-4
     sampler_cfg:
         type: NeuSSampler
-        n_samples: [64, 16, 16, 16, 16]
+        n_samples: [64, 32, 32]
     network_cfg:
         type: NeuSNetwork
         xyzt_embedder_cfg:
@@ -64,30 +65,23 @@ model_cfg:
             type: TcnnHashEmbedder # no mipnerf360 contraction
             in_dim: 3
             # dtype: half
-            # bounds: [[-2.0, -2.0, -2.0], [2.0, 2.0, 2.0]]
+            bounds: [[-1.2, -1.2, -1.2], [1.2, 1.2, 1.2]]
             n_levels: 16
             # n_features_per_level: 8
-            n_features_per_level: 2
+            n_features_per_level: 4
             # b: 1.3195079108
             b: 1.3819128800
             # log2_hashmap_size: 22
-            log2_hashmap_size: 19
+            log2_hashmap_size: 18
             # base_resolution: 64
             base_resolution: 16
             interpolation: 'Linear'
             make_mask: True
-        dir_embedder_cfg:
-            #   type: TcnnDirEmbedder
-            #   degree: 4
-            type: PositionalEncodingEmbedder
-            multires: 4
-            retain_input: True
         <<: *mlp_size
         geo_use_xyzt_feat: False
-        app_use_sdf_feat: True
-        use_finite_diff: False
-        use_finite_diff_schedule: False
+        use_finite_diff: True
+        use_finite_diff_schedule: True
         use_hash_encoding_schedule: True
-        level_init: 8
+        level_init: 4
         steps_per_level: *ep_iter
-        use_curvature_loss_weight_schedule: False
+        use_curvature_loss_weight_schedule: True

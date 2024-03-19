@@ -253,6 +253,7 @@ class NeuSNetwork(GradientModule):
             resd_xyz.requires_grad_(True)
             grad_ctx_mgr = torch.enable_grad()
             grad_ctx_mgr.__enter__()
+            # Check test_using_inference_mode if the gradient manager doesn't work
 
         # Pass 3d embedder
         xyz_feat = self.xyz_embedder(resd_xyz, batch)

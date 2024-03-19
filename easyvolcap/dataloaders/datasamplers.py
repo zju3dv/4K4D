@@ -85,7 +85,7 @@ def get_inds(dataset: VolumetricVideoDataset,
              force_manual_view_selection: bool = False,
              ith_latent: int = 0,):
     inds = torch.arange(0, len(dataset))
-    nl = 1 if isinstance(dataset, VolumetricVideoInferenceDataset) else dataset.n_latents
+    nl = 1 if isinstance(dataset, VolumetricVideoInferenceDataset) else max(1, dataset.n_latents)
     nv = len(dataset) // nl
 
     # Perform view selection
