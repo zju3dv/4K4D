@@ -10,8 +10,7 @@ _: &mlp_size # skip_geo_feat: True
 dataloader_cfg:
     dataset_cfg: &dataset_cfg
         cache_raw: True
-        # n_rays: 1024
-        n_rays: 512 # avoid OOM (default: 1024 * 16)
+        n_rays: 1024
         near: 0.5
     batch_sampler_cfg:
         batch_size: 16 # will sample from all images (this should be only used for static scenes)
@@ -23,18 +22,15 @@ val_dataloader_cfg:
         <<: *dataset_cfg
 
 runner_cfg:
-    epochs: 60 # enough is enough
-    ep_iter: 500
-    test_using_inference_mode: False
+    epochs: 50
+    ep_iter: &ep_iter 1000
     optimizer_cfg:
         lr: 5.0e-4
         eps: 1.0e-15
-        weight_decay_table:
-            xyzt_embedder.xyz_embedder: 1.e-6
     scheduler_cfg:
-        type: NeuSScheduler
-        warm_up_end: 500
-        learning_rate_alpha: 0.05
+        type: ExponentialLR
+        gamma: 0.1
+        min_lr: 1.0e-6
 
 # Always define full model config
 model_cfg:
@@ -79,10 +75,11 @@ model_cfg:
                     type: EmptyEmbedder
                 <<: *mlp_size
             '2':
-                type: NeuSNetwork
+                type: VolSDFNetwork
                 xyzt_embedder_cfg:
                     xyz_embedder_cfg:
                         log2_hashmap_size: 21 # smaller base hash resolution
+                        interpolation: Linear
                 xyz_embedder_cfg:
                     type: EmptyEmbedder
                 geometry_cfg:
@@ -98,7 +95,7 @@ model_cfg:
                 use_finite_diff: False
                 use_finite_diff_schedule: False
                 use_hash_encoding_schedule: False
-                level_init: 8
-                steps_per_level: 5000
+                level_init: 4
+                steps_per_level: *ep_iter
                 use_curvature_loss_weight_schedule: False
                 <<: *mlp_size
