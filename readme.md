@@ -210,7 +210,7 @@ evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_actor1_4.yaml,configs/
 
 We would like to acknowledge the following inspiring prior work:
 
-- [EasyVolcap: Accelerating Neural Volumetric Video Research](https://zju3dv.github.io/easyvolcap) (Xu et al.)
+- [EasyVolcap: Accelerating Neural Volumetric Video Research](https://github.com/zju3dv/EasyVolcap) (Xu et al.)
 - [IBRNet: Learning Multi-View Image-Based Rendering](https://ibrnet.github.io/) (Wang et al.)
 - [ENeRF: Efficient Neural Radiance Fields for Interactive Free-viewpoint Video](https://zju3dv.github.io/enerf) (Lin et al.)
 - [K-Planes: Explicit Radiance Fields in Space, Time, and Appearance](https://sarafridov.github.io/K-Planes/) (Fridovich-Keil et al.)
