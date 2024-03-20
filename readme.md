@@ -6,7 +6,7 @@
 ![star](https://img.shields.io/github/stars/zju3dv/EasyVolcap)
 [![license](https://img.shields.io/badge/license-zju3dv-white)](license)
 
-[Paper](https://dl.acm.org/doi/10.1145/3610543.3626173) | [arXiv](https://arxiv.org/abs/2312.06575) | [Example Dataset](https://drive.google.com/file/d/1XxeO7TnAPvDugnxguEF5Jp89ERS9CAia/view?usp=sharing) | [Pretrained Model](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing) | [4K4D](https://zju3dv.github.io/4k4d)
+[Paper](https://dl.acm.org/doi/10.1145/3610543.3626173) | [arXiv](https://arxiv.org/abs/2312.06575) | [Example Dataset](https://drive.google.com/file/d/1XxeO7TnAPvDugnxguEF5Jp89ERS9CAia/view?usp=sharing) | [Pretrained Model](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing) | ***[4K4D](https://zju3dv.github.io/4k4d)***
 
 ***News***:
 
