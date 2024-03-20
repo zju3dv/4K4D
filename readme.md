@@ -43,14 +43,14 @@ Or install all dependencies for development (this requires you to have a valid [
 
 ```shell
 # Editable install, with dependencies from requirements-devel.txt
-pip install -e ".[devel]"
+pip install -r requirements-devel.txt
 ```
 
 Note that you can just run these two in tandem for to take care of `PyTorch` before compiling CUDA extensions:
 
 ```shell
 pip install -e . # will install from requirements.txt
-pip install -e ".[devel]" # will install from requirements-devel.txt
+pip install -r requirements-devel.txt
 ```
 
 Alternatively, if your `pip install` command fails due to one or two packages, try installing the dependencies one by one in this way:
@@ -96,15 +96,15 @@ Copy-and-paste version of the installation process listed below. For a more thor
 ```shell
 # Prepare conda environment
 conda install -n base mamba -y -c conda-forge
-conda create -n easyvolcap "python>=3.10" -y
+mamba create -n easyvolcap "python>=3.11,<3.12" -y
 conda activate easyvolcap
 
 # Install conda dependencies
 mamba env update
 
 # Install pip dependencies
-cat requirements.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
-# cat requirements-devel.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
+cat requirements.txt | sed -e '/^\s*-.*$/d' -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "#"); if (length(a) > 1) print a[1]; else print $0;}' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
+cat requirements-devel.txt | sed -e '/^\s*-.*$/d' -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "#"); if (length(a) > 1) print a[1]; else print $0;}' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
 
 # Register EasyVolcp for imports
 pip install -e . --no-build-isolation --no-deps
