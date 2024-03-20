@@ -1,6 +1,3 @@
-from os.path import join
-import torch
-import json
 from argparse import Namespace
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.gaussian_utils import GaussianModel
@@ -73,6 +70,7 @@ def main():
             json.dump(cam_list, f)
 
         # torch.save((pcd.capture(), iters), join(out_dir, f'{mesh_name}.pth'))
-    
+
+
 if __name__ == '__main__':
     main()

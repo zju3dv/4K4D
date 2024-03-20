@@ -653,14 +653,14 @@ class GaussianModel(nn.Module):
         # Exp on scaling, need to -> world space -> log
 
         # Doing inverse_sigmoid here will lead to NaNs
-        opacity = self._opacity
+        _opacity = self._opacity
         if self.opacity_activation != F.sigmoid and \
                 self.opacity_activation != torch.sigmoid and \
                 not isinstance(self.opacity_activation, nn.Sigmoid):
             opacity = self.opacity_activation(opacity)
             _opacity = inverse_sigmoid(opacity)
 
-        scale = self._scale
+        scale = self._scaling
         scale = self.scaling_activation(scale)
         _scale = torch.log(scale)
 
@@ -1008,3 +1008,48 @@ def naive_render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tens
         "visibility_filter": radii > 0,
         "radii": radii
     })
+
+
+def construct_list_of_attributes(self: dotdict):
+    l = ['x', 'y', 'z', 'nx', 'ny', 'nz']
+    # All channels except the 3 DC
+    for i in range(self._features_dc.shape[1] * self._features_dc.shape[2]):
+        l.append('f_dc_{}'.format(i))
+    for i in range(self._features_rest.shape[1] * self._features_rest.shape[2]):
+        l.append('f_rest_{}'.format(i))
+    l.append('opacity')
+    for i in range(self._scaling.shape[1]):
+        l.append('scale_{}'.format(i))
+    for i in range(self._rotation.shape[1]):
+        l.append('rot_{}'.format(i))
+    return l
+
+
+def save_gs(self: dotdict, path):
+    from plyfile import PlyData, PlyElement
+    os.makedirs(dirname(path), exist_ok=True)
+
+    # The original gaussian model uses a different activation
+    # Normalization for rotation, so no conversion
+    # Exp on scaling, need to -> world space -> log
+
+    # Doing inverse_sigmoid here will lead to NaNs
+    _opacity = self._opacity
+
+    _scale = self._scaling
+
+    xyz = self._xyz.detach().cpu().numpy()
+    normals = np.zeros_like(xyz)
+    f_dc = self._features_dc.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
+    f_rest = self._features_rest.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
+    opacities = _opacity.detach().cpu().numpy()
+    scale = _scale.detach().cpu().numpy()
+    rotation = self._rotation.detach().cpu().numpy()
+
+    dtype_full = [(attribute, 'f4') for attribute in construct_list_of_attributes(self)]
+
+    elements = np.empty(xyz.shape[0], dtype=dtype_full)
+    attributes = np.concatenate((xyz, normals, f_dc, f_rest, opacities, scale, rotation), axis=1)
+    elements[:] = list(map(tuple, attributes))
+    el = PlyElement.describe(elements, 'vertex')
+    PlyData([el]).write(path)
