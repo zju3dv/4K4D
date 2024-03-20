@@ -39,16 +39,12 @@ pip install -e . -f https://download.pytorch.org/whl/torch_stable.html
 
 ### Development Install Using `pip`
 
-Or install all dependencies for development (this requires you to have a valid [CUDA building environment with PyTorch already installed](docs/design/install.md#cuda-related-compilations)):
+Or install all dependencies for development (this requires you to have a valid [CUDA building environment with PyTorch already installed](docs/design/install.md#cuda-related-compilations)).
+
+Note that you can just run these two in tandem for to take care of `PyTorch` and `EasyVolcap` before compiling CUDA extensions:
 
 ```shell
 # Editable install, with dependencies from requirements-devel.txt
-pip install -r requirements-devel.txt
-```
-
-Note that you can just run these two in tandem for to take care of `PyTorch` before compiling CUDA extensions:
-
-```shell
 pip install -e . # will install from requirements.txt
 pip install -r requirements-devel.txt
 ```
