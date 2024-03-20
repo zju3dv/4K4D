@@ -110,7 +110,10 @@ class TensorboardRecorder:
         # updates internal data structures
         # self.scalar_stats.clear() # for saving running average (ema)
         for k, v in scalar_stats.items():
-            self.scalar_stats[k].update(v)  # no annotations?
+            if isinstance(v, float):
+                self.scalar_stats[k].update(v)  # no annotations?
+            else:
+                self.scalar_stats[k] = v
 
         keys = list(self.scalar_stats.keys())  # RuntimeError: dictionary changed size during iteration
         for k in keys:
@@ -150,7 +153,12 @@ class TensorboardRecorder:
         log_stats.epoch = str(self.epoch)
         log_stats.iter = str(self.iter)
         for k, v in self.scalar_stats.items():
-            log_stats[k] = f'{v.avg:.6f}' if isinstance(v, SmoothedValue) else v
+            if isinstance(v, SmoothedValue):
+                log_stats[k] = f'{v.avg:.6f}'
+            elif isinstance(v, float):
+                log_stats[k] = f'{v:.6f}'
+            else:
+                log_stats[k] = str(v)
         log_stats.lr = f'{self.scalar_stats.lr.val:.6f}'
         log_stats.data = f'{self.scalar_stats.data.val:.4f}'
         log_stats.batch = f'{self.scalar_stats.batch.val:.4f}'
