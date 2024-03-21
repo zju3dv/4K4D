@@ -154,3 +154,6 @@ opencv-python
 These packages should be able to be installed directly from the command line using `pip`.
 
 Sidenote: on macOS (Mac), there's no NVIDIA GPU. We use the CUDA-GL interface to transfer rendered images (a PyTorch tensor, which is a block of CUDA memory) onto the screen (a textured-based framebuffer). Thus the real-time viewer isn't fully supported on Mac yet.
+
+
+### Example: Compile `tiny-cuda-nn` and `diff-gaussian-rasterization` on Windows

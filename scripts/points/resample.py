@@ -9,9 +9,10 @@ from easyvolcap.utils.fcds_utils import random, farthest, surface_points, voxel_
 @catch_throw
 def main():
     args = dotdict(
-        input='data/actorshq/Actor01/Sequence1/1x/surfs',
-        output='data/actorshq/Actor01/Sequence1/1x/surfs36k',
-        n_points=36000,  # downsample or upsample to this number of points,
+        input='data/iphone_stage/evc_0319-10/pcds',
+        output='data/iphone_stage/evc_0319-10/pcds6k',
+        n_points=6000,  # downsample or upsample to this number of points,
+        voxel_size=0.005,
         type=SamplingType.RANDOM_DOWN_SAMPLE.name,
         device='cuda',
     )
@@ -27,7 +28,15 @@ def main():
         # TODO: Add support for preserving vertex properties
         xyz = to_cuda(load_pts(pcd)[0], device=args.device)[None]  # only need xyz for now
         if args.type == SamplingType.RANDOM_DOWN_SAMPLE:
-            xyz = random(xyz, n_points=args.n_points, std=0.0)
+            xyz = random(xyz, n_points=args.n_points, std=0.0)  # no extra perturbation
+        elif args.type == SamplingType.FARTHEST_DOWN_SAMPLE:
+            xyz = farthest(xyz, n_points=args.n_points)
+        elif args.type == SamplingType.VOXEL_DOWN_SAMPLE:
+            xyz = voxel_down_sample(xyz, voxel_size=args.voxel_size)
+        elif args.type == SamplingType.SURFACE_DISTRIBUTION:
+            xyz = surface_points(xyz, n_points=args.n_points)
+        elif args.type == SamplingType.MARCHING_CUBES_RECONSTRUCTION:
+            xyz = voxel_surface_down_sample(xyz, n_points=args.n_points, voxel_size=args.voxel_size)
         else:
             raise NotImplementedError
         export_pts(xyz, filename=out)
