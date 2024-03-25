@@ -570,9 +570,9 @@ class VolumetricVideoViewer:
             if hasattr(self.model.sampler, 'pts_per_pix'):
                 self.model.sampler.pts_per_pix = imgui.slider_int('Splatting pts_per_pix', self.model.sampler.pts_per_pix, 1, 60)[1]
 
-            # MARK: Custome GUI elements will be rendered here
-            if hasattr(self.model, 'render_imgui'):
-                self.model.render_imgui(self, batch)  # some times the model has its own GUI elements
+        # MARK: Custome GUI elements will be rendered here
+        if hasattr(self.model, 'render_imgui'):
+            self.model.render_imgui(self, batch)  # some times the model has its own GUI elements
 
         if not self.quad.use_quad_cuda:
             gpu_cpu_gpu_msg = f'Not using CUDA-GL interop for low-latency upload, will lead to degraded performance. Try using native Windows or Linux for CUDA-GL interop'
