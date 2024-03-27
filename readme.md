@@ -561,7 +561,7 @@ evc -t gui -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml,configs/specs/sup
 
 We would like to acknowledge the following inspiring prior work:
 
-- [EasyVolcap: Accelerating Neural Volumetric Video Research](https://zju3dv.github.io/easyvolcap) (Xu et al.)
+- [EasyVolcap: Accelerating Neural Volumetric Video Research](https://github.com/zju3dv/EasyVolcap) (Xu et al.)
 - [IBRNet: Learning Multi-View Image-Based Rendering](https://ibrnet.github.io/) (Wang et al.)
 - [ENeRF: Efficient Neural Radiance Fields for Interactive Free-viewpoint Video](https://zju3dv.github.io/enerf) (Lin et al.)
 - [K-Planes: Explicit Radiance Fields in Space, Time, and Appearance](https://sarafridov.github.io/K-Planes/) (Fridovich-Keil et al.)
