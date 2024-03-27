@@ -4,6 +4,7 @@ configs:
     - configs/datasets/renbody/0013_01_obj.yaml # dataset usage configuration
     - configs/specs/mask.yaml # specific usage configuration
     - configs/specs/optimized.yaml # specific usage configuration
+    - configs/specs/ratio.yaml
 
 # prettier-ignore
 exp_name: {{fileBasenameNoExtension}}
