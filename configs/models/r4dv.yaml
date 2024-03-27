@@ -45,7 +45,7 @@ runner_cfg:
     save_ep: 20
     eval_ep: 20
     log_interval: 10
-    train_use_amp: True # faster training available for this
+    # train_use_amp: True # faster training available for this
 
 model_cfg:
     chunkify_rays: False # for now, no ray chunking for ENeRF
