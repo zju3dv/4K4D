@@ -80,6 +80,9 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
                  test_use_amp: bool = False,
                  use_jit_trace: bool = False,  # almost will never work
                  use_jit_script: bool = False,  # almost will never work
+                 use_torch_compile: bool = False,  # almost will never work
+                 #  torch_compile_mode: str = None,
+                 torch_compile_mode: str = 'max-autotune-no-cudagraphs',
 
                  # Debugging
                  collect_timing: bool = False,  # will lose 1 fps over copying
@@ -131,6 +134,8 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
         # Trace model for faster inference
         self.use_jit_script = use_jit_script
         self.use_jit_trace = use_jit_trace
+        self.use_torch_compile = use_torch_compile
+        self.torch_compile_mode = torch_compile_mode
 
         self.ignore_eval_error = ignore_eval_error
         self.record_images_to_tb = record_images_to_tb
@@ -260,14 +265,17 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
             log(red(e))
             torch.cuda.empty_cache()
 
-    def maybe_jit_model(self, batch: dotdict):
+    def maybe_jit_model(self, batch: dotdict = None):
         if not isinstance(self.model, torch.jit.ScriptModule):
             if self.use_jit_script:
-                log(green(f'Scripting the model for inference'))
+                log(green(f'Scripting the model'))
                 self.model = torch.jit.script(self.model)
             elif self.use_jit_trace:
-                log(green(f'Tracing the model for inference'))
+                log(green(f'Tracing the model'))
                 self.model = torch.jit.trace(self.model, batch)
+            elif self.use_torch_compile:
+                log(green(f'Compiling the model'))
+                self.model = torch.compile(self.model, mode=self.torch_compile_mode)
 
     # Single epoch testing api
     def test(self):  # from begin epoch
@@ -336,6 +344,7 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
         # Train for one epoch (iterator style)
         # Actual start of the execution
         epoch = begin_epoch  # set starting epoch
+        self.maybe_jit_model()
         self.model.train()  # set the network (model) to training mode (recursive to all modules)
         start_time = time.perf_counter()
         for index, batch in enumerate(self.dataloader):  # control number of iterations explicitly
@@ -429,12 +438,12 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
 
     def test_generator(self, epoch: int, yield_every: int = 1):
         # validation for one epoch
+        self.maybe_jit_model()
         self.model.train(self.test_using_train_mode)  # set the network (model) to training mode (recursive to all modules)
         for index, batch in enumerate(tqdm(self.val_dataloader, disable=not self.print_test_progress)):
             iter = epoch * self.ep_iter - 1  # some indexing trick
             batch = add_iter(batch, iter, self.total_iter)  # is this bad naming
             batch = to_cuda(batch)  # cpu -> cuda, note that DDP will move all cpu tensors to cuda as well
-            self.maybe_jit_model(batch)
             with torch.inference_mode(self.test_using_inference_mode), torch.no_grad(), torch.cuda.amp.autocast(enabled=self.test_use_amp, cache_enabled=self.test_amp_cached):
                 output: dotdict = self.model(batch)
                 scalar_stats = self.evaluator.evaluate(output, batch)

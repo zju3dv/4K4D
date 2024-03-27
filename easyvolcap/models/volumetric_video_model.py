@@ -27,8 +27,8 @@ from easyvolcap.models.samplers.importance_sampler import ImportanceSampler
 from easyvolcap.models.renderers.volume_renderer import VolumeRenderer
 from easyvolcap.models.supervisors.volumetric_video_supervisor import VolumetricVideoSupervisor
 
-# sampler (o, d, t -> z -> xyztθφ) ->
-# network (xyztθφ -> rgb, occ) ->
+# sampler (o, d, t -> z -> xyzt vd) ->
+# network (xyzt vd -> rgb, occ) ->
 # renderer (rgb, occ -> output) ->
 # supervisor (output, batch -> loss)
 

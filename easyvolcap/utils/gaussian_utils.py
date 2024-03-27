@@ -246,10 +246,11 @@ def convert_to_gaussian_camera(K: torch.Tensor,
     output.FoVx = focal2fov(cpu_K[0, 0].cpu(), cpu_W.cpu())  # MARK: MIGHT SYNC IN DIST TRAINING, WHY?
     output.FoVy = focal2fov(cpu_K[1, 1].cpu(), cpu_H.cpu())  # MARK: MIGHT SYNC IN DIST TRAINING, WHY?
 
-    output.world_view_transform = getWorld2View(R, T).transpose(0, 1)
-    output.projection_matrix = getProjectionMatrix(K, H, W, n, f).transpose(0, 1)
-    output.full_proj_transform = torch.matmul(output.world_view_transform, output.projection_matrix)  # 4, 4
-    output.camera_center = (-R.mT @ T)[..., 0]  # B, 3, 1 -> 3,
+    # Use .float() to avoid AMP issues
+    output.world_view_transform = getWorld2View(R, T).transpose(0, 1).float()
+    output.projection_matrix = getProjectionMatrix(K, H, W, n, f).transpose(0, 1).float()
+    output.full_proj_transform = torch.matmul(output.world_view_transform, output.projection_matrix).float()   # 4, 4
+    output.camera_center = (-R.mT @ T)[..., 0].float()  # B, 3, 1 -> 3,
 
     # Set up rasterization configuration
     output.tanfovx = np.tan(output.FoVx * 0.5)
