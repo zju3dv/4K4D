@@ -374,7 +374,12 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
             if (iter + 1) % self.log_interval == 0 and not get_rank():
 
                 # For recording onto the tensorboard
-                scalar_stats = dotdict({k: v.mean().item() for k, v in scalar_stats.items()})  # MARK: sync (for accurate batch time)
+                scalar_stats = dotdict(
+                    {
+                        k: (v.mean().item() if isinstance(v, torch.Tensor) or isinstance(v, np.ndarray) else v)
+                        for k, v in scalar_stats.items()
+                    }
+                )  # MARK: sync (for accurate batch time)
 
                 lr = self.optimizer.param_groups[0]['lr']  # TODO: skechy lr query, only lr of the first param will be saved
                 max_mem = torch.cuda.max_memory_allocated() / 2**20

@@ -31,14 +31,14 @@ def main():
     parser.add_argument('--neural3dv_root', type=str, default='data/neural3dv')
     parser.add_argument('--easyvolcap_root', type=str, default='data/neural3dv')
     parser.add_argument('--camera_pose', type=str, default='poses_bounds.npy')
-    parser.add_argument('--only', nargs='+', default=['sear_steak', 'cook_spinach', 'coffee_martini', 'flame_steak', 'flame_salmon'])  # NOTE: do not add cut_roasted_beef for 4k4d
+    parser.add_argument('--only', nargs='+', default=['sear_steak', 'cook_spinach', 'coffee_martini', 'flame_steak', 'flame_salmon', 'cut_roasted_beef'])  # NOTE: do not add cut_roasted_beef for 4k4d
     args = parser.parse_args()
 
     scenes = os.listdir(args.neural3dv_root)
-    scenes = [s for s in scenes if s in args.only]
+    if len(args.only): scenes = [s for s in scenes if s in args.only]
     # for scene in tqdm(scenes):
     for scene in scenes:
-        videos = sorted(glob(join(args.neural3dv_root, scene, '*.mp4')))
+        videos = sorted(glob(join(args.neural3dv_root, scene, 'videos', '*.mp4'), recursive=True))
         for v in videos:
             dirname = basename(v).split('.')[0][-2:]
             if not exists(join(args.easyvolcap_root, scene, 'images', dirname)):
@@ -53,6 +53,8 @@ def main():
                     join(args.easyvolcap_root, scene, 'images', dirname) + '/%06d.jpg'
                 ]
                 subprocess.run(cmd, check=True)
+            if basename(v).split('.')[0] != dirname:
+                os.rename(v, join(os.path.dirname(v), dirname + '.mp4'))
 
         # https://github.com/kwea123/nerf_pl/blob/52aeb387da64a9ad9a0f914ea9b049ffc598b20c/datasets/llff.py#L177
         raw = np.load(join(args.neural3dv_root, scene, args.camera_pose), allow_pickle=True)  # 21, 17

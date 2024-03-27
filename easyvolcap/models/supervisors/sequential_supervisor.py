@@ -11,15 +11,16 @@ from easyvolcap.engine import SUPERVISORS
 from easyvolcap.utils.console_utils import *
 from easyvolcap.engine.registry import call_from_cfg
 from easyvolcap.models.supervisors.mask_supervisor import MaskSupervisor
+from easyvolcap.models.supervisors.flow_supervisor import FlowSupervisor
 from easyvolcap.models.supervisors.depth_supervisor import DepthSupervisor
+from easyvolcap.models.supervisors.normal_supervisor import NormalSupervisor
+from easyvolcap.models.supervisors.opacity_supervisor import OpacitySupervisor
 from easyvolcap.models.supervisors.proposal_supervisor import ProposalSupervisor
 from easyvolcap.models.supervisors.geometry_supervisor import GeometrySupervisor
 from easyvolcap.models.supervisors.temporal_supervisor import TemporalSupervisor
 from easyvolcap.models.supervisors.displacement_supervisor import DisplacementSupervisor
-from easyvolcap.models.supervisors.opacity_supervisor import OpacitySupervisor
-from easyvolcap.models.supervisors.flow_supervisor import FlowSupervisor
-from easyvolcap.models.supervisors.normal_supervisor import NormalSupervisor
 from easyvolcap.models.supervisors.volumetric_video_supervisor import VolumetricVideoSupervisor
+from easyvolcap.models.supervisors.motion_consistency_supervisor import MotionConsistencySupervisor
 
 
 @SUPERVISORS.register_module()
@@ -30,6 +31,7 @@ class SequentialSupervisor(VolumetricVideoSupervisor):
                      dotdict(type=MaskSupervisor.__name__),
                      dotdict(type=FlowSupervisor.__name__),
                      dotdict(type=DepthSupervisor.__name__),
+                     dotdict(type=MotionConsistencySupervisor.__name__),
                      dotdict(type=NormalSupervisor.__name__),
                      dotdict(type=OpacitySupervisor.__name__),
                      dotdict(type=ProposalSupervisor.__name__),

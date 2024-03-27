@@ -4,7 +4,7 @@ pdbr
 yapf
 h5py
 ujson
-regex
+regex; sys_platform=='win32'
 PyGLM
 scipy
 addict
@@ -13,6 +13,7 @@ ipython
 trimesh
 imageio
 PyMCubes
+pypiwin32; sys_platform=='win32'
 pyperclip
 pyntcloud
 torchaudio

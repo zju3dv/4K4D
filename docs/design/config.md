@@ -205,13 +205,10 @@ You could even use them in tandem like this:
 import sys
 
 # To use my own parser and EasyVolcap's dict based parser together
-try:
-    sep_ind = sys.argv.index('--')
-    our_args = sys.argv[1:sep_ind]
-    evv_args = sys.argv[sep_ind + 1:]
-    sys.argv = [sys.argv[0]] + evv_args
-except ValueError as e:
-    pass # skip if no -- is present
+sep_ind = sys.argv.index('--') if '--' in sys.argv else 0
+our_args = sys.argv[1:sep_ind]
+evv_args = sys.argv[sep_ind + 1:]
+sys.argv = [sys.argv[0]] + evv_args
 
 # My own argument parser
 args = dotdict(

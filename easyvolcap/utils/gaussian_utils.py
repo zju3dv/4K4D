@@ -13,36 +13,12 @@ from easyvolcap.utils.net_utils import make_buffer, make_params, typed
 from easyvolcap.utils.math_utils import torch_inverse_2x2, point_padding
 
 
-# def in_frustrum(xyz: torch.Tensor, ixt: torch.Tensor, ext: torch.Tensor):
-def in_frustrum(xyz: torch.Tensor, full_proj_matrix: torch.Tensor, padding: float = 0.01):
-    # __forceinline__ __device__ bool in_frustum(int idx,
-    # 	const float* orig_points,
-    # 	const float* viewmatrix,
-    # 	const float* projmatrix,
-    # 	bool prefiltered,
-    # 	float3& p_view,
-    # 	const float padding = 0.01f // padding in ndc space
-    # 	)
-    # {
-    # 	float3 p_orig = { orig_points[3 * idx], orig_points[3 * idx + 1], orig_points[3 * idx + 2] };
+@torch.jit.script
+def in_frustrum(xyz: torch.Tensor, full_proj_matrix: torch.Tensor, xy_padding: float = 0.5, padding: float = 0.01):
 
-    # 	// Bring points to screen space
-    # 	float4 p_hom = transformPoint4x4(p_orig, projmatrix);
-    # 	float p_w = 1.0f / (p_hom.w + 0.0000001f);
-    # 	float3 p_proj = { p_hom.x * p_w, p_hom.y * p_w, p_hom.z * p_w };
-    # 	p_view = transformPoint4x3(p_orig, viewmatrix); // write this outside
-
-    # 	// if (idx % 32768 == 0) printf("Viewspace point: %f, %f, %f\n", p_view.x, p_view.y, p_view.z);
-    # 	// if (idx % 32768 == 0) printf("Projected point: %f, %f, %f\n", p_proj.x, p_proj.y, p_proj.z);
-    # 	return (p_proj.z > -1 - padding) && (p_proj.z < 1 + padding) && (p_proj.x > -1 - padding) && (p_proj.x < 1. + padding) && (p_proj.y > -1 - padding) && (p_proj.y < 1. + padding);
-    # }
-
-    # xyz: N, 3
-    # ndc = (xyz @ R.mT + T)[..., :3] @ K # N, 3
-    # ndc[..., :2] = ndc[..., :2] / ndc[..., 2:] / torch.as_tensor([W, H], device=ndc.device) # N, 2, normalized x and y
     ndc = point_padding(xyz) @ full_proj_matrix
     ndc = ndc[..., :3] / ndc[..., 3:]
-    return (ndc[..., 2] > -1 - padding) & (ndc[..., 2] < 1 + padding) & (ndc[..., 0] > -1 - padding) & (ndc[..., 0] < 1. + padding) & (ndc[..., 1] > -1 - padding) & (ndc[..., 1] < 1. + padding)  # N,
+    return (ndc[..., 2] > -1 - padding) & (ndc[..., 2] < 1 + padding) & (ndc[..., 0] > -1 - xy_padding) & (ndc[..., 0] < 1. + xy_padding) & (ndc[..., 1] > -1 - xy_padding) & (ndc[..., 1] < 1. + xy_padding)  # N,
 
 
 @torch.jit.script
@@ -653,14 +629,14 @@ class GaussianModel(nn.Module):
         # Exp on scaling, need to -> world space -> log
 
         # Doing inverse_sigmoid here will lead to NaNs
-        opacity = self._opacity
+        _opacity = self._opacity
         if self.opacity_activation != F.sigmoid and \
                 self.opacity_activation != torch.sigmoid and \
                 not isinstance(self.opacity_activation, nn.Sigmoid):
             opacity = self.opacity_activation(opacity)
             _opacity = inverse_sigmoid(opacity)
 
-        scale = self._scale
+        scale = self._scaling
         scale = self.scaling_activation(scale)
         _scale = torch.log(scale)
 
@@ -1008,3 +984,48 @@ def naive_render(viewpoint_camera, pc: GaussianModel, pipe, bg_color: torch.Tens
         "visibility_filter": radii > 0,
         "radii": radii
     })
+
+
+def construct_list_of_attributes(self: dotdict):
+    l = ['x', 'y', 'z', 'nx', 'ny', 'nz']
+    # All channels except the 3 DC
+    for i in range(self._features_dc.shape[1] * self._features_dc.shape[2]):
+        l.append('f_dc_{}'.format(i))
+    for i in range(self._features_rest.shape[1] * self._features_rest.shape[2]):
+        l.append('f_rest_{}'.format(i))
+    l.append('opacity')
+    for i in range(self._scaling.shape[1]):
+        l.append('scale_{}'.format(i))
+    for i in range(self._rotation.shape[1]):
+        l.append('rot_{}'.format(i))
+    return l
+
+
+def save_gs(self: dotdict, path):
+    from plyfile import PlyData, PlyElement
+    os.makedirs(dirname(path), exist_ok=True)
+
+    # The original gaussian model uses a different activation
+    # Normalization for rotation, so no conversion
+    # Exp on scaling, need to -> world space -> log
+
+    # Doing inverse_sigmoid here will lead to NaNs
+    _opacity = self._opacity
+
+    _scale = self._scaling
+
+    xyz = self._xyz.detach().cpu().numpy()
+    normals = np.zeros_like(xyz)
+    f_dc = self._features_dc.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
+    f_rest = self._features_rest.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
+    opacities = _opacity.detach().cpu().numpy()
+    scale = _scale.detach().cpu().numpy()
+    rotation = self._rotation.detach().cpu().numpy()
+
+    dtype_full = [(attribute, 'f4') for attribute in construct_list_of_attributes(self)]
+
+    elements = np.empty(xyz.shape[0], dtype=dtype_full)
+    attributes = np.concatenate((xyz, normals, f_dc, f_rest, opacities, scale, rotation), axis=1)
+    elements[:] = list(map(tuple, attributes))
+    el = PlyElement.describe(elements, 'vertex')
+    PlyData([el]).write(path)

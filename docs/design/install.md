@@ -29,7 +29,7 @@ conda install -n base mamba -c conda-forge -y
 # If this doesn't work, separate create and update as follows
 # Note that as of 2023.04.21, wsl2 with python 3.10 could not correctly initialize or load opengl
 # You need manually change the following command to accomodate for that (3.10 to 3.9)
-# And update the environtment.yaml file to use python 3.9 instead of 3.10
+# And update the environment.yml file to use python 3.9 instead of 3.10
 # mamba create -n easyvolcap "python==3.10" -y
 # mamba create -n easyvolcap "python>=3.10,<3.10" -y
 mamba create -n easyvolcap "python>=3.11,<3.12" -y
@@ -77,7 +77,7 @@ To use any compiled `CUDAExtension`, you need to have the CUDA Toolkit and PyTor
 
 For PyTorch, running `pip install -e .` (the non-dev install of ***EasyVolcap***) will have already taken care of that.
 
-For the CUDA Toolkit, typically your system administration would have already done so if you're using a shared server for AI realted research. Check under `/usr/local` to find anything related to CUDA.
+For the CUDA Toolkit, typically your system administration would have already done so if you're using a shared server for AI related research. Check under `/usr/local` to find anything related to CUDA.
 
 Then, add these lines to your `.zshrc` or `.bashrc` to expose related paths for compilation:
 ```shell
@@ -90,13 +90,13 @@ export CUDA_DEVICE_ORDER=PCI_BUS_ID # OPTIONAL: defaults to capability order, mi
 
 Let's go through the compilation process with the `tinycudann` package.
 
-To retain the compiled objects without starting over in case anything fails, we recommend first cloning `tinycudann` then perform the compilation and installation manually:
+To retain the compiled objects without starting over in case anything fails, we recommend first cloning `tinycudann` then performing the compilation and installation manually:
 
 ```shell
 cd ~
 git clone https://github.com/NVlabs/tiny-cuda-nn --recursive
 cd tiny-cuda-nn/bindings/torch
-python setup.py install
+pip install .
 ```
 
 Or maybe try to install `tiny-cuda-nn` with:
@@ -122,7 +122,7 @@ ln -s /usr/lib/x86_64-linux-gnu/libcuda.so ~/miniconda3/envs/easyvolcap/lib/libc
 and then install `tiny-cuda-nn` with: `pip install git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch`.
 
 Sometimes (`diff-gaussian-rasterization`), on some systems, the import order of CUDA-compiled extension and PyTorch matters.
-On some of our system, if you import PyTorch before the CUDA-compiled extension, it will fail to find some Python symbols.
+On some of our systems, if you import PyTorch before the CUDA-compiled extension, it will fail to find some Python symbols.
 Try changing the orders if that happens.
 
 ```shell
@@ -135,10 +135,10 @@ python -c "from diff_gaussian_rasterization import _C; import torch" # should wo
 
 As discussed in [this issue](https://github.com/zju3dv/EasyVolcap/issues/10), the installation commands are tailored for Linux systems but ***EasyVolcap***'s dependency requirements are very loose. Aside from `PyTorch`, which you can install in anyway you like following [their official guide](https://pytorch.org/get-started/locally/) or just reuse your previous environment, also other packages are related to the specific functionality or algorithm you want to run.
 
-During the initialization in the `main.py` script, we will try to recursively import user defined components from the `easyvolcap` folder (also check [`config.py`](../design/config.md#reusing-the-configuration-system)). Some warnings about missing packages might be raised, but as long as you don't use that functionality, it should be fine.
+During the initialization in the `main.py` script, we will try to recursively import user-defined components from the `easyvolcap` folder (also check [`config.py`](../design/config.md#reusing-the-configuration-system)). Some warnings about missing packages might be raised, but as long as you don't use that functionality, it should be fine.
 
 For example, the real-time viewer does not require packages like `pytorch3d` or `open3d` so you could ignore them during import.
-We've also tested the viewer functionality (run `evc-gui` to test) on Windows, which requires the following OpenGL and ImGUI related packages:
+We've also tested the viewer functionality (run `evc-gui` to test) on Windows, which requires the following OpenGL and ImGUI-related packages:
 
 ```
 torch
@@ -151,6 +151,9 @@ imgui-bundle
 opencv-python
 ```
 
-These packages should be able to be installed directly from the command-line using `pip`.
+These packages should be able to be installed directly from the command line using `pip`.
 
-Sidenote: on macOS (Mac), there's no NVIDIA gpu. We use the CUDA-GL interface to transfer rendered images (a PyTorch tensor, which is a block of CUDA memory) onto the screen (a textured based framebuffer). Thus the real-time viewer isn't fully supported on Mac yet.
+Sidenote: on macOS (Mac), there's no NVIDIA GPU. We use the CUDA-GL interface to transfer rendered images (a PyTorch tensor, which is a block of CUDA memory) onto the screen (a textured-based framebuffer). Thus the real-time viewer isn't fully supported on Mac yet.
+
+
+### Example: Compile `tiny-cuda-nn` and `diff-gaussian-rasterization` on Windows
