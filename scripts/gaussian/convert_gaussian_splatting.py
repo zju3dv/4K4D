@@ -9,7 +9,7 @@ def main():
     import sys
     sys.path.append('.')
 
-    sep_ind = sys.argv.index('--')
+    sep_ind = sys.argv.index('--') if '--' in sys.argv else 0
     our_args = sys.argv[1:sep_ind]
     evv_args = sys.argv[sep_ind + 1:]
     sys.argv = [sys.argv[0]] + ['-t', 'test'] + evv_args

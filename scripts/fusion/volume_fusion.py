@@ -29,7 +29,7 @@ def main():
     import sys
     sys.path.append('.')
 
-    sep_ind = sys.argv.index('--')
+    sep_ind = sys.argv.index('--') if '--' in sys.argv else 0
     our_args = sys.argv[1:sep_ind]
     evv_args = sys.argv[sep_ind + 1:]
     sys.argv = [sys.argv[0]] + ['-t', 'test'] + evv_args + ['configs=configs/specs/vis.yaml', 'val_dataloader_cfg.dataset_cfg.skip_loading_images=False', 'model_cfg.apply_optcam=True']
@@ -39,8 +39,8 @@ def main():
     parser.add_argument('--n_srcs', type=int, default=4, help='Number of source views to use for the fusion process')
     parser.add_argument('--occ_mult', type=float, default=0.2, help='Multiply the predicted transparency by this value due to overlap')
     parser.add_argument('--msk_abs_thresh', type=float, default=0.5, help='If mask exists, filter points with too low a mask value')
-    parser.add_argument('--geo_abs_thresh', type=float, default=1.0, help='The threshold for MSE in reprojection, unit: squared pixels') # aiming for a denser reconstruction
-    parser.add_argument('--geo_rel_thresh', type=float, default=0.01, help='The difference in relative depth values, unit: one')
+    parser.add_argument('--geo_abs_thresh', type=float, default=2.0, help='The threshold for MSE in reprojection, unit: squared pixels') # aiming for a denser reconstruction
+    parser.add_argument('--geo_rel_thresh', type=float, default=0.05, help='The difference in relative depth values, unit: one')
     parser.add_argument('--skip_depth_consistency', action='store_true')
     parser.add_argument('--skip_align_with_camera', action='store_true')
     args = parser.parse_args(our_args)

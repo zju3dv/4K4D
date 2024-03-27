@@ -750,7 +750,8 @@ def build_parser(d: dict, parser: argparse.ArgumentParser = None, **kwargs):
                 # Use other params as kwargs
                 d = v.pop('default')
                 t = v.pop('type', type(d))
-                h = v.pop('help', markup_to_ansi(help_pattern.format(d)))
+                # h = v.pop('help', markup_to_ansi(help_pattern.format(d)))
+                h = (v.pop('help') + '; ' + markup_to_ansi(help_pattern.format(d))) if 'help' in v else markup_to_ansi(help_pattern.format(d))
                 parser.add_argument(f'--{k}', default=d, type=t, help=h, **v)
             else:
                 # TODO: Add argparse group here

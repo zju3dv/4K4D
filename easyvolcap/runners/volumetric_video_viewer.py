@@ -159,6 +159,7 @@ class VolumetricVideoViewer:
         self.visualize_bounds = visualize_bounds
         self.visualize_paths = visualize_paths
         self.visualize_axes = visualize_axes
+        self.camera_axis_size = 0.025
 
         # Rendering control
         self.exposure = 1.0
@@ -349,8 +350,9 @@ class VolumetricVideoViewer:
                      Rs: torch.Tensor,
                      Ts: torch.Tensor,
                      proj: mat4,
-                     default_color: int = 0xffc08080,
+                     default_color: int = 0xffc080aa,
                      bold_color: int = 0xff8080ff,
+                     axis_size: float = 0.025,
                      src_inds: torch.Tensor = None):
         # Add to imgui rendering list
         imgui.push_font(self.bold_font)
@@ -371,7 +373,7 @@ class VolumetricVideoViewer:
             w2c[3] = vec4(*T.ravel(), 1.0)  # assign translation (not that glm.translate doesn't work)
             c2w = glm.affineInverse(w2c)
             c2w = mat4x3(c2w)
-            visualize_cameras(proj, ixt, c2w, col=col, thickness=thickness, name=str(i))
+            visualize_cameras(proj, ixt, c2w, col=col, thickness=thickness, name=str(i), axis_size=axis_size)
         imgui.pop_font()
 
     def draw_camera_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
@@ -484,6 +486,7 @@ class VolumetricVideoViewer:
             self.visualize_axes = imgui_toggle.toggle('Visualize axes', self.visualize_axes, config=self.static.toggle_ios_style)[1]
             self.visualize_bounds = imgui_toggle.toggle('Visualize bounds', self.visualize_bounds, config=self.static.toggle_ios_style)[1]
             self.visualize_cameras = imgui_toggle.toggle('Visualize cameras', self.visualize_cameras, config=self.static.toggle_ios_style)[1]
+            self.camera_axis_size = imgui.slider_float('Camera axis size', self.camera_axis_size, 0.01, 0.1)[1]
             if network_available: self.render_network = imgui_toggle.toggle('Render network', self.render_network, config=self.static.toggle_ios_style)[1]
             self.render_meshes = imgui_toggle.toggle('Render meshes', self.render_meshes, config=self.static.toggle_ios_style)[1]
             if network_available: self.render_alpha = imgui_toggle.toggle('Render alpha', self.render_alpha, config=self.static.toggle_ios_style)[1]
@@ -567,9 +570,9 @@ class VolumetricVideoViewer:
             if hasattr(self.model.sampler, 'pts_per_pix'):
                 self.model.sampler.pts_per_pix = imgui.slider_int('Splatting pts_per_pix', self.model.sampler.pts_per_pix, 1, 60)[1]
 
-        # Custome GUI elements will be rendered here
-        if hasattr(self.model, 'render_imgui'):
-            self.model.render_imgui(self, batch)  # some times the model has its own GUI elements
+            # MARK: Custome GUI elements will be rendered here
+            if hasattr(self.model, 'render_imgui'):
+                self.model.render_imgui(self, batch)  # some times the model has its own GUI elements
 
         if not self.quad.use_quad_cuda:
             gpu_cpu_gpu_msg = f'Not using CUDA-GL interop for low-latency upload, will lead to degraded performance. Try using native Windows or Linux for CUDA-GL interop'
@@ -597,7 +600,7 @@ class VolumetricVideoViewer:
 
             if 'src_inds' in batch.meta: src_inds = batch.meta.src_inds
             else: src_inds = None
-            self.draw_cameras(Ks, Rs, Ts, proj, src_inds=src_inds)
+            self.draw_cameras(Ks, Rs, Ts, proj, src_inds=src_inds, axis_size=self.camera_axis_size)
 
             if 'optimized_camera' in self.static:
                 if hasattr(dataset, 'closest_using_t') and dataset.closest_using_t:
@@ -609,7 +612,7 @@ class VolumetricVideoViewer:
                     Rs = self.static.optimized_camera.Rs[:, batch.meta.latent_index.item()]
                     Ts = self.static.optimized_camera.Ts[:, batch.meta.latent_index.item()]
 
-                self.draw_cameras(Ks, Rs, Ts, proj, default_color=0xeeffc050, bold_color=0xffffa020, src_inds=src_inds)
+                self.draw_cameras(Ks, Rs, Ts, proj, default_color=0x50c0ffaa, bold_color=0xff8080ff, src_inds=src_inds, axis_size=self.camera_axis_size)
 
             elif hasattr(self.model.camera, 'pose_resd'):
                 meta = dotdict()
