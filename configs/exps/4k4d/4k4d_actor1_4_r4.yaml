@@ -1,0 +1,8 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/r4dvb.yaml # network model configuration
+    - configs/datasets/enerf_outdoor/actor1_4_obj.yaml # dataset usage configuration
+    - configs/specs/optimized.yaml # specific usage configuration
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}

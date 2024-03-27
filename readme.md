@@ -175,36 +175,387 @@ evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_actor1_4.yaml,configs/
 
 ## Training
 
-- [ ] TODO: Add trainable models & training examples 
+- [ ] TODO: Finish up the training doc for 4k4d.
 
 ### Pretrained Models for Training
 
+- [ ] TODO: Finish up the training doc for 4k4d.
+
 ### Training on DNA-Rendering (ZJU-MoCap and NHR)
+
+Training *4K4D* on the prepared dataset is simple, just one command and you're all set.
+However, it's recommended to train a single-frame version of *4K4D* to identify potential issues (5 mins) before running on the full sequence (24 hours).
+If any missing pacakges are reporteds, please `pip install` them before going any further.
+Note that if you've requested the prepared dataset, I should have already prepared the visual hulls and optimized camera parameters for you.
+If they are not present in the dataset, you should first check the [Initialization section of the Custom Dataset section](#initialization-space-carving--visual-hull) for instructions on how to prepare the visual hulls and optimize the camera parameters (if needed of course).
+
+You can use this script to test the installation and training process of *4K4D*.
+This script trains a single-frame version of *4K4D* on the first frame of the *0013_01* sequence of the *DNA-Rendering* dataset.
+
+```shell
+evc -c configs/exps/4k4d/4k4d_0013_01_r4.yaml,configs/specs/static.yaml,configs/specs/tiny.yaml exp_name=4k4d_0013_01_r4_static
+```
+
+During the first 100-200 iterations, you should see that the training PSNR increase to 24-25 dB. Otherwise there might be bugs during your dataset preparation or installation process.
+
+The actual training of the full model is more straight forward:
+
+```shell
+evc -c configs/exps/4k4d/4k4d_0013_01_r4.yaml
+```
+
+For training on other sequences or dataset, change this line:
+
+```yaml
+- configs/datasets/renbody/0013_01_obj.yaml # dataset usage configuration
+```
+
+to something else like:
+
+```yaml
+- configs/datasets/NHR/sport2_obj.yaml # dataset usage configuration
+```
+
+and save the modified config file separatedly to something like: `configs/exps/4k4d/4k4d_sport2_r4.yaml`
+
+Example configurations files can be found in `configs/exps/4k4d` and `configs/projects/realtime4dv/training`. 
+The `4k4d` folder contains some more example configuration files. If you're starting from scratch, it's recommended to use and extend files inside this folder.
+The `training` folder contains configuration files matching our provided pretrained model, some of which are legacy model files that requires special configurations.
+For (a) visual hull initialization and (b) converting the trained models for real-time rendering, please see the [Custom Datasets](#custom-datasets) section.
 
 ### Training on ENeRF-Outdoor
 
+- [ ] TODO: Finish up the training doc for 4k4d.
+
+Training *4K4D* on a background dataset (*dance3* or *ENeRF-Outdoor*) is a little bit more involved than the foreground-only ones.
+For the foreground-only ones, you only need to train one model and maybe later convert them for realtime rendering.
+For the background-enabled ones, you'll need to train a separated model for the background and foreground and then jointly optimize them.
+Note that if you've requested the processed data, I should have already placed the processed visual hulls and background initializations inside your dataset.
+If they're not present, please check the [Initialization section of the Custom Dataset section](#initialization-space-carving--visual-hull) for instructions.
 
 ## Custom Datasets
 
-- [ ] TODO: Add trainable models & examples on custom datasets
+- [ ] TODO: Finish up the training doc for 4k4d.
 
 ### Dataset Preparation
 
+The *4K4D* project is an effort around creating a real-time-renderable neural volumetric video.
+
+In the following, we'll be walking throught the process of training our method on a custom multi-view dataset. 
+Lets call the dataset `renbody` and call the sequence `0013_01` for notation. Note that you can change out the *0013_01* and *renbody* parts for other names for you custom dataset. Other namings like *4k4d* should remain the same.
+Let's assume a typical input contains calibrated camera parameters compatible with [EasyMocap](https://github.com/zju3dv/EasyMocap), where the folder & directory structure looks like this:
+
+```shell
+data/renbody/0013_01
+│── extri.yml
+│── intri.yml
+├── images
+│   ├── 00
+│   │   ├── 000000.jpg
+│   │   ├── 000001.jpg
+│   │   ...
+│   │   ...
+│   └── 01
+│   ...
+└── masks
+    ├── 00
+    │   ├── 000000.jpg
+    │   ├── 000001.jpg
+    │   ...
+    │   ...
+    └── 01
+    ...
+```
+
+We assume the foreground mask has already been segmented. If not, you could also checkout the scripts contained in [`scripts/segmentation`](../../scripts/segmentation/inference_robust_video_matting.py). My experience is that [RobustVideoMatting](https://github.com/PeterL1n/RobustVideoMatting/blob/master/documentation/inference.md) typically gets the job done. If you've also got access to ground truth background images (with minimal lighting changes), you could also give [BackgroundMattingV2](https://github.com/PeterL1n/BackgroundMattingV2) a try. A relevant script can also be found in [`scripts/segmentation`](../../scripts/segmentation/inference_bkgdmattev2.py).
+
 ### Configurations
+
+Given the dataset, you're now prepared for creating your correcponding configuration file for *4K4D*.
+The first file is corresponding to the dataset itself, where data loading paths and input ratios or view numbers are defined. Lets put it in [`configs/datasets/renbody/0013_01.yaml`](../../configs/datasets/renbody/0013_01.yaml). You can look at the actual file to get a grasp of what info this file should contain. At the minimum, you should specify the data loading root for the dataset. If you feel unfamilier with the configuration system, feel free to check out the specific [documentation](../../docs/design/config.md) for that part. The content of the `0013_01.yaml` (and its parent `renbody.yaml`) file should look something like this:
+
+```yaml
+# Content of configs/datasets/renbody/0013_01.yaml
+configs: configs/datasets/renbody/renbody.yaml
+
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        data_root: data/renbody/0013_01
+        images_dir: images_calib
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+```
+```yaml
+# Content of configs/datasets/renbody/renbody.yaml
+dataloader_cfg: # we see the term "dataloader" as one word?
+    dataset_cfg: &dataset_cfg
+        masks_dir: masks
+        ratio: 0.5
+        bounds: [[-5.0, -5.0, -5.0], [5.0, 5.0, 5.0]] # thinner?
+
+        force_sparse_view: True
+        view_sample: [0, 60, 1]
+        frame_sample: [0, 150, 1] # only train for a thousand frames
+
+model_cfg:
+    sampler_cfg:
+        bg_brightness: 0.0
+    renderer_cfg:
+        bg_brightness: 0.0
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+        frame_sample: [0, 150, 1]
+    sampler_cfg:
+        view_sample: [0, 60, 20]
+
+```
+
+Here you'll see I created a general description file `configs/datasets/renbody/renbody.yaml` for the whole *DNA-Rendering* dataset, which is a good practice if your multi-view dataset contains multiple different sequences but they are under roughly the same setting (view count, lighting condition, mask quality etc.). You'll also note I explicitly specified how many views and frames this dataset has. The number you put in here should not exceed the actual amount. If you're feeling lazy you can also just write `[0, null, 1]` for `view_sample` and `frame_sample`, however doing this means a trained model will still require access to the original dataset to perform some loading and rendering.
+
+Until now, such data preparation are generalizable across all multi-view dataset supported by ***EasyVolcap***, you should always create the corresponding dataset configuraitons for you custom ones as this helps in reproducibility.
+
+Our next step is to create the corresponding *4K4D* configuration for running experiments on the `0013_01` sequence. You can create a [`configs/exps/4k4d/4k4d_0013_01_r4.yaml`](../../configs/exps/4k4d/4k4d_0013_01_r4.yaml) to hold such information:
+
+```yaml
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/r4dv.yaml # network model configuration
+    - configs/datasets/renbody/0013_01_obj.yaml # dataset usage configuration
+    - configs/specs/mask.yaml # specific usage configuration
+    - configs/specs/optimized.yaml # specific usage configuration
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}
+```
+
+You'll notice I placed the configurations in and order of `base`, `model`, `dataset` and then `specs`. This is typically the best practice as you get more and more specific about the experiment you want to perform here. The `mask.yaml` file will provide necessary configurations for reading, parsing and using provided foreground masks, and it is essential for all experiments on *4K4D*. 
+
+For some datasets (like `4k4d_sport2_r4.yaml`), you'll notice I included a spec called `prior.yaml`. The `prior.yaml` file slightly modifies the optimizaion hyperparameters (increase weight of input masks and increate input view count) since the mask of *NHR* is quite accurate and the focal length is quite high. You can also check out the actual file to get a better understanding of what it does (this applies to almost all files under the [`specs`](../../configs/specs) directory).
+
+For now, there's no `0013_01_obj.yaml`. This file should contain a tighter bounding box aggregated from the visual hulls and we will describe how to prepare this in the next section.
 
 ### Initialization (Space Carving || Visual Hull)
 
+The next step for *4K4D* is initialization. With the correct dataset placement and configuration files in place, you should be able to run the following script to extract the visull hull from input foreground masks:
+
+```shell
+# Extract visual hulls
+evc -t test -c configs/base.yaml,configs/models/r4dv.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/optimized.yaml,configs/specs/vhulls.yaml
+
+# Preprocess visual hulls
+evc -t test -c configs/base.yaml,configs/models/r4dv.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/optimized.yaml,configs/specs/surfs.yaml
+```
+
+This won't take long. Typically a few minutes should suffices. After which you'll notice a folder `vhulls` created in your dataset folder (`data/renbody/renbody` in this example). Note that we also support directly running the training script and let ***EasyVolcap*** lazily take care of this initialization process, but since *4K4D* could benefit from a tighter bounding box when defininig its 4D feature volumes (two modified [K-Planes](https://github.com/sarafridov/K-Planes)), I figure one extra hoop should be worth it.
+
+- [ ] TODO: Make this bbox summarization process automatic
+
+You‘ll also notice the above script will output an aggregated bounding box value. Copy it and create a new file [`configs/datasets/renbody/0013_01_obj.yaml`](../../configs/datasets/renbody/0013_01_obj.yaml) to hold it.
+
+```yaml
+configs: configs/datasets/renbody/0013_03.yaml
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg # ratio: 0.5
+        bounds: [[-0.5152, -0.6097, -0.9667], [0.5948, 0.8103, 0.7933]] # !: BATCH
+        vhull_thresh: 0.90
+
+val_dataloader_cfg:
+    dataset_cfg:
+        <<: *dataset_cfg
+```
+
+And modify your [`configs/exps/4k4d/4k4d_0013_01_r4.yaml`](../../configs/exps/4k4d/4k4d_0013_01_r4.yaml) to replace `0013_01.yaml` with `0013_01_obj.yaml`. This will make sure we use the tightest bound when defining the dimensions of our 4D feature volumes (two modified [K-Planes](https://github.com/sarafridov/K-Planes)).
+
 ### Training
+
+Next, we're ready to perform the actual training:
+
+```shell
+evc -c configs/exps/4k4d/4k4d_0013_01_r4.yaml
+```
+
+This will take a day two depending on your machine. Please pay attention to the console logs and keep and eye out for the loss and metrics. All records and training time evalution will be saved to `data/record` and `data/result` respectively. So launch your tensorboard or other viewing tools for training inspection.
+After training, we'd want to perform post processing on the trained model for various uses.
 
 ### Rendering
 
+Firstly, we want to generate the version that supports realtime rendering while maintaining almost no performance loss (dubbed *super charged*):
+
+```shell
+python scripts/realtime4dv/charger.py --sampler SuperChargedR4DV --exp_name 4k4d_0013_01 -- -c configs/exps/4k4d/4k4d_0013_01_r4.yaml,configs/specs/super.yaml
+```
+
+Now you can render the converted model in the interactive ***EasyVolcap*** viewer with:
+
+```shell
+evc -t gui -c configs/exps/4k4d/4k4d_0013_01_r4.yaml,configs/specs/superf.yaml exp_name=4k4d_0013_01
+```
+
+The preloading of all frames is quite heavy on system memory and also time intensive. So we advise controlling the number of frames to load via:
+
+```shell
+evc -t gui -c configs/exps/4k4d/4k4d_0013_01_r4.yaml,configs/specs/superf.yaml,configs/specs/vf0.yaml exp_name=4k4d_0013_01
+```
+
+`0` is the starting frame, `1` is the ending frame id and `1` indicates how many frames to jump. For example, `0,30,5` will load 6 frames (`0,5,10,15,20,25`). You can also use `None` to indicate the default value for the total. For example, `val_dataloader_cfg.dataset_cfg.frame_sample=0,None,1` will load all frames.
+Note that this variant is the default variant used in the paper.
+
 ### Optimizing the Cameras
+
+Inheriting from ***EasyVolcap***, *4K4D* also supports loading optimized camera parameters for each dataset (sequence).
+This is done by training an improved Instant-NGP model on one frame of the sequence. And then extracting the optimized camera parameters to the ***EasyVolcap*** format.
+However, if your dataset's provided camera parameters are already good enough, you can skip this step.
+For the NHR dataset, the provided cameras are good enough thus we did not mention this step in the previous sections.
+So, from now on, we will be using the *0013_01* sequence of the *DNA-Rendering* dataset as an example.
+
+More details on how to perform the camera parameters finetune can be found in [camera.md](../design/camera.md).
+For now, let's assume you've got a `l3mhet_0013_01_static.yaml` file setup and ready for use.
+
+After training the single frame camera optimization model using this script:
+
+```shell
+evc -c configs/specs/exps/l3mhet/l3mhet_0013_01_static.yaml
+```
+
+You're expected to finded a model `data/trained_model/l3mhet_0013_01_static.yaml`
+
+- [ ] TODO: Continues this.
 
 
 ## Custom Full-Scene Datasets
 
-- [ ] TODO: Add trainable models & examples on custom full-scene datasets
+Prepare the dynamic dataset as in [`custom_dataset.md`](../../docs/misc/custom_dataset.md).
+Assuming `vhulls` and `surfs` has also been prepared.
+And that the background images has been correctly created.
 
+First of all, rearrange the background images folder and train a background NGP:
+
+```shell
+# Prepare dataset variables
+expname=actor1_4
+data_root=data/volcano/actor1_4
+
+# Rearrange background images
+python scripts/segmentation/link_backgrounds.py --data_root ${data_root}
+
+# Train background NGP
+evc -c configs/exps/l3mhet/l3mhet_${expname}_bg.yaml
+
+# Extract point clouds from trained background NGP
+python scripts/fusion/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_${expname}_bg.yaml val_dataloader_cfg.dataset_cfg.ratio=0.15 val_dataloader_cfg.dataset_cfg.view_sample=0,None,3 # 50W should be ok
+
+# Prepare for initialization of bg 4k4d
+mkdir -p ${data_root}/bkgd/boost
+cp data/geometry/l3mhet_${expname}_bg/POINT/frame0000.ply ${data_root}/bkgd/boost/000000.ply
+```
+
+Prepare 3 configs like:
+
+- [`4k4d_actor1_4_r4_bg.yaml`](../../configs/exps/4k4d/4k4d_actor1_4_r4_bg.yaml): Background 4K4D training config
+- [`4k4d_actor1_4_r4_fg.yaml`](../../configs/exps/4k4d/4k4d_actor1_4_r4_fg.yaml): Foreground 4K4D training config
+- [`4k4d_actor1_4_r4.yaml`](../../configs/exps/4k4d/4k4d_actor1_4_r4.yaml): Joint 4K4D training config
+
+Optionally, create static version of the `fg` model to validate the implementation like [`4k4d_actor1_4_r4_fg_static.yaml`](../../configs/exps/4k4d/4k4d_actor1_4_r4_fg_static.yaml):
+
+```shell
+# Train static foreground model
+evc -c configs/exps/4k4d/4k4d_${expname}_r4_fg_static.yaml
+```
+
+And optionally, validate the rendering of the static frame:
+
+```shell
+# Convert to real-time format
+python scripts/realtime4dv/charger.py --exp_name 4k4d_${expname}_fg_static --sampler SuperChargedR4DV -- -c configs/exps/4k4d/4k4d_${expname}_r4_fg_static.yaml,configs/specs/super.yaml
+
+# Real-time rendering in GUI
+evc -t gui -c configs/exps/4k4d/4k4d_${expname}_r4_fg_static.yaml,configs/specs/superf.yaml exp_name=4k4d_${expname}_fg_static
+```
+
+Train the `bg` and `fg` model seperatedly:
+
+```shell
+# Train background model
+evc -c configs/exps/4k4d/4k4d_${expname}_r4_bg.yaml
+
+# Train foreground model, this could take a long time
+evc -c configs/exps/4k4d/4k4d_${expname}_r4_fg.yaml
+
+# Joint training
+evc -c configs/exps/4k4d/4k4d_${expname}_r4.yaml
+```
+
+Real-time rendering of backgrounds:
+
+```shell
+# Convert to real-time format
+python scripts/realtime4dv/charger.py --exp_name 4k4d_${expname}_bg --sampler SuperChargedR4DV -- -c configs/exps/4k4d/4k4d_${expname}_r4_bg.yaml,configs/specs/super.yaml
+
+# Non-real-time rendering
+evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4_bg.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
+
+# Real-time rendering of spiral path
+evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4_bg.yaml,configs/specs/superf.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/eval.yaml exp_name=4k4d_${expname}_bg val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
+
+# Real-time rendering in GUI
+evc -t gui -c configs/exps/4k4d/4k4d_${expname}_r4_bg.yaml,configs/specs/superf.yaml exp_name=4k4d_${expname}_bg
+```
+
+Real-time rendering of foregrounds:
+
+```shell
+# Convert to real-time format
+python scripts/realtime4dv/charger.py --exp_name 4k4d_${expname}_fg --sampler SuperChargedR4DV -- -c configs/exps/4k4d/4k4d_${expname}_r4_fg.yaml,configs/specs/super.yaml
+
+# Non-real-time rendering
+evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4_fg.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
+
+# Real-time rendering of spiral path
+evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4_fg.yaml,configs/specs/superf.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/eval.yaml exp_name=4k4d_${expname}_fg val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
+
+# Real-time rendering in GUI
+evc -t gui -c configs/exps/4k4d/4k4d_${expname}_r4_fg.yaml,configs/specs/superf.yaml exp_name=4k4d_${expname}_fg
+```
+
+Real-time rendering of joint results:
+
+```shell
+# Convert to real-time format
+python scripts/realtime4dv/charger.py --exp_name 4k4d_${expname} --sampler SuperChargedR4DV -- -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/super.yaml
+
+# Non-real-time rendering
+evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
+
+# Real-time rendering of spiral path
+evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/superf.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/eval.yaml exp_name=4k4d_${expname} val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
+
+# Real-time rendering in GUI
+evc -t gui -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/superf.yaml exp_name=4k4d_${expname}
+```
+
+Using static scene to check implementation and avoid OOM errors:
+
+```shell
+# Run training on first frame
+evc -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml
+
+# Run rendering on first frame of non-real-time model
+evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml
+
+# Convert to real-time model
+python scripts/realtime4dv/charger.py --exp_name 4k4d_${expname}_static --sampler SuperChargedR4DVB -- -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml,configs/specs/super.yaml
+
+# Run rendering with real-time model
+evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/superb.yaml,configs/specs/eval.yaml exp_name=4k4d_${expname}_static
+
+# Run GUI rendering with real-time model
+evc -t gui -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml,configs/specs/superb.yaml exp_name=4k4d_${expname}_static
+```
 
 ## Acknowledgements
 

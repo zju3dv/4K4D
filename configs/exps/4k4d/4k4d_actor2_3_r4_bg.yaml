@@ -1,0 +1,23 @@
+configs:
+    - configs/base.yaml # default arguments for the whole codebase
+    - configs/models/r4dv.yaml # network model configuration
+    - configs/datasets/enerf_outdoor/actor2_3.yaml # dataset usage configuration
+    - configs/specs/static.yaml
+    - configs/specs/boost.yaml
+    - configs/specs/optimized.yaml # specific usage configuration
+
+model_cfg:
+    sampler_cfg:
+        points_dir: bkgd/boost
+
+dataloader_cfg: &dataloader_cfg
+    dataset_cfg: &dataset_cfg
+        images_dir: bkgd/images
+
+val_dataloader_cfg:
+    <<: *dataloader_cfg
+    dataset_cfg:
+        <<: *dataset_cfg
+
+# prettier-ignore
+exp_name: {{fileBasenameNoExtension}}
