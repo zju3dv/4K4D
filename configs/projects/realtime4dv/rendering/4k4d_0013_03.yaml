@@ -6,7 +6,7 @@ configs:
     - configs/specs/optimized.yaml # specific usage configuration
     - configs/specs/shr1.yaml # MARK: legacy model
     - configs/specs/superf.yaml # NOTE: real-time rendering
-    - configs/specs/ratio.yaml
+    - configs/datasets/renbody/ratio.yaml
 
 # prettier-ignore
 exp_name: {{fileBasenameNoExtension}}

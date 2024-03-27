@@ -5,7 +5,7 @@ configs:
     - configs/specs/mask.yaml # specific usage configuration
     - configs/specs/optimized.yaml # specific usage configuration
     - configs/specs/superf.yaml # NOTE: real-time rendering
-    - configs/specs/ratio.yaml
+    - configs/datasets/renbody/ratio.yaml
 
 # prettier-ignore
 exp_name: {{fileBasenameNoExtension}}
