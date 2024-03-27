@@ -10,9 +10,10 @@ Repository for our paper *4K4D: Real-Time 4D View Synthesis at 4K Resolution*.
 
 ***News***:
 
-- 24.02.27: 4K4D has been accepted to CVPR 2024.
+- 24.03.27: The [training code](easyvolcap/models/samplers/r4dv_sampler.py) for *4K4D* has been open-sourced along with [documentations](readme.md#Training).
+- 24.02.27: *4K4D* has been accepted to CVPR 2024.
 - 23.12.18: The backbone of *4K4D*, our volumetric video framework [***EasyVolcap***](https://github.com/zju3dv/EasyVolcap) has been open-sourced!
-- 23.12.18: The inference code for *4K4D* has also been open-sourced along with documentations.
+- 23.12.18: The [inference code](easyvolcap/models/samplers/super_charged_r4dv.py) for *4K4D* has also been open-sourced along with [documentations](readme.md#Rendering).
 
 https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/faf60953-fd7f-4309-a1f5-758eaa1182ca
 
