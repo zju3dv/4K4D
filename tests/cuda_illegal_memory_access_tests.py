@@ -47,7 +47,7 @@ def render_diff_gauss(xyz3: torch.Tensor, rgb3: torch.Tensor, cov: torch.Tensor,
 
 
 def test_illegal_memory_diag():
-    repeat = 5
+    repeat = 100
     N = 10000
     cov = torch.rand(N, 6, device='cuda') - 0.5  # trying to reproduce this
     occ = torch.rand(N, 1, device='cuda')
@@ -73,10 +73,21 @@ def test_illegal_memory_diag():
     for i in tqdm(range(repeat)):
         xyz = torch.rand(N, 3, device='cuda')
         rgb = torch.rand(N, 3, device='cuda')
-        # with open('fwd.dump', 'wb') as f:
-        #     torch.save(dotdict(xyz3=xyz, rgb3=rgb, cov6=cov, occ1=occ, camera=camera), f)
-        #     os.fsync(f)
-        if i == 4: breakpoint()
+        with open('fwd.dump', 'wb') as f:
+            torch.save(dotdict(xyz3=xyz, rgb3=rgb, cov6=cov, occ1=occ, camera=camera), f)
+            os.fsync(f)
+        # if i == 4:
+        #     first_N_points = 1
+        #     N = len(xyz)
+        #     while first_N_points < 2 * N:
+        #         log(f'Rendering the first {min(N, first_N_points)} points out of {N}')
+        #         # for i in tqdm(range(repeat)):
+        #         # if first_N_points == 256:
+        #         #     breakpoint()
+        #         rgb, acc, dpt, meta = render_diff_gauss(xyz[:first_N_points], rgb[:first_N_points], cov[:first_N_points], occ[:first_N_points], camera)
+        #         first_N_points *= 2
+
+            # breakpoint()
         render_diff_gauss(xyz, rgb, cov, occ, camera)  # will throw illegal memory access error
 
 
