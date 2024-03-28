@@ -79,15 +79,16 @@ def inverse_sigmoid(x):
 
 @torch.jit.script
 def strip_lowerdiag(L: torch.Tensor):
-    # uncertainty = torch.zeros((L.shape[0], 6), dtype=L.dtype, device=L.device)
+    uncertainty = torch.zeros((L.shape[0], 6), dtype=L.dtype, device=L.device)
 
-    # uncertainty[:, 0] = L[:, 0, 0]
-    # uncertainty[:, 1] = L[:, 0, 1]
-    # uncertainty[:, 2] = L[:, 0, 2]
-    # uncertainty[:, 3] = L[:, 1, 1]
-    # uncertainty[:, 4] = L[:, 1, 2]
-    # uncertainty[:, 5] = L[:, 2, 2]
-    # return uncertainty
+    uncertainty[:, 0] = L[:, 0, 0].clip(0.0)  # sanitize covariance matrix
+    uncertainty[:, 1] = L[:, 0, 1]
+    uncertainty[:, 2] = L[:, 0, 2]
+    uncertainty[:, 3] = L[:, 1, 1].clip(0.0)  # sanitize covariance matrix
+    uncertainty[:, 4] = L[:, 1, 2]
+    uncertainty[:, 5] = L[:, 2, 2].clip(0.0)  # sanitize covariance matrix
+    return uncertainty
+
     inds = torch.triu_indices(3, 3, device=L.device)  # 2, 6
     return L[:, inds[0], inds[1]]
 
