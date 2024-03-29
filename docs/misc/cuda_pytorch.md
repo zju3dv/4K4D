@@ -40,4 +40,9 @@ sudo cp -P cudnn-*-archive/lib/libcudnn* /usr/local/cuda/lib64
 sudo chmod a+r /usr/local/cuda/include/cudnn*.h /usr/local/cuda/lib64/libcudnn*
 ```
 
+```shell
+# Testing speed
+python -c "import torch; from tqdm import tqdm; [(torch.rand(2000, 2000, device='cuda')**10).ndim for i in tqdm(range(1000000000))]"
+```
+
 ## PyTorch CUDA Extension
