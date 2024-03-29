@@ -431,28 +431,29 @@ You're expected to finded a model `data/trained_model/l3mhet_0013_01_static.yaml
 ## Custom Full-Scene Datasets
 
 Prepare the dynamic dataset as in [`custom_dataset.md`](../../docs/misc/custom_dataset.md).
-Assuming `vhulls` and `surfs` has also been prepared.
-And that the background images has been correctly created.
+Specifically, you should follow the guide in [the dense calibration section](../../docs/misc/custom_dataset.md#dense-calibration) to prepare the optimized camera parameters using NGP (`optimized`).
+And then, you can follow the guide in [the space carving section](../../docs/misc/custom_dataset.md#space-carving) to prepare the visual hulls (`vhulls` and `surfs`).
+After that, we can continue on the training of custom full-scene dataset.
 
 First of all, rearrange the background images folder and train a background NGP:
 
 ```shell
 # Prepare dataset variables
 expname=actor1_4
-data_root=data/volcano/actor1_4
+data_root=data/enerf_outdoor/actor1_4
 
 # Rearrange background images
 python scripts/segmentation/link_backgrounds.py --data_root ${data_root}
 
 # Train background NGP
-evc -c configs/exps/l3mhet/l3mhet_${expname}_bg.yaml
+evc -c configs/exps/l3mhet/l3mhet_${expname}_bkgd.yaml
 
 # Extract point clouds from trained background NGP
-python scripts/fusion/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_${expname}_bg.yaml val_dataloader_cfg.dataset_cfg.ratio=0.15 val_dataloader_cfg.dataset_cfg.view_sample=0,None,3 # 50W should be ok
+python scripts/fusion/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_${expname}_bkgd.yaml val_dataloader_cfg.dataset_cfg.ratio=0.15 val_dataloader_cfg.dataset_cfg.view_sample=0,None,3 # 50W should be ok
 
 # Prepare for initialization of bg 4k4d
 mkdir -p ${data_root}/bkgd/boost
-cp data/geometry/l3mhet_${expname}_bg/POINT/frame0000.ply ${data_root}/bkgd/boost/000000.ply
+cp data/geometry/l3mhet_${expname}_bkgd/POINT/frame0000.ply ${data_root}/bkgd/boost/000000.ply
 ```
 
 Prepare 3 configs like:
