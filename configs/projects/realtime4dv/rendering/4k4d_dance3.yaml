@@ -21,8 +21,5 @@ model_cfg:
             radius_shift: -2.5
             radius_max: 0.1
 
-viewer_cfg:
-    init_camera_index: 5
-
 # prettier-ignore
 exp_name: {{fileBasenameNoExtension}}
