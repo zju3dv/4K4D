@@ -5,11 +5,7 @@ configs:
     - configs/specs/static.yaml
     - configs/specs/optcam.yaml
     - configs/specs/transient.yaml
-
-model_cfg:
-    camera_cfg:
-        pretrained_camera: data/trained_model/l3mhet_actor1_4_static # this is a must
-        freeze_camera: True
+    - configs/specs/optimized.yaml
 
 dataloader_cfg: &dataloader_cfg
     dataset_cfg:
