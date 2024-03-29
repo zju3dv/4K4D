@@ -449,7 +449,7 @@ python scripts/segmentation/link_backgrounds.py --data_root ${data_root}
 evc -c configs/exps/l3mhet/l3mhet_${expname}_bkgd.yaml
 
 # Extract point clouds from trained background NGP
-python scripts/fusion/volume_fusion.py -- -c configs/exps/l3mhet/l3mhet_${expname}_bkgd.yaml val_dataloader_cfg.dataset_cfg.ratio=0.15 val_dataloader_cfg.dataset_cfg.view_sample=0,None,3 # 50W should be ok
+python scripts/fusion/volume_fusion.py --skip_depth_consistency -- -c configs/exps/l3mhet/l3mhet_${expname}_bkgd.yaml val_dataloader_cfg.dataset_cfg.ratio=0.15 val_dataloader_cfg.dataset_cfg.view_sample=0,None,3 # 50W should be ok
 
 # Prepare for initialization of bg 4k4d
 mkdir -p ${data_root}/bkgd/boost
