@@ -10,8 +10,8 @@ from easyvolcap.utils.easy_utils import write_camera
 @catch_throw
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--nerf_root', type=str, default='/mnt/data/home/xuzhen/projects/large_gaussian/hospital')
-    parser.add_argument('--volcap_root', type=str, default='/mnt/data/home/xuzhen/projects/large_gaussian/hospital')
+    parser.add_argument('--nerf_root', type=str, default='/mnt/data2/home/shuaiqing/Code/gaussian-splatting-origin/data/Campus/4')
+    parser.add_argument('--volcap_root', type=str, default='/mnt/data2/home/shuaiqing/Code/gaussian-splatting-origin/data/Campus/4')
     parser.add_argument('--transforms_file', type=str, default='transforms_train.json')
     parser.add_argument('--intri_file', type=str, default='cameras_train/00/intri.yml')
     parser.add_argument('--extri_file', type=str, default='cameras_train/00/extri.yml')
@@ -66,7 +66,7 @@ def main():
     )
     log(yellow(f'Converted cameras saved to {blue(join(args.volcap_root, f"{{{args.intri_file},{args.extri_file}}}"))}'))
 
-    if args.organize_images and len(transforms.frames) and exists(transforms.frames[0].file_path):
+    if args.organize_images and len(transforms.frames) and exists(join(args.nerf_root, transforms.frames[0].file_path)):
         run(f'python scripts/nerf/organize_images.py --nerf_root {args.nerf_root} --volcap_root {args.volcap_root} --transforms_file {args.transforms_file} --images_dir {args.images_dir}')
 
     if args.transforms_file.endswith('_train.json') and \

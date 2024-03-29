@@ -55,8 +55,8 @@ def convertRT(RT0):
 @catch_throw
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_root', type=str, default='/mnt/data/home/xuzhen/projects/large_gaussian/demo/cameras/00')
-    parser.add_argument('--out_file', type=str, default='/mnt/data/home/xuzhen/projects/large_gaussian/demo/trajectories/path0.json')
+    parser.add_argument('--data_root', type=str, default='/mnt/remote/D002/home/xuzhen/projects/large_gaussian/demo/cameras/00')
+    parser.add_argument('--out_file', type=str, default='/mnt/remote/D002/home/xuzhen/projects/large_gaussian/demo/trajectories/path0.json')
     parser.add_argument('--images_dir', type=str, default='images')
     parser.add_argument('--img_ext', type=str, default='.png', help='Only used when not using a multi_frame_dataset for contructing file_path')
     parser.add_argument('--image_file', type=str, default='000000.jpg', help='Only used when --multi_frame_dataset for contructing file_path')
