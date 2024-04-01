@@ -456,8 +456,9 @@ class VolumetricVideoViewer:
                 frame_time = 1 / self.playing_fps
                 if self.acc_time >= frame_time:
                     self.acc_time = 0
-                    self.camera.t = (self.camera.t + 1 / self.dataset.frame_range) % 1
-                    self.camera.t = int(self.camera.t / (1 / self.dataset.frame_range)) * self.dataset.frame_range
+                    frame_time = 1 / self.dataset.frame_range
+                    self.camera.t = (self.camera.t + frame_time) % 1
+                    self.camera.t = int(self.camera.t / frame_time) * frame_time  # only smaller
             else:
                 self.camera.t = (self.camera.t + self.playing_speed) % 1
 
