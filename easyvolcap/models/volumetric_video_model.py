@@ -134,7 +134,7 @@ class VolumetricVideoModel(nn.Module):
             batch.ray_o = to_x(batch.ray_o, self.dtype)
             batch.ray_d = to_x(batch.ray_d, self.dtype)
             if self.training or (self.apply_optcam and args.type != 'gui'):
-                batch.ray_o, batch.ray_d = self.camera.forward_rays(batch.ray_o, batch.ray_d, batch)
+                batch.ray_o, batch.ray_d = self.camera.forward_rays(batch.ray_o, batch.ray_d, batch, self.use_z_depth, self.correct_pix)
 
         if 't' in batch:
             batch.t = to_x(batch.t, self.dtype)

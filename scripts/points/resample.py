@@ -1,6 +1,7 @@
 """
 Resample point clouds from one folder to another
 """
+import torch
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.data_utils import load_pts, export_pts, to_tensor, to_cuda
 from easyvolcap.utils.fcds_utils import random, farthest, surface_points, voxel_surface_down_sample, voxel_down_sample, SamplingType
@@ -15,6 +16,7 @@ def main():
         voxel_size=0.005,
         type=SamplingType.RANDOM_DOWN_SAMPLE.name,
         device='cuda',
+        color=0.0,
     )
     args = dotdict(vars(build_parser(args, description=__doc__).parse_args()))
     args.type = SamplingType[args.type]
@@ -39,7 +41,11 @@ def main():
             xyz = voxel_surface_down_sample(xyz, n_points=args.n_points, voxel_size=args.voxel_size)
         else:
             raise NotImplementedError
-        export_pts(xyz, filename=out)
+        if args.color >= 0:
+            rgb = torch.full_like(xyz, args.color)
+        else:
+            rgb = torch.rand_like(xyz)
+        export_pts(xyz, rgb, filename=out)
 
 
 if __name__ == '__main__':
