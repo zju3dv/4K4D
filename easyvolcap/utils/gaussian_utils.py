@@ -13,10 +13,91 @@ from easyvolcap.utils.net_utils import make_buffer, make_params, typed
 from easyvolcap.utils.math_utils import torch_inverse_2x2, point_padding
 
 
+def render_diff_gauss(xyz3: torch.Tensor, rgb3: torch.Tensor, cov: torch.Tensor, occ1: torch.Tensor, camera: dotdict):
+    from diff_gauss import GaussianRasterizationSettings, GaussianRasterizer
+    # Prepare rasterization settings for gaussian
+    raster_settings = GaussianRasterizationSettings(
+        image_height=camera.image_height,
+        image_width=camera.image_width,
+        tanfovx=camera.tanfovx,
+        tanfovy=camera.tanfovy,
+        bg=torch.full([3], 0.0, device=xyz3.device),  # GPU
+        scale_modifier=1.0,
+        viewmatrix=camera.world_view_transform,
+        projmatrix=camera.full_proj_transform,
+        sh_degree=0,
+        campos=camera.camera_center,
+        prefiltered=True,
+        debug=False,
+    )
+
+    # Rasterize visible Gaussians to image, obtain their radii (on screen).
+    scr = torch.zeros_like(xyz3, requires_grad=True) + 0  # gradient magic
+    rasterizer = GaussianRasterizer(raster_settings=raster_settings)
+    rendered_image, rendered_depth, rendered_alpha, radii = typed(torch.float, torch.float)(rasterizer)(
+        means3D=xyz3,
+        means2D=scr,
+        shs=None,
+        colors_precomp=rgb3,
+        opacities=occ1,
+        scales=None,
+        rotations=None,
+        cov3D_precomp=cov,
+    )
+
+    rgb = rendered_image[None].permute(0, 2, 3, 1)
+    acc = rendered_alpha[None].permute(0, 2, 3, 1)
+    dpt = rendered_depth[None].permute(0, 2, 3, 1)
+    H = camera.image_height
+    W = camera.image_width
+    meta = dotdict({'radii': radii / float(max(H, W)), 'scr': scr, 'H': H, 'W': W})
+    return rgb, acc, dpt, meta
+
+
+def render_fdgs(xyz3: torch.Tensor, rgb3: torch.Tensor, cov: torch.Tensor, occ1: torch.Tensor, camera: dotdict):
+    from diff_gaussian_rasterization import GaussianRasterizationSettings, GaussianRasterizer
+    # Prepare rasterization settings for gaussian
+    raster_settings = GaussianRasterizationSettings(
+        image_height=camera.image_height,
+        image_width=camera.image_width,
+        tanfovx=camera.tanfovx,
+        tanfovy=camera.tanfovy,
+        bg=torch.full([3], 0.0, device=xyz3.device),  # GPU
+        scale_modifier=1.0,
+        viewmatrix=camera.world_view_transform,
+        projmatrix=camera.full_proj_transform,
+        sh_degree=0,
+        campos=camera.camera_center,
+        prefiltered=True,
+        debug=False
+    )
+
+    # Rasterize visible Gaussians to image, obtain their radii (on screen).
+    scr = torch.zeros_like(xyz3, requires_grad=True) + 0  # gradient magic
+    rasterizer = GaussianRasterizer(raster_settings=raster_settings)
+    rendered_image, radii = typed(torch.float, torch.float)(rasterizer)(
+        means3D=xyz3,
+        means2D=scr,
+        shs=None,
+        colors_precomp=rgb3,
+        opacities=occ1,
+        scales=None,
+        rotations=None,
+        cov3D_precomp=cov,
+    )
+
+    rgb = rendered_image[None].permute(0, 2, 3, 1)
+    acc = torch.ones_like(rgb[..., :1])
+    dpt = torch.zeros_like(rgb[..., :1])
+    H = camera.image_height
+    W = camera.image_width
+    meta = dotdict({'radii': radii / float(max(H, W)), 'scr': scr, 'H': H, 'W': W})
+    return rgb, acc, dpt, meta
+
+
 @torch.jit.script
 def in_frustrum(xyz: torch.Tensor, full_proj_matrix: torch.Tensor, xy_padding: float = 0.5, padding: float = 0.01):
-
-    ndc = point_padding(xyz) @ full_proj_matrix
+    ndc = point_padding(xyz) @ full_proj_matrix # this is now in clip space
     ndc = ndc[..., :3] / ndc[..., 3:]
     return (ndc[..., 2] > -1 - padding) & (ndc[..., 2] < 1 + padding) & (ndc[..., 0] > -1 - xy_padding) & (ndc[..., 0] < 1. + xy_padding) & (ndc[..., 1] > -1 - xy_padding) & (ndc[..., 1] < 1. + xy_padding)  # N,
 
@@ -179,8 +260,8 @@ def getProjectionMatrix(K: torch.Tensor, H: torch.Tensor, W: torch.Tensor, znear
     P[1, 1] = 2 * fy / H
     P[1, 2] = -1 + 2 * (cy / H)
 
-    P[2, 2] = 1 * (zfar + znear) / (zfar - znear)
-    P[2, 3] = -1 * zfar * znear / (zfar - znear)
+    P[2, 2] = -(zfar + znear) / (znear - zfar)
+    P[2, 3] = 2 * zfar * znear / (znear - zfar)
 
     P[3, 2] = one
 
@@ -248,8 +329,8 @@ def convert_to_gaussian_camera(K: torch.Tensor,
     output.FoVy = focal2fov(cpu_K[1, 1].cpu(), cpu_H.cpu())  # MARK: MIGHT SYNC IN DIST TRAINING, WHY?
 
     # Use .float() to avoid AMP issues
-    output.world_view_transform = getWorld2View(R, T).transpose(0, 1).float()
-    output.projection_matrix = getProjectionMatrix(K, H, W, n, f).transpose(0, 1).float()
+    output.world_view_transform = getWorld2View(R, T).transpose(0, 1).float()  # this is now to be right multiplied
+    output.projection_matrix = getProjectionMatrix(K, H, W, n, f).transpose(0, 1).float()  # this is now to be right multiplied
     output.full_proj_transform = torch.matmul(output.world_view_transform, output.projection_matrix).float()   # 4, 4
     output.camera_center = (-R.mT @ T)[..., 0].float()  # B, 3, 1 -> 3,
 
