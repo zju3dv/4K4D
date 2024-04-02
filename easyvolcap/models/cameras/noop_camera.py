@@ -11,6 +11,7 @@ from easyvolcap.engine import CAMERAS
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.net_utils import NoopModule
 
+
 @CAMERAS.register_module()
 class NoopCamera(NoopModule):  # TODO: Implement intrinsics optimization
     def __init__(self, **kwargs):
@@ -23,8 +24,8 @@ class NoopCamera(NoopModule):  # TODO: Implement intrinsics optimization
     def forward_cams(self, batch: dotdict):
         return batch
 
-    def forward_rays(self, ray_o: torch.Tensor, ray_d: torch.Tensor, batch):
+    def forward_rays(self, ray_o: torch.Tensor, ray_d: torch.Tensor, batch, use_z_depth: bool = False, correct_pix: bool = True):
         return ray_o, ray_d
 
-    def forward(self, ray_o: torch.Tensor, ray_d: torch.Tensor, batch):
+    def forward(self, ray_o: torch.Tensor, ray_d: torch.Tensor, batch, use_z_depth: bool = False, correct_pix: bool = True):
         return ray_o, ray_d, batch

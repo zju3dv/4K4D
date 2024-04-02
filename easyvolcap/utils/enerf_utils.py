@@ -72,10 +72,10 @@ def render_debug_cost_volume(ray_o, ray_d, t, z_vals,
 
 
 @torch.jit.script
-def sample_geometry_feature_image(xyz: torch.Tensor,
-                                  src_feat_rgb: torch.Tensor,
-                                  src_exts: torch.Tensor,
-                                  src_ixts: torch.Tensor,
+def sample_geometry_feature_image(xyz: torch.Tensor, # B, P, 3
+                                  src_feat_rgb: torch.Tensor, # B, S, C, H, W
+                                  src_exts: torch.Tensor, # B, S, 3, 4
+                                  src_ixts: torch.Tensor, # B, S, 3, 3
                                   src_scale: torch.Tensor,
                                   padding_mode: str = 'border',
 

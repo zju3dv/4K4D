@@ -199,7 +199,7 @@ class OptimizableCamera(nn.Module):
             batch.meta.K = batch.K.to('cpu', non_blocking=True)
         return batch
 
-    def forward_rays(self, ray_o: torch.Tensor, ray_d: torch.Tensor, batch: dotdict, use_z_depth: bool = False, correct_pix: bool = False):
+    def forward_rays(self, ray_o: torch.Tensor, ray_d: torch.Tensor, batch: dotdict, use_z_depth: bool = False, correct_pix: bool = True):
         w2c_ori, w2c_opt, w2c_resd, int_ori, int_opt, int_resd = self.forward_pose(batch)
         inv_w2c_opt = affine_inverse(w2c_opt)
 
@@ -216,8 +216,8 @@ class OptimizableCamera(nn.Module):
 
         return ray_o[..., :3], ray_d[..., :3]
 
-    def forward(self, ray_o: torch.Tensor, ray_d: torch.Tensor, batch):
+    def forward(self, ray_o: torch.Tensor, ray_d: torch.Tensor, batch, use_z_depth: bool = False, correct_pix: bool = True):
         batch = self.forward_cams(batch)
         batch = self.forward_srcs(batch)
-        ray_o, ray_d = self.forward_rays(ray_o, ray_d, batch)
+        ray_o, ray_d = self.forward_rays(ray_o, ray_d, batch, use_z_depth, correct_pix)
         return ray_o, ray_d, batch
