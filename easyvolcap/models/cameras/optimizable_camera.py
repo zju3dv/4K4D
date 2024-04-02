@@ -162,7 +162,7 @@ class OptimizableCamera(nn.Module):
         batch.w2c_resd = w2c_resd
 
         # Optimize intrinsic parameters
-        intri_resd = self.intri_resd[latent_index, view_index].to(batch.R)  # fancy indexing? -> B, 6
+        intri_resd = self.intri_resd[latent_index, view_index].to(batch.R)  # fancy indexing? -> B, 4
         int_ori = batch.K
         int_opt = torch.zeros_like(int_ori)
         int_opt[..., 0, 0] = intri_resd[..., 0] + int_ori[..., 0, 0]  # fx
