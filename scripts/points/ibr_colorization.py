@@ -33,9 +33,10 @@ def main():
         input='surfs6k',
         output='surfs6k',
         n_srcs=3,
+        sequential_image_loading=False,
 
         # TODO: Use IBR models for this, for now, they require voxel feature input thus cannot be easily separated
-        enerfi_path='data/trained_model/enerfi_dtu',
+        # enerfi_path='data/trained_model/enerfi_dtu',
     )
     args = dotdict(vars(build_parser(args, description=__doc__).parse_args()))
 
@@ -64,14 +65,9 @@ def main():
 
         # Perform the actual depth ranking depth.argsort() should have the same value as ranking.argsort()
         log(f'Depth ranking for frame {idx}')
-        rankings = []
-        for cam in batches:
-            batch = batches[cam]  # 3, 3, 1, 3
-            depth = (xyz @ batch.R.mT + batch.T.mT)[..., -1]  # N, 3
-            argsort = depth.argsort()
-            ranking = torch.empty_like(argsort).scatter_(dim=0, index=argsort, src=torch.arange(len(argsort), device=xyz.device))
-            rankings.append(ranking)
-        rankings = torch.stack(rankings)  # V, N
+        depth = (xyz[None] @ Rs.mT + Ts.mT)[..., -1] # V, N
+        argsort = depth.argsort(dim=-1) # V, N
+        rankings = torch.empty_like(argsort).scatter_(dim=-1, index=argsort, src=torch.arange(argsort.shape[-1], device=xyz.device)[None].repeat(len(depth), 1))
 
         # Find the best k source views
         src_inds = rankings.topk(args.n_srcs, dim=0, largest=False).indices  # S, N
@@ -79,7 +75,7 @@ def main():
 
         # Load all images for this frame
         log(f'Loading images for frame {idx}')
-        imgs = parallel_execution([join(args.data_root, args.images_dir, cam, images[idx]) for cam in camera_names], action=load_image)
+        imgs = parallel_execution([join(args.data_root, args.images_dir, cam, images[idx]) for cam in camera_names], action=load_image, sequential=args.sequential_image_loading)
         imgs = torch.stack(to_cuda(imgs)).permute(0, 3, 1, 2)  # V, H, W, 3 -> V, 3, H, W
 
         # Sample RGB color from them
