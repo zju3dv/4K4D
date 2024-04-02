@@ -11,16 +11,16 @@ Assuming you've got a good position, we unproject all points on all views, then 
 For every point, then find the closest ranking view, and use that view's color
 This way we can deal with non-uniform camera distribution
 """
+
 import torch
 import torch.nn.functional as F
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.viewer_utils import Camera
-from easyvolcap.utils.net_utils import load_pretrained
 from easyvolcap.utils.parallel_utils import parallel_execution
 from easyvolcap.utils.easy_utils import read_camera, write_camera
 from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
-from easyvolcap.utils.data_utils import load_pts, export_pts, to_cuda, to_cpu, to_tensor, load_image
-from easyvolcap.utils.enerf_utils import sample_geometry_feature_image
+from easyvolcap.utils.data_utils import load_pts, export_pts, to_cuda, load_image
+from easyvolcap.utils.ibr_utils import sample_geometry_feature_image
 
 
 @catch_throw

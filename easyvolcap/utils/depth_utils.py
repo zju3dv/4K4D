@@ -8,7 +8,7 @@ from typing import Mapping
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.color_utils import colormap
 from easyvolcap.utils.ray_utils import create_meshgrid
-from easyvolcap.utils.enerf_utils import depth_regression
+from easyvolcap.utils.ibr_utils import depth_regression
 from easyvolcap.utils.math_utils import affine_inverse, torch_inverse_3x3
 
 
