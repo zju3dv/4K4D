@@ -3,21 +3,42 @@ import cv2
 import argparse
 import numpy as np
 
-# fmt: off
-import sys
-sys.path.append('.')
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.easy_utils import write_camera
-from easyvolcap.utils.colmap_utils import qvec2rotmat, read_model
-# fmt: on
+from easyvolcap.utils.colmap_utils import qvec2rotmat, read_model, read_cameras_text, read_images_text, detect_model_format, read_cameras_binary, read_images_binary
+
+
+def detect_model_format(path, ext):
+    if os.path.isfile(os.path.join(path, "cameras" + ext)) and \
+       os.path.isfile(os.path.join(path, "images" + ext)):
+        print("Detected model format: '" + ext + "'")
+        return True
+
+    return False
 
 
 @catch_throw
 def main(args):
-    cameras, images, points3D = read_model(path=args.colmap)
+    # cameras, images, points3D = read_model(path=args.colmap)
+    ext = ''
+    if ext == "":
+        if detect_model_format(args.colmap, ".bin"):
+            ext = ".bin"
+        elif detect_model_format(args.colmap, ".txt"):
+            ext = ".txt"
+        else:
+            print("Provide model format: '.bin' or '.txt'")
+            return
+
+    if ext == '.bin':
+        cameras = read_cameras_binary(join(args.colmap, "cameras" + ext))
+        images = read_images_binary(join(args.colmap, "images" + ext))
+    else:
+        cameras = read_cameras_text(join(args.colmap, "cameras" + ext))
+        images = read_images_text(join(args.colmap, "images" + ext))
     log(f"number of cameras: {len(cameras)}")
     log(f"number of images: {len(images)}")
-    log(f"number of points3D: {len(points3D)}")
+    # log(f"number of points3D: {len(points3D)}")
 
     intrinsics = {}
     for key in cameras.keys():
@@ -46,6 +67,7 @@ def main(args):
             cam['R'] = R
             cam['T'] = t * args.scale
             easycams[os.path.splitext(os.path.basename(val.name))[0]] = cam
+            # easycams[f"{int(os.path.splitext(os.path.basename(val.name))[0]) - 1:04d}"] = cam
         else:
             log(f'skipping camera: {val.name}(#{val.camera_id}) since {args.sub} not in {val.name}', 'yellow')
 

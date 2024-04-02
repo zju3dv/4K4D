@@ -5,6 +5,7 @@ Find the images folder, rename it to images_flatten, and create a new images fol
 import shutil
 import argparse
 from easyvolcap.utils.console_utils import *
+from easyvolcap.utils.easy_utils import read_camera, write_camera
 
 
 @catch_throw
@@ -28,7 +29,8 @@ def main():
             continue
 
         if len(os.listdir(images_path)) > 1:
-            raise ValueError(f'images_path {images_path} contains more than one cameras')
+            # raise ValueError(f'images_path {images_path} contains more than one cameras')
+            continue
 
         try: os.rename(images_path, images_path + postfix)
         except: pass
@@ -47,7 +49,8 @@ def main():
     cameras_path = join(args.data_root, args.cameras_dir)
     if exists(cameras_path):
         if len(os.listdir(cameras_path)) > 1:
-            raise ValueError(f'cameras_path {cameras_path} contains more than one cameras')
+            # raise ValueError(f'cameras_path {cameras_path} contains more than one cameras')
+            pass
 
         try: os.rename(cameras_path, cameras_path + postfix)
         except: pass
@@ -66,8 +69,10 @@ def main():
 
         shutil.rmtree(cameras_path + postfix, ignore_errors=True)
     else:
-        if not exists(join(args.data_root, args.intri)) and exists(join(args.data_root, args.extri)):
+        if not exists(join(args.data_root, args.intri_file)) and exists(join(args.data_root, args.extri_file)):
             raise ValueError(f'Unable to locate intri.yml and extri.yml or cameras in {args.data_root}')
+        # else:
+        #     cameras = read_camera(join(args.data_root, args.intri_file), join(args.data_root, args.extri_file))
 
 
 if __name__ == '__main__':
