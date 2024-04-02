@@ -165,10 +165,10 @@ class OptimizableCamera(nn.Module):
         intri_resd = self.intri_resd[latent_index, view_index].to(batch.R)  # fancy indexing? -> B, 6
         int_ori = batch.K
         int_opt = torch.zeros_like(int_ori)
-        int_opt[..., 0, 0] = intri_resd[..., 0, 0] + int_ori[..., 0, 0]  # fx
-        int_opt[..., 1, 1] = intri_resd[..., 1, 1] + int_ori[..., 1, 1]  # fy
-        int_opt[..., 0, 2] = intri_resd[..., 0, 2] + int_ori[..., 0, 2]  # cx
-        int_opt[..., 1, 2] = intri_resd[..., 1, 2] + int_ori[..., 1, 2]  # cy
+        int_opt[..., 0, 0] = intri_resd[..., 0] + int_ori[..., 0, 0]  # fx
+        int_opt[..., 1, 1] = intri_resd[..., 1] + int_ori[..., 1, 1]  # fy
+        int_opt[..., 0, 2] = intri_resd[..., 2] + int_ori[..., 0, 2]  # cx
+        int_opt[..., 1, 2] = intri_resd[..., 3] + int_ori[..., 1, 2]  # cy
         int_opt[..., 2, 2] = 1.0
         int_resd = int_opt - int_ori
 
