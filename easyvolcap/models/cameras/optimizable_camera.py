@@ -66,6 +66,8 @@ class OptimizableCamera(nn.Module):
                  freeze_camera: bool = False,
                  freeze_extri: bool = False,
                  freeze_intri: bool = False,
+                 focal_limit: float = 10.0,
+                 shift_limit: float = 0.05,  # extremely unstable
                  dtype: str = 'float',
                  **kwargs,
                  ):
@@ -76,6 +78,8 @@ class OptimizableCamera(nn.Module):
 
         self.extri_resd = make_params(torch.zeros(self.n_frames, self.n_views, 6, dtype=self.dtype))  # F, V, 6
         self.intri_resd = make_params(torch.zeros(self.n_frames, self.n_views, 4, dtype=self.dtype))  # F, V, 4
+        self.focal_limit = focal_limit
+        self.shift_limit = shift_limit
 
         if exists(pretrained_camera):
             load_network(self, pretrained_camera, prefix='camera.')  # will load some of the parameters from this model
@@ -132,10 +136,10 @@ class OptimizableCamera(nn.Module):
 
         intri_resd = self.intri_resd[f_inds, v_inds].to(batch.src_ixts)  # B, S, 4
         src_ixts = torch.zeros_like(batch.src_ixts)
-        src_ixts[..., 0, 0] = intri_resd[..., 0, 0] + batch.src_ixts[..., 0, 0]  # fx
-        src_ixts[..., 1, 1] = intri_resd[..., 1, 1] + batch.src_ixts[..., 1, 1]  # fy
-        src_ixts[..., 0, 2] = intri_resd[..., 0, 2] + batch.src_ixts[..., 0, 2]  # cx
-        src_ixts[..., 1, 2] = intri_resd[..., 1, 2] + batch.src_ixts[..., 1, 2]  # cy
+        src_ixts[..., 0, 0] = intri_resd[..., 0, 0].clip(self.focal_limit) + batch.src_ixts[..., 0, 0]  # fx
+        src_ixts[..., 1, 1] = intri_resd[..., 1, 1].clip(self.focal_limit) + batch.src_ixts[..., 1, 1]  # fy
+        src_ixts[..., 0, 2] = intri_resd[..., 0, 2].clip(self.shift_limit) + batch.src_ixts[..., 0, 2]  # cx
+        src_ixts[..., 1, 2] = intri_resd[..., 1, 2].clip(self.shift_limit) + batch.src_ixts[..., 1, 2]  # cy
         src_ixts[..., 2, 2] = 1.0
         return batch
 
@@ -165,10 +169,10 @@ class OptimizableCamera(nn.Module):
         intri_resd = self.intri_resd[latent_index, view_index].to(batch.R)  # fancy indexing? -> B, 4
         int_ori = batch.K
         int_opt = torch.zeros_like(int_ori)
-        int_opt[..., 0, 0] = intri_resd[..., 0] + int_ori[..., 0, 0]  # fx
-        int_opt[..., 1, 1] = intri_resd[..., 1] + int_ori[..., 1, 1]  # fy
-        int_opt[..., 0, 2] = intri_resd[..., 2] + int_ori[..., 0, 2]  # cx
-        int_opt[..., 1, 2] = intri_resd[..., 3] + int_ori[..., 1, 2]  # cy
+        int_opt[..., 0, 0] = intri_resd[..., 0].clip(self.focal_limit) + int_ori[..., 0, 0]  # fx
+        int_opt[..., 1, 1] = intri_resd[..., 1].clip(self.focal_limit) + int_ori[..., 1, 1]  # fy
+        int_opt[..., 0, 2] = intri_resd[..., 2].clip(self.shift_limit) + int_ori[..., 0, 2]  # cx
+        int_opt[..., 1, 2] = intri_resd[..., 3].clip(self.shift_limit) + int_ori[..., 1, 2]  # cy
         int_opt[..., 2, 2] = 1.0
         int_resd = int_opt - int_ori
 
