@@ -1,3 +1,4 @@
+from __future__ import annotations
 # fmt: off
 class Colors:
     """ ANSI color codes """
@@ -117,7 +118,6 @@ pretty.install(console=console)
 
 NoneType = type(None)
 
-
 # NOTE: we use console.log for general purpose logging
 # Need to check its reliability and integratability
 # Since the string markup might mess things up
@@ -143,7 +143,9 @@ def stop_live():
 
 def start_live():
     global live
-    if live is not None: return
+    if live is not None: 
+        live.start()
+        return
     live = Live(console=console, refresh_per_second=1)
     live.start()
 
