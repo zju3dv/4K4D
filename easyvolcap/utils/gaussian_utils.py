@@ -767,7 +767,7 @@ class GaussianModel(nn.Module):
         extra_f_names = sorted(extra_f_names, key=lambda x: int(x.split('_')[-1]))
 
         # Load max_sh_degree from file
-        for i in range(3):
+        for i in range(4):
             if len(extra_f_names) == 3 * (i + 1) ** 2 - 3:
                 self.max_sh_degree = i
                 # assert len(extra_f_names) == 3 * (self.max_sh_degree + 1) ** 2 - 3

@@ -299,6 +299,8 @@ class Visualization(Enum):
     POINT = auto()
     VOLUME = auto()
 
+    # Loss related output
+    IMAGE_LOSS_WEIGHT = auto()
 
 class DataSplit(Enum):
     TRAIN = auto()
@@ -557,7 +559,7 @@ def load_pts(filename: str):
     return verts, colors, norms, scalars
 
 
-def export_pts(pts: torch.Tensor, color: torch.Tensor = None, normal: torch.Tensor = None, scalars: dotdict = dotdict(), filename: str = "default.ply"):
+def export_pts(pts: torch.Tensor, color: torch.Tensor = None, normal: torch.Tensor = None, scalars: dotdict = dotdict(), filename: str = "default.ply", skip_color: bool = False, **kwargs):
     from pandas import DataFrame
     from pyntcloud import PyntCloud
 
@@ -574,13 +576,10 @@ def export_pts(pts: torch.Tensor, color: torch.Tensor = None, normal: torch.Tens
         data.red = (color[:, 0] * 255).astype(np.uint8)
         data.green = (color[:, 1] * 255).astype(np.uint8)
         data.blue = (color[:, 2] * 255).astype(np.uint8)
-    else:
+    elif not skip_color:
         data.red = (pts[:, 0] * 255).astype(np.uint8)
         data.green = (pts[:, 1] * 255).astype(np.uint8)
         data.blue = (pts[:, 2] * 255).astype(np.uint8)
-
-    # if 'alpha' in scalars:
-    #     data.alpha = (scalars.alpha * 255).astype(np.uint8)
 
     if normal is not None:
         normal = to_numpy(normal)
@@ -600,7 +599,7 @@ def export_pts(pts: torch.Tensor, color: torch.Tensor = None, normal: torch.Tens
     cloud = PyntCloud(df)  # construct the data
     dir = dirname(filename)
     if dir: os.makedirs(dir, exist_ok=True)
-    return cloud.to_file(filename)
+    return cloud.to_file(filename, **kwargs) # maybe write comments here: comments: list of strings
 
 
 def export_lines(verts: torch.Tensor, lines: torch.Tensor, color: torch.Tensor = None, filename: str = 'default.ply'):
@@ -1067,8 +1066,8 @@ def load_image_file(img_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-        (draft[1][2] != int(w * ratio) or
-             draft[1][3] != int(h * ratio)):
+            (draft[1][2] != int(w * ratio) or
+         draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         if img.ndim == 2:  # MARK: cv.resize will discard the last dimension of mask images
             img = img[..., None]
@@ -1125,8 +1124,8 @@ def load_unchanged(img_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-        (draft[1][2] != int(w * ratio) or \
-             draft[1][3] != int(h * ratio)):
+            (draft[1][2] != int(w * ratio) or \
+         draft[1][3] != int(h * ratio)):
             img = cv2.resize(img, (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_AREA)
         if img.ndim == 2:  # MARK: cv.resize will discard the last dimension of mask images
             img = img[..., None]
@@ -1158,8 +1157,8 @@ def load_mask(msk_path: str, ratio=1.0):
         if ratio != 1.0 and \
             draft is None or \
                 draft is not None and \
-        (draft[1][2] != int(w * ratio) or
-             draft[1][3] != int(h * ratio)):
+            (draft[1][2] != int(w * ratio) or
+         draft[1][3] != int(h * ratio)):
             msk = cv2.resize(msk.astype(np.uint8), (int(w * ratio), int(h * ratio)), interpolation=cv2.INTER_NEAREST)[..., None]
         return msk
     else:
@@ -1247,10 +1246,46 @@ def project(xyz, K, RT):
     K: [3, 3]
     RT: [3, 4]
     """
-    xyz = np.dot(xyz, RT[:, :3].T) + RT[:, 3:].T
-    xyz = np.dot(xyz, K.T)
-    xy = xyz[:, :2] / xyz[:, 2:]
+    if isinstance(xyz, torch.Tensor):
+        xyz = xyz @ RT[:, :3].T + RT[:, 3:].T
+        xyz = xyz @ K.T
+        xy = xyz[:, :2] / xyz[:, 2:]
+    elif isinstance(xyz, np.ndarray):
+        xyz = np.dot(xyz, RT[:, :3].T) + RT[:, 3:].T
+        xyz = np.dot(xyz, K.T)
+        xy = xyz[:, :2] / xyz[:, 2:]
     return xy
+
+
+def batch_project(xyz, K, RT, return_depth=False):
+    """
+    args: 
+        xyz: [B, N, 3]
+        K: [B, 3, 3]
+        RT: [B, 3, 4]
+        return_depth: bool
+    returns:
+        xy: [B, N, 2]
+        depth: [B, N]
+    """
+    B, N, _ = xyz.shape
+    device = xyz.device
+
+    # Homogeneous coordinates
+    xyz_hom = torch.cat([xyz, torch.ones(B, N, 1, device=device)], dim=-1)  # [B, N, 4]
+
+    # Projection matrix
+    P = torch.matmul(K, RT)  # [B, 3, 4]
+
+    # Project points
+    xyz_proj = torch.einsum('bni,bij->bnj', P, xyz_hom.permute(0, 2, 1)).permute(0, 2, 1)  # [B, N, 3]
+    depth = xyz_proj[..., 2]  # [B, N]
+    xy = xyz_proj[..., :2] / depth[..., None]  # [B, N, 2]
+
+    if return_depth:
+        return xy, depth
+    else:
+        return xy
 
 
 def unproject(depth, K, R, T):
@@ -1576,11 +1611,11 @@ def load_resize_undist_im_bytes(imp: str,
 
     oH, oW = img.shape[:2]
 
-    if dist_opt_K:
+    if dist_opt_K and np.sum(np.abs(D)) != 0.0:
         newCameraMatrix, _ = cv2.getOptimalNewCameraMatrix(K, D, (oW, oH), 0, (oW, oH))
         img = cv2.undistort(img, K, D, newCameraMatrix=newCameraMatrix)
         K = newCameraMatrix
-    else:
+    elif np.sum(np.abs(D)) != 0.0:
         img = cv2.undistort(img, K, D)
 
     # Maybe update image size
