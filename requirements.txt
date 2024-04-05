@@ -1,4 +1,4 @@
-torch>=1.12.0 # if you've used environment.yml, this will be a no-op
+torch>=2.1.0 # if you've used environment.yml, this will be a no-op
 tqdm
 pdbr
 yapf

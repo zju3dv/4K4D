@@ -11,8 +11,8 @@ dependencies:
     # - python>=3.9,<3.10 # use this for wsl2 since opengl is broken with python 3.10
     # pytorch3d does not support pytorch 1.13 yet
     # so we install 1.12.1 for now
-    - pytorch>=1.13
-    - pytorch-cuda>=11.6 # bugs on smaller versions
+    - pytorch>=2.1.0
+    - pytorch-cuda>=11.8 # bugs on smaller versions
     - torchvision
     - torchaudio
 

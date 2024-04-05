@@ -35,3 +35,18 @@ from torchviz import make_dot
 dot = make_dot(loss, dict(self.model.network.named_parameters()), show_attrs=True, show_saved=True)
 dot.render('r4dv')
 ```
+
+### Swapfiles
+
+```shell
+# Removing existing swapfiles
+sudo swapoff -v /swapfile
+# Remove the swap file entry /swapfile swap swap defaults 0 0 from the /etc/fstab file.
+sudo rm /swapfile
+
+# Creating swapfile
+sudo fallocate -l 256G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+```

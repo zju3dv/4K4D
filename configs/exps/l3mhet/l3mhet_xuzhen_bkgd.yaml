@@ -5,19 +5,12 @@ configs:
     - configs/specs/static.yaml
     - configs/specs/optcam.yaml
     - configs/specs/transient.yaml
-
-model_cfg:
-    camera_cfg:
-        pretrained_camera: data/trained_model/l3mhet_xuzhen_static # this is a must
-        freeze_camera: True
+    - configs/specs/optimized.yaml
 
 dataloader_cfg: &dataloader_cfg
     dataset_cfg: &dataset_cfg
         images_dir: bkgd/images
 
-val_dataloader_cfg:
-    dataset_cfg:
-        <<: *dataset_cfg
 val_dataloader_cfg:
     <<: *dataloader_cfg
     dataset_cfg:

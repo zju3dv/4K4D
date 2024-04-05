@@ -7,7 +7,7 @@ from typing import Union
 from easyvolcap.engine import SUPERVISORS
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.net_utils import VolumetricVideoModule
-from easyvolcap.utils.loss_utils import l1, huber, compute_ssim, VGGPerceptualLoss, ImgLossType
+from easyvolcap.utils.loss_utils import l1, wl1, huber, compute_ssim, compute_msssim, VGGPerceptualLoss, ImgLossType
 
 
 @SUPERVISORS.register_module()
@@ -18,6 +18,7 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
                  img_loss_type: ImgLossType = ImgLossType.HUBER.name,  # chabonier loss for img_loss
                  perc_loss_weight: float = 0.0,  # smaller loss on perc
                  ssim_loss_weight: float = 0.0,  # 3dgs ssim loss
+                 msssim_loss_weight: float = 0.0,  # 3dgs msssim loss
                  dtype: Union[str, torch.dtype] = torch.float,
 
                  **kwargs,
@@ -31,6 +32,7 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
         self.img_loss_type = ImgLossType[img_loss_type]
         self.perc_loss_weight = perc_loss_weight
         self.ssim_loss_weight = ssim_loss_weight
+        self.msssim_loss_weight = msssim_loss_weight
 
     @property
     def perc_loss(self):
@@ -39,7 +41,8 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
     def compute_image_loss(self, rgb_map: torch.Tensor, rgb_gt: torch.Tensor,
                            bg_color: torch.Tensor, msk_gt: torch.Tensor,
                            H: int, W: int,
-                           type=ImgLossType.HUBER):
+                           type=ImgLossType.HUBER, 
+                           **kwargs,):
         rgb_gt = rgb_gt + bg_color * (1 - msk_gt)  # MARK: modifying gt for supervision
         rgb_gt, rgb_map = rgb_gt[:, :H * W], rgb_map[:, :H * W]
 
@@ -64,6 +67,15 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
             rgb_gt = rgb_gt.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
             rgb_map = rgb_map.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
             img_loss = 1. - compute_ssim(rgb_map, rgb_gt)
+        elif type == ImgLossType.MSSSIM:
+            rgb_gt = rgb_gt.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
+            rgb_map = rgb_map.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
+            img_loss = 1. - compute_msssim(rgb_map, rgb_gt)
+        elif type == ImgLossType.WL1:
+            rgb_gt = rgb_gt.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
+            img_loss_wet = kwargs['img_loss_wet'].view(-1, H, W, 1).permute(0, 3, 1, 2)
+            rgb_map = rgb_map.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
+            img_loss = wl1(rgb_map, rgb_gt, img_loss_wet)
         else: raise NotImplementedError
 
         return psnr, img_loss
@@ -76,8 +88,9 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
         def compute_image_loss(rgb_map: torch.Tensor, rgb_gt: torch.Tensor,
                                bg_color: torch.Tensor, msk_gt: torch.Tensor,
                                H: int = batch.meta.H[0].item(), W: int = batch.meta.W[0].item(),
-                               type=self.img_loss_type):
-            return self.compute_image_loss(rgb_map, rgb_gt, bg_color, msk_gt, H, W, type)
+                               type=self.img_loss_type,
+                               **kwargs):
+            return self.compute_image_loss(rgb_map, rgb_gt, bg_color, msk_gt, H, W, type, **kwargs)
 
         if 'rgb_map' in output and \
            self.perc_loss_weight > 0 and \
@@ -103,8 +116,23 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
             loss += self.ssim_loss_weight * ssim_loss
 
         if 'rgb_map' in output and \
+                self.msssim_loss_weight > 0 and \
+                batch.meta.n_rays[0].item() == -1:
+            if 'patch_h' in batch.meta and 'patch_w' in batch.meta:
+                H, W = batch.meta.patch_h[0].item(), batch.meta.patch_w[0].item()
+            else:
+                H, W = batch.meta.H[0].item(), batch.meta.W[0].item()
+
+            _, msssim_loss = compute_image_loss(output.rgb_map, batch.rgb, output.bg_color, batch.msk, H, W, type=ImgLossType.MSSSIM)
+            scalar_stats.msssim_loss = msssim_loss
+            loss += self.msssim_loss_weight * msssim_loss
+
+        if 'rgb_map' in output and \
            self.img_loss_weight > 0:
-            psnr, img_loss = compute_image_loss(output.rgb_map, batch.rgb, output.bg_color, batch.msk)
+            if 'img_loss_wet' in batch:
+                psnr, img_loss = compute_image_loss(output.rgb_map, batch.rgb, output.bg_color, batch.msk, img_loss_wet=batch.img_loss_wet)
+            else:
+                psnr, img_loss = compute_image_loss(output.rgb_map, batch.rgb, output.bg_color, batch.msk)
             scalar_stats.psnr = psnr
             scalar_stats.img_loss = img_loss
             loss += self.img_loss_weight * img_loss

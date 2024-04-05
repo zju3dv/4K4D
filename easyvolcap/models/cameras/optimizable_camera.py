@@ -13,6 +13,7 @@ from easyvolcap.engine import CAMERAS
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.lie_utils import exp_map_SO3xR3
+from easyvolcap.utils.ray_utils import get_rays_from_ij
 from easyvolcap.utils.net_utils import make_params, freeze_module, load_network
 from easyvolcap.utils.math_utils import affine_padding, affine_inverse, vector_padding, point_padding
 
@@ -63,6 +64,10 @@ class OptimizableCamera(nn.Module):
                  moves_through_time: bool = moves_through_time,
                  pretrained_camera: str = '',
                  freeze_camera: bool = False,
+                 freeze_extri: bool = False,
+                 freeze_intri: bool = False,
+                 focal_limit: float = 10.0,
+                 shift_limit: float = 0.05,  # extremely unstable
                  dtype: str = 'float',
                  **kwargs,
                  ):
@@ -71,13 +76,22 @@ class OptimizableCamera(nn.Module):
         self.n_frames = n_frames if moves_through_time else 1
         self.dtype = getattr(torch, dtype) if isinstance(dtype, str) else dtype
 
-        self.pose_resd = make_params(torch.zeros(self.n_frames, self.n_views, 6, dtype=self.dtype))  # F, V, 6
+        self.extri_resd = make_params(torch.zeros(self.n_frames, self.n_views, 6, dtype=self.dtype))  # F, V, 6
+        self.intri_resd = make_params(torch.zeros(self.n_frames, self.n_views, 4, dtype=self.dtype))  # F, V, 4
+        self.focal_limit = focal_limit
+        self.shift_limit = shift_limit
 
-        if os.path.exists(pretrained_camera):
+        if exists(pretrained_camera):
             load_network(self, pretrained_camera, prefix='camera.')  # will load some of the parameters from this model
 
         if freeze_camera:
             freeze_module(self)
+
+        if freeze_extri:
+            self.extri_resd.requires_grad_(False)
+
+        if freeze_intri:
+            self.intri_resd.requires_grad_(False)
 
         self.pre_handle = self._register_load_state_dict_pre_hook(self._load_state_dict_pre_hook)
 
@@ -85,8 +99,22 @@ class OptimizableCamera(nn.Module):
 
         # Historical reasons
         if prefix + 'pose_resd' in state_dict:
-            if state_dict[prefix + 'pose_resd'].shape[0] == self.n_views and state_dict[prefix + 'pose_resd'].shape[1] == self.n_frames:
-                state_dict[prefix + 'pose_resd'] = state_dict[prefix + 'pose_resd'].transpose(0, 1)
+            state_dict[prefix + 'extri_resd'] = state_dict[prefix + 'pose_resd']
+            del state_dict[prefix + 'pose_resd']
+
+        if prefix + 'extri_resd' in state_dict:
+            if state_dict[prefix + 'extri_resd'].shape[0] == self.n_views and state_dict[prefix + 'extri_resd'].shape[1] == self.n_frames:
+                state_dict[prefix + 'extri_resd'] = state_dict[prefix + 'extri_resd'].transpose(0, 1)
+
+        if prefix + 'intri_resd' in state_dict:
+            if state_dict[prefix + 'intri_resd'].shape[0] == self.n_views and state_dict[prefix + 'intri_resd'].shape[1] == self.n_frames:
+                state_dict[prefix + 'intri_resd'] = state_dict[prefix + 'intri_resd'].transpose(0, 1)
+
+        if prefix + 'extri_resd' not in state_dict:
+            state_dict[prefix + 'extri_resd'] = self.extri_resd
+
+        if prefix + 'intri_resd' not in state_dict:
+            state_dict[prefix + 'intri_resd'] = self.intri_resd
 
     def forward_srcs(self, batch: dotdict):
         s_inds = batch.src_inds  # B, S, selected source views
@@ -98,18 +126,26 @@ class OptimizableCamera(nn.Module):
             f_inds = t_inds.clip(0, self.n_frames - 1)
             v_inds = s_inds.clip(0, self.n_views - 1)
 
-        pose_resd = self.pose_resd[f_inds, v_inds].to(batch.src_exts)  # B, S, 3, 4
-        pose_resd = exp_map_SO3xR3(pose_resd.detach())  # do not optimize through sampling, unstable
-        w2c_resd = affine_padding(pose_resd)  # B, S, 3, 4
+        extri_resd = self.extri_resd[f_inds, v_inds].to(batch.src_exts)  # B, S, 6
+        extri_resd = exp_map_SO3xR3(extri_resd.detach())  # do not optimize through sampling, unstable
+        w2c_resd = affine_padding(extri_resd)  # B, S, 3, 4
         w2c_opt = w2c_resd @ batch.src_exts
         batch.src_exts = w2c_opt
         # UNUSED: This is not used for now
         # batch.meta.src_exts = batch.src_exts.to('cpu', non_blocking=True)
+
+        intri_resd = self.intri_resd[f_inds, v_inds].to(batch.src_ixts)  # B, S, 4
+        src_ixts = torch.zeros_like(batch.src_ixts)
+        src_ixts[..., 0, 0] = intri_resd[..., 0, 0].sign() * intri_resd[..., 0, 0].abs().clip(self.focal_limit) + batch.src_ixts[..., 0, 0]  # fx
+        src_ixts[..., 1, 1] = intri_resd[..., 1, 1].sign() * intri_resd[..., 1, 1].abs().clip(self.focal_limit) + batch.src_ixts[..., 1, 1]  # fy
+        src_ixts[..., 0, 2] = intri_resd[..., 0, 2].sign() * intri_resd[..., 0, 2].abs().clip(self.shift_limit) + batch.src_ixts[..., 0, 2]  # cx
+        src_ixts[..., 1, 2] = intri_resd[..., 1, 2].sign() * intri_resd[..., 1, 2].abs().clip(self.shift_limit) + batch.src_ixts[..., 1, 2]  # cy
+        src_ixts[..., 2, 2] = 1.0
         return batch
 
     def forward_pose(self, batch: dotdict):
-        if 'w2c_ori' in batch and 'w2c_opt' in batch and 'w2c_resd' in batch:
-            return batch.w2c_ori, batch.w2c_opt, batch.w2c_resd
+        if 'w2c_ori' in batch:
+            return batch.w2c_ori, batch.w2c_opt, batch.w2c_resd, batch.int_ori, batch.int_opt, batch.int_resd
 
         view_index = batch.view_index  # B, # avoid synchronization
         latent_index = batch.latent_index  # B,
@@ -117,44 +153,71 @@ class OptimizableCamera(nn.Module):
         view_index = view_index.clip(0, self.n_views - 1)
         latent_index = latent_index.clip(0, self.n_frames - 1)  # TODO: FIX VIEW AND CAMERA AND FRAME AND LATEN INDICES
 
-        pose_resd = self.pose_resd[latent_index, view_index].to(batch.R)  # fancy indexing? -> B, 6
-        pose_resd = exp_map_SO3xR3(pose_resd)  # B, 3, 4
+        extri_resd = self.extri_resd[latent_index, view_index].to(batch.R)  # fancy indexing? -> B, 6
+        extri_resd = exp_map_SO3xR3(extri_resd)  # B, 3, 4
 
         # Use left multiplication
-        w2c_resd = affine_padding(pose_resd)  # B, 3, 4
+        w2c_resd = affine_padding(extri_resd)  # B, 3, 4
         w2c_ori = affine_padding(torch.cat([batch.R, batch.T], dim=-1))  # B, 3, 4
         w2c_opt = w2c_resd @ w2c_ori
 
         batch.w2c_ori = w2c_ori
         batch.w2c_opt = w2c_opt
         batch.w2c_resd = w2c_resd
-        return w2c_ori, w2c_opt, w2c_resd
+
+        # Optimize intrinsic parameters
+        intri_resd = self.intri_resd[latent_index, view_index].to(batch.R)  # fancy indexing? -> B, 4
+        int_ori = batch.K
+        int_opt = torch.zeros_like(int_ori)
+        int_opt[..., 0, 0] = intri_resd[..., 0].sign() * intri_resd[..., 0].abs().clip(self.focal_limit) + int_ori[..., 0, 0]  # fx
+        int_opt[..., 1, 1] = intri_resd[..., 1].sign() * intri_resd[..., 1].abs().clip(self.focal_limit) + int_ori[..., 1, 1]  # fy
+        int_opt[..., 0, 2] = intri_resd[..., 2].sign() * intri_resd[..., 2].abs().clip(self.shift_limit) + int_ori[..., 0, 2]  # cx
+        int_opt[..., 1, 2] = intri_resd[..., 3].sign() * intri_resd[..., 3].abs().clip(self.shift_limit) + int_ori[..., 1, 2]  # cy
+        int_opt[..., 2, 2] = 1.0
+        int_resd = int_opt - int_ori
+
+        batch.int_ori = int_ori
+        batch.int_opt = int_opt
+        batch.int_resd = int_resd
+
+        return w2c_ori, w2c_opt, w2c_resd, int_ori, int_opt, int_resd
 
     def forward_cams(self, batch: dotdict):
-        w2c_ori, w2c_opt, w2c_resd = self.forward_pose(batch)
+        w2c_ori, w2c_opt, w2c_resd, int_ori, int_opt, int_resd = self.forward_pose(batch)
         batch.orig_R = batch.R
         batch.orig_T = batch.T
+        batch.orig_K = batch.K
         batch.R = w2c_opt[..., :3, :3]
         batch.T = w2c_opt[..., :3, 3:]
+        batch.K = int_opt
 
         batch.meta.meta_stream = torch.cuda.Stream()
         batch.meta.meta_stream.wait_stream(torch.cuda.current_stream())  # stream synchronization matters
         with torch.cuda.stream(batch.meta.meta_stream):
             batch.meta.R = batch.R.to('cpu', non_blocking=True)
             batch.meta.T = batch.T.to('cpu', non_blocking=True)
+            batch.meta.K = batch.K.to('cpu', non_blocking=True)
         return batch
 
-    def forward_rays(self, ray_o: torch.Tensor, ray_d: torch.Tensor, batch):
-        w2c_ori, w2c_opt, w2c_resd = self.forward_pose(batch)
+    def forward_rays(self, ray_o: torch.Tensor, ray_d: torch.Tensor, batch: dotdict, use_z_depth: bool = False, correct_pix: bool = True):
+        w2c_ori, w2c_opt, w2c_resd, int_ori, int_opt, int_resd = self.forward_pose(batch)
         inv_w2c_opt = affine_inverse(w2c_opt)
 
-        # The transformed points should be left multiplied with w2c_opt, thus premult the inverse of the resd
-        ray_o = point_padding(ray_o) @ w2c_ori.mT @ inv_w2c_opt.mT  # B, N, 4 @ B, 4, 4
-        ray_d = vector_padding(ray_d) @ w2c_ori.mT @ inv_w2c_opt.mT  # B, N, 4 @ B, 4, 4
+        if 'coords' in batch:
+            i, j = batch.coords.unbind(-1)
+            ray_o, ray_d = get_rays_from_ij(i, j, int_opt, w2c_opt[..., :3, :3], w2c_opt[..., :3, 3:], use_z_depth=use_z_depth, correct_pix=correct_pix)
+
+        else:
+            # FIXME: Add optimizing K in ray forwarding (modify ray_d in some way?)
+
+            # The transformed points should be left multiplied with w2c_opt, thus premult the inverse of the resd
+            ray_o = point_padding(ray_o) @ w2c_ori.mT @ inv_w2c_opt.mT  # B, N, 4 @ B, 4, 4
+            ray_d = vector_padding(ray_d) @ w2c_ori.mT @ inv_w2c_opt.mT  # B, N, 4 @ B, 4, 4
+
         return ray_o[..., :3], ray_d[..., :3]
 
-    def forward(self, ray_o: torch.Tensor, ray_d: torch.Tensor, batch):
+    def forward(self, ray_o: torch.Tensor, ray_d: torch.Tensor, batch, use_z_depth: bool = False, correct_pix: bool = True):
         batch = self.forward_cams(batch)
         batch = self.forward_srcs(batch)
-        ray_o, ray_d = self.forward_rays(ray_o, ray_d, batch)
+        ray_o, ray_d = self.forward_rays(ray_o, ray_d, batch, use_z_depth, correct_pix)
         return ray_o, ray_d, batch

@@ -277,13 +277,12 @@ class VolumetricVideoDataset(Dataset):
         try:
             if self.use_vhulls and not self.reload_vhulls:
                 self.load_vhulls()
-                if self.vhull_only:
-                    exit(0)
         except:
             assert not (self.use_vhulls and skip_loading_images), 'Visual hull hasn\'t been prepared yet, rerun without `skip_loading_images` once'
             stop_prog()
             start_prog()  # clean up residual progress bar
             pass  # silently error out if no visual hull is found here
+
         if not skip_loading_images:
             self.load_bytes()  # load image bytes (also load vhulls)
         if self.use_smpls:
@@ -471,8 +470,6 @@ class VolumetricVideoDataset(Dataset):
         # Maybe compute visual hulls after loading the dataset
         if self.use_vhulls and not hasattr(self, 'vhulls'):
             self.load_vhulls()  # before cropping the mask (we need all the information we can get for visual hulls)
-            if self.vhull_only:
-                exit(0)
 
         # Maybe load background images here
         if self.use_bkgds:
@@ -648,6 +645,9 @@ class VolumetricVideoDataset(Dataset):
             log(magenta(f'Accumulated vhull bound of frames: {self.frame_sample}: '),
                 line(torch.stack([self.vhull_bounds.min(dim=0)[0][0],
                                   self.vhull_bounds.max(dim=0)[0][1]])))
+        log(self.vhull_only)
+        if self.vhull_only:
+            exit(0)
 
     def load_smpls(self):
         # Need to add or complete __getitem__ utils function if smpl paramaters other than bound are needed
@@ -1376,5 +1376,5 @@ class VolumetricVideoDataset(Dataset):
 
 
 @DATASETS.register_module()
-class WillChangeToNoopIfGUIDataset(VolumetricVideoDataset): # HACK: hacky api for no-data rendering
+class WillChangeToNoopIfGUIDataset(VolumetricVideoDataset):  # HACK: hacky api for no-data rendering
     pass

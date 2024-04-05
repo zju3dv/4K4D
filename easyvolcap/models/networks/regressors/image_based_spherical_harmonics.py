@@ -4,7 +4,6 @@ from torch.nn import functional as F
 from easyvolcap.engine import REGRESSORS
 from easyvolcap.utils.sh_utils import eval_sh
 from easyvolcap.utils.base_utils import dotdict
-from easyvolcap.utils.enerf_utils import sample_feature_volume, sample_feature_image, FeatureAgg, FeatureNet
 from easyvolcap.models.networks.regressors.mlp_regressor import MlpRegressor
 
 

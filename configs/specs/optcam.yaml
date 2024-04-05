@@ -5,6 +5,8 @@ model_cfg:
 runner_cfg:
     optimizer_cfg:
         lr_table:
-            camera: 1.0e-5
+            extri_resd: 1.0e-5
+            intri_resd: 1.0e-8
         eps_table:
-            camera: 1.0e-15
+            extri_resd: 1.0e-15
+            intri_resd: 1.0e-15

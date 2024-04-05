@@ -6,7 +6,8 @@ from easyvolcap.engine import EMBEDDERS, REGRESSORS
 from easyvolcap.utils.base_utils import dotdict
 from easyvolcap.utils.data_utils import to_x
 from easyvolcap.utils.chunk_utils import chunkify
-from easyvolcap.utils.enerf_utils import sample_feature_volume, sample_feature_image, FeatureAgg
+from easyvolcap.utils.ibr_utils import sample_feature_volume, sample_feature_image
+from easyvolcap.utils.enerf_utils import FeatureAgg
 
 
 @EMBEDDERS.register_module()

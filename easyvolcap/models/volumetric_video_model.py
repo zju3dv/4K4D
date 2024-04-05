@@ -27,8 +27,8 @@ from easyvolcap.models.samplers.importance_sampler import ImportanceSampler
 from easyvolcap.models.renderers.volume_renderer import VolumeRenderer
 from easyvolcap.models.supervisors.volumetric_video_supervisor import VolumetricVideoSupervisor
 
-# sampler (o, d, t -> z -> xyztθφ) ->
-# network (xyztθφ -> rgb, occ) ->
+# sampler (o, d, t -> z -> xyzt vd) ->
+# network (xyzt vd -> rgb, occ) ->
 # renderer (rgb, occ -> output) ->
 # supervisor (output, batch -> loss)
 
@@ -134,7 +134,7 @@ class VolumetricVideoModel(nn.Module):
             batch.ray_o = to_x(batch.ray_o, self.dtype)
             batch.ray_d = to_x(batch.ray_d, self.dtype)
             if self.training or (self.apply_optcam and args.type != 'gui'):
-                batch.ray_o, batch.ray_d = self.camera.forward_rays(batch.ray_o, batch.ray_d, batch)
+                batch.ray_o, batch.ray_d = self.camera.forward_rays(batch.ray_o, batch.ray_d, batch, self.use_z_depth, self.correct_pix)
 
         if 't' in batch:
             batch.t = to_x(batch.t, self.dtype)

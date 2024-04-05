@@ -21,7 +21,7 @@ class SmoothedValue(object):
     window or the global series average.
     """
 
-    def __init__(self, window_size=20):  # be faithful, but maybe not so much
+    def __init__(self, window_size=5):  # be faithful, but maybe not so much
         self.deque = deque(maxlen=window_size)
         self.total = 0.0
         self.count = 0
