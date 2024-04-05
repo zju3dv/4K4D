@@ -44,7 +44,7 @@ class WebSocketServer:
 
                  # Camera related config
                  camera_cfg: dotdict = dotdict(H=1080, W=1920),
-                 jpeg_quality: int = 75,
+                 jpeg_quality: int = 50,
 
                  **kwargs,
                  ):
@@ -57,14 +57,10 @@ class WebSocketServer:
         # Initialize server-side camera in case there's lag
         self.camera_cfg = camera_cfg
         self.camera = Camera(**camera_cfg)
-        self.camera_lock = threading.Lock()
-        self.image_lock = threading.Lock()
         self.image = torch.randint(0, 255, (self.H, self.W, 4), dtype=torch.uint8)
         self.stream = torch.cuda.Stream()
         self.jpeg = turbojpeg.TurboJPEG()
         self.jpeg_quality = jpeg_quality
-        self.exposure = 1.0
-        self.offset = 0.0
 
         # Runner initialization
         self.runner = runner
@@ -102,13 +98,11 @@ class WebSocketServer:
         prev_time = time.perf_counter()
 
         while True:
-            with self.camera_lock:
-                batch = self.camera.to_batch()  # fast copy of camera parameter
+            batch = self.camera.to_batch()  # fast copy of camera parameter
             image = self.render(batch)  # H, W, 4, cuda gpu tensor
             self.stream.wait_stream(torch.cuda.current_stream())  # initiate copy after main stream has finished
             with torch.cuda.stream(self.stream):
-                with self.image_lock:
-                    self.image = image.to('cpu', non_blocking=True)  # initiate async copy
+                self.image = image.to('cpu', non_blocking=True)  # initiate async copy
 
             curr_time = time.perf_counter()
             pass_time = curr_time - prev_time
@@ -126,9 +120,8 @@ class WebSocketServer:
         prev_time = time.perf_counter()
 
         while True:
-            with self.image_lock:
-                self.stream.synchronize()  # waiting for the copy event to complete
-                image = self.image.numpy()  # copy to new memory space
+            self.stream.synchronize()  # waiting for the copy event to complete
+            image = self.image.numpy()  # copy to new memory space
             image = self.jpeg.encode(image, self.jpeg_quality, pixel_format=turbojpeg.TJPF_RGBA)
             await websocket.send(image)
 
@@ -136,8 +129,7 @@ class WebSocketServer:
             if len(response):
                 camera = Camera()
                 camera.from_string(zlib.decompress(response).decode('ascii'))
-                with self.camera_lock:
-                    self.camera = camera
+                self.camera = camera
 
             curr_time = time.perf_counter()
             pass_time = curr_time - prev_time
@@ -160,9 +152,6 @@ class WebSocketServer:
             output = self.model(batch)
 
         image = self.runner.visualizer.generate_type(output, batch, self.visualization_type)[0][0]  # RGBA (should we use alpha?)
-
-        if self.exposure != 1.0 or self.offset != 0.0:
-            image = torch.cat([(image[..., :3] * self.exposure + self.offset), image[..., -1:]], dim=-1)  # add manual correction
         image = (image.clip(0, 1) * 255).type(torch.uint8).flip(0)  # transform
 
         return image  # H, W, 4
