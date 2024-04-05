@@ -180,8 +180,6 @@ class VolumetricVideoViewer:
         self.render_network = render_network
         self.discrete_t = discrete_t
 
-
-
         # Others
         self.skip_exception = skip_exception
 

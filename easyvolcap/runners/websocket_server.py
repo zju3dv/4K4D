@@ -44,7 +44,7 @@ class WebSocketServer:
 
                  # Camera related config
                  camera_cfg: dotdict = dotdict(H=1080, W=1920),
-                 jpeg_quality: int = 50,
+                 jpeg_quality: int = 75,
 
                  **kwargs,
                  ):

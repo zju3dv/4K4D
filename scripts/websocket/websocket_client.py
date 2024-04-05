@@ -13,12 +13,12 @@ from imgui_bundle import portable_file_dialogs as pfd
 from imgui_bundle import imgui, imguizmo, imgui_toggle, immvision, implot, ImVec2, ImVec4, imgui_md, immapp, hello_imgui
 
 from easyvolcap.utils.console_utils import *
+from easyvolcap.utils.timer_utils import timer
 from easyvolcap.utils.viewer_utils import Camera, CameraPath
 from easyvolcap.utils.data_utils import add_iter, add_batch, to_cuda, Visualization
 
-from easyvolcap.engine import cfg, args
-
 # fmt: off
+from easyvolcap.engine import cfg, args
 from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
 import glfw
 # fmt: on
@@ -26,7 +26,7 @@ import glfw
 
 class Viewer(VolumetricVideoViewer):
     def __init__(self,
-                 window_size: List[int] = [1080, 1920],  # height, width
+                 window_size: List[int] = [540, 960],  # height, width
                  window_title: str = f'EasyVolcap WebSocket Client',  # MARK: global config
 
                  font_size: int = 18,
@@ -88,6 +88,7 @@ class Viewer(VolumetricVideoViewer):
         self.init_glfw()  # ?: this will open up the window and let the user wait, should we move this up?
         self.init_imgui()
 
+        args.type = 'gui'
         self.init_opengl()
         self.init_quad()
         self.bind_callbacks()
@@ -100,7 +101,7 @@ class Viewer(VolumetricVideoViewer):
         self.visualize_bounds = True
         self.epoch = 0
         self.runner = dotdict(ep_iter=0, collect_timing=False, timer_record_to_file=False, timer_sync_cuda=True)
-        self.dataset = dotdict()
+        self.dataset = dotdict(frame_range=50)
         self.visualization_type = Visualization.RENDER
 
         # Initialize other parameters
@@ -146,19 +147,27 @@ async def websocket_client():
     async with websockets.connect(uri) as websocket:
 
         while True:
+            timer.record('other')
             buffer = await websocket.recv()
-            buffer = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')
+            timer.record('receive')
+
+            buffer = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')  # 10ms for 1080p...
             image = buffer
             event.set()
+            timer.record('decode')
 
             camera = deepcopy(viewer.camera)
             camera_data = zlib.compress(camera.to_string().encode('ascii'))
+            timer.record('compress')
+
             await websocket.send(camera_data)
+            timer.record('send')
 
 uri = "ws://10.76.5.252:1024"
 image = None
 viewer = Viewer()
 event = threading.Event()
+timer.disabled = False
 
 
 def start_client():
