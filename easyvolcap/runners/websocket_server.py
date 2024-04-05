@@ -39,11 +39,10 @@ class WebSocketServer:
 
                  # Socket related initialization
                  host: str = '0.0.0.0',
-                 send_port: int = 1024,
-                 recv_port: int = 1025,
+                 port: int = 1024,
 
                  # Camera related config
-                 camera_cfg: dotdict = dotdict(H=1080, W=1920),
+                 camera_cfg: dotdict = dotdict(),
                  jpeg_quality: int = 75,
 
                  **kwargs,
@@ -51,7 +50,7 @@ class WebSocketServer:
 
         # Socket related initialization
         self.host = host
-        self.send_port = send_port
+        self.port = port
         self.recv_port = recv_port
 
         # Initialize server-side camera in case there's lag
@@ -78,7 +77,7 @@ class WebSocketServer:
             asyncio.set_event_loop(loop)
 
             log('Preparing websocket server for sending images & receiving cameras')
-            server = websockets.serve(self.server_loop, self.host, self.send_port)
+            server = websockets.serve(self.server_loop, self.host, self.port)
 
             loop.run_until_complete(server)
             loop.run_forever()

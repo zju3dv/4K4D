@@ -26,7 +26,7 @@ import glfw
 
 class Viewer(VolumetricVideoViewer):
     def __init__(self,
-                 window_size: List[int] = [540, 960],  # height, width
+                 window_size: List[int] = [1080, 1920],  # height, width
                  window_title: str = f'EasyVolcap WebSocket Client',  # MARK: global config
 
                  font_size: int = 18,
@@ -118,16 +118,20 @@ class Viewer(VolumetricVideoViewer):
         self.camera.front = self.camera.front  # perform alignment correction
 
     def render(self):
+        global image
         event.wait()
         event.clear()
-        buffer = image
-        if buffer is not None:
-            if buffer.shape[1] == self.H and buffer.shape[2] == self.W:
-                buffer = buffer.permute(1, 2, 0)
-                buffer = torch.cat([buffer, torch.ones_like(buffer[..., :1])], dim=-1)
-                self.quad.copy_to_texture(buffer)
-                self.quad.draw()
+        image = image.permute(1, 2, 0)
+        image = torch.cat([image, torch.ones_like(image[..., :1])], dim=-1)
+        self.quad.copy_to_texture(image)
+        self.quad.draw()
         return None, None
+
+    def draw_banner_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
+        imgui.push_font(self.bold_font)
+        imgui.text(f'EasyVolcap WebSocket Viewer')
+        imgui.text(f'Running on remote: {uri}')
+        imgui.pop_font()
 
     def draw_rendering_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
 
@@ -140,6 +144,9 @@ class Viewer(VolumetricVideoViewer):
     def draw_model_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
         pass
 
+    def draw_model_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
+        pass
+
 
 async def websocket_client():
     global image
@@ -148,20 +155,19 @@ async def websocket_client():
 
         while True:
             timer.record('other')
-            buffer = await websocket.recv()
-            timer.record('receive')
 
-            buffer = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')  # 10ms for 1080p...
-            image = buffer
-            event.set()
-            timer.record('decode')
-
-            camera = deepcopy(viewer.camera)
-            camera_data = zlib.compress(camera.to_string().encode('ascii'))
+            camera_data = zlib.compress(viewer.camera.to_string().encode('ascii'))
             timer.record('compress')
 
             await websocket.send(camera_data)
             timer.record('send')
+
+            buffer = await websocket.recv()
+            timer.record('receive')
+
+            image = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')  # 10ms for 1080p...
+            event.set()
+            timer.record('decode')
 
 uri = "ws://10.76.5.252:1024"
 image = None
