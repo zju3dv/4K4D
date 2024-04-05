@@ -147,7 +147,10 @@ class VolumetricVideoViewer:
             except:
                 log(yellow('Unable to load training cameras as keyframes, skipping...'))
 
-        # Initialize temporal controls
+        # Timinigs
+        self.acc_time = 0
+        self.prev_time = 0
+        self.playing_fps = playing_fps
         self.playing_speed = autoplay_speed
         self.playing = autoplay
 
@@ -177,10 +180,7 @@ class VolumetricVideoViewer:
         self.render_network = render_network
         self.discrete_t = discrete_t
 
-        # Timinigs
-        self.acc_time = 0
-        self.prev_time = 0
-        self.playing_fps = playing_fps
+
 
         # Others
         self.skip_exception = skip_exception
