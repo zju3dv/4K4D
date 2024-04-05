@@ -6,6 +6,7 @@ from __future__ import annotations
 import os
 import glm
 import time
+import zlib
 import torch
 import asyncio
 import threading
@@ -17,8 +18,6 @@ import torch.nn.functional as F
 from copy import deepcopy
 from typing import List, Union, Dict
 from glm import vec3, vec4, mat3, mat4, mat4x3
-# from torchvision.io import decode_jpeg, encode_jpeg
-
 
 from easyvolcap.engine import cfg  # need this for initialization?
 from easyvolcap.engine import RUNNERS  # controls the optimization loop of a particular epoch
@@ -78,30 +77,18 @@ class WebSocketServer(VolumetricVideoViewer):
         self.model.eval()
 
     def run(self):
-        def start_send_server():
+        def start_server():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
-            log('Preparing send server')
+            log('Preparing websocekt server for sending images & receiving cameras')
             send_server = websockets.serve(self.send_loop, self.host, self.send_port)
 
             loop.run_until_complete(send_server)
             loop.run_forever()
 
-        def start_recv_server():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-            log('Preparing recv server')
-            recv_server = websockets.serve(self.recv_loop, self.host, self.recv_port)
-
-            loop.run_until_complete(recv_server)
-            loop.run_forever()
-
-        self.send_thread = threading.Thread(target=start_send_server, daemon=True)
-        self.recv_thread = threading.Thread(target=start_recv_server, daemon=True)
-        self.send_thread.start()
-        self.recv_thread.start()
+        self.server_thread = threading.Thread(target=start_server, daemon=True)
+        self.server_thread.start()
         self.render_loop()  # the rendering runs on the main thread
 
     def render_loop(self):  # this is the main thread
@@ -135,7 +122,13 @@ class WebSocketServer(VolumetricVideoViewer):
                 self.stream.synchronize()  # waiting for the copy event to complete
                 image = self.image.numpy()  # copy to new memory space
             image = self.jpeg.encode(image, self.jpeg_quality, pixel_format=turbojpeg.TJPF_RGBA)
-            websocket.send(image)
+            await websocket.send(image)
+
+            response = await websocket.recv()
+            if len(response):
+                camera = Camera().from_string(zlib.decompress(response).decode('ascii'))
+                with self.camera_lock:
+                    self.camera = camera
 
             curr_time = time.perf_counter()
             pass_time = curr_time - prev_time
@@ -145,10 +138,6 @@ class WebSocketServer(VolumetricVideoViewer):
                 frame_cnt = 0
                 prev_time = curr_time
                 log(f'Send FPS: {fps}')
-
-    async def recv_loop(self, websocket: websockets.WebSocket, path: str):
-        while True:
-            time.sleep(1)
 
     def render(self, batch: dotdict):
         batch = to_cuda(add_iter(add_batch(batch), 0, 1))  # int -> tensor -> add batch -> cuda, smalle operations are much faster on cpu
