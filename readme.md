@@ -49,209 +49,12 @@ pip install -e . # will install from requirements.txt
 pip install -r requirements-devel.txt
 ```
 
-Alternatively, if your `pip install` command fails due to one or two packages, try installing the dependencies one by one in this way:
-
-```shell
-# Install PyTorch
-pip install torch torchvision torchaudio -f https://download.pytorch.org/whl/torch_stable.html
-
-# Install pip dependencies
-cat requirements.txt | sed -e '/^\s*-.*$/d' -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "#"); if (length(a) > 1) print a[1]; else print $0;}' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
-
-# Install development pip dependencies
-cat requirements-devel.txt | sed -e '/^\s*-.*$/d' -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "#"); if (length(a) > 1) print a[1]; else print $0;}' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
-
-# Register EasyVolcp for imports
-pip install -e . --no-build-isolation --no-deps
-```
-
-Note that the `--no-build-isolation` gives faster install by not creating a virtual environment for building dependencies.
-But it does require the latest `setuptools` and `pip` to work correctly.
-So if the result of running the `pip install -e . --no-build-isolation --no-deps` command contains a package name of `UNKNOWN`,
-try updating `setuptools` and `pip` with:
-
-```shell
-python -m pip install -U pip setuptools
-```
-
-### No-Clone Install Using `pip`
-
-Optionally if you only want to use ***EasyVolcap*** in other projects by directly importing its components, you can install it from GitHub with:
-
-```shell
-# Install core dependencies
-pip install "git+https://github.com/zju3dv/EasyVolcap"
-
-# Maybe also install development required dependencies (might require CUDA compilation)
-pip install "git+https://github.com/zju3dv/EasyVolcap#egg=easyvolcap[devel]"
-```
-
-### Install Using `conda`
-
-Copy-and-paste version of the installation process listed below. For a more thorough explanation, read on.
-```shell
-# Prepare conda environment
-conda install -n base mamba -y -c conda-forge
-mamba create -n easyvolcap "python>=3.11,<3.12" -y
-conda activate easyvolcap
-
-# Install conda dependencies
-mamba env update
-
-# Install pip dependencies
-cat requirements.txt | sed -e '/^\s*-.*$/d' -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "#"); if (length(a) > 1) print a[1]; else print $0;}' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
-cat requirements-devel.txt | sed -e '/^\s*-.*$/d' -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "#"); if (length(a) > 1) print a[1]; else print $0;}' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
-
-# Register EasyVolcp for imports
-pip install -e . --no-build-isolation --no-deps
-```
-
-We opted to use the latest `pyproject.toml` style packing system for exposing command line interfaces.
-It creates a virtual environment for building dependencies by default, which could be quite slow. Disabled with `--no-build-isolation`.
-You should create a `conda` or `mamba` (recommended) environment for development, and install the dependencies manually.
-If the existing environment with `PyTorch` installed can be utilized, you can jump straight to installing the `pip` dependencies.
-More details about installing on *Windows* or compiling *CUDA* modules can be found in [`install.md`](docs/design/install.md).
-
-Note: `pip` dependencies can sometimes fail to install & build. However, not all of them are strictly required for ***EasyVolcap***.
-  - The core ones include `tinycudann` and `pytorch3d`. Make sure those are built correctly and you'll be able to use most of the functionality of ***EasyVolcap***.
-  - It's also OK to install missing packages manually when ***EasyVolcap*** reports that they are missing since we lazy load a lot of them (`tinycudann`, `diff_gauss`, `open3d` etc.). 
-  - Just be sure to check how we listed the missing package in [`requirements.txt`](requirements.txt) before performing `pip install` on them. Some packages require to be installed from GitHub.
-  - If the `mamba env update` step fails due to network issues, it is OK to proceed with pip installs since `PyTorch` will also be installed by pip.
-
-### Missing Imports
-
-If you encounter import errors, they can usually be safely ignored if the code runs since we lazy load a lot of the trikcy-to-install ones, especially when there's CUDA kernel compilation involved.
-
-If the import error gets in the way of the actual code you want to use, you might want to search the reported package name in [`requirements-devel.txt`](requirements-devel.txt) and install them manually.
-
-For example, for the missing `diff_gauss` package, you can find the line `diff_gauss @ git+https://github.com/dendenxu/diff-gaussian-rasterization` there and install it with:
-
-```shell
-pip install git+https://github.com/dendenxu/diff-gaussian-rasterization # will try to compile this package and install it
-```
-
 ### Updating ***EasyVolcap***
 
 Aside from running `git pull`, you might also need to reregister the command lines and code path by running `pip install -e . --no-build-isolation --no-deps` again.
 
 A notable example is when updating to [***4K4D***](https://github.com/zju3dv/4K4D], you're required to rerun the editable install command to use that repository instead of this one.
 
-
-## Usage
-
-### Expanding & Customizing ***EasyVolcap***
-
-Most of the time when we want to build a new set of algorithms on top of the framework, we only have to worry about the actual network itself.
-Before writing your new volumetric video algorithm, we need a basic understanding of the network's input and output:
-
-**We use Python dictionaries for passing in and out network input and output.**
-
-1. The `batch` variable stores the network input you sampled from the dataset (e.g. camera parameters).
-2. The `output` key of the `batch` variable should contain the network output. For each network module's output definition, please refer to the [design documents](docs/design/main.md) of them (`camera`, `sampler`, `network`, `renderer`) or just see the definitions in [`volumetric_video_model.py`](easyvolcap/models/volumetric_video_model.py) (the `render_rays` function).
-
-<!-- There are generally two ways of developing a new algorithm: -->
-**We support purely customized network construction & usage and also a unified NeRF-like pipeline.**
-
-1. If your new network model's structure is similar to NeRF-based ones (i.e. with the separation of `sampler`, `network` and `renderer`), you can simply swap out parts of the [`volumetric_video_network.py`](easyvolcap/models/networks/volumetric_video_network.py) by writing a new config to swap the `type` parameter of the `***_cfg` dictionaries.
-2. If you'd like to build a completely new network model: to save you some hassle, we grant the `sampler` classes the ability to directly output the core network output (`rgb_map` stored in `batch.output`). Define your rendering function and network structure however you like and reuse other parts of the codebase. An example: [`gaussiant_sampler.py`](easyvolcap/models/samplers/gaussiant_sampler.py).
-
-**A miminal custom moduling using all other ***EasyVolcap*** components should look something like this:**
-
-```python
-from easyvolcap.engine import SAMPLERS
-from easyvolcap.utils.net_utils import VolumetricVideoModule
-from easyvolcap.utils.console_utils import *
-
-@SAMPLERS.register_module() # make the custom module callable by class name
-class CustomVolumetricVideoModule(VolumetricVideoModule):
-    def __init__(self,
-                 network, # ignore noop_network
-                 ... # configurable parameters
-                 ):
-        # Initialize custom network parameters
-        ...
-    
-    def forward(self, batch: dotdict):
-        # Perform network forwarding
-        ...
-
-        # Store output for further processing
-        batch.output.rgb_map = ... # store rendered image for loss (B, N, 3)
-```
-
-In the respective config, selecte this module with:
-
-```yaml
-model_cfg:
-    sampler_cfg:
-        type: CustomVolumetricVideoModule
-```
-
-### Importing ***EasyVolcap*** In Other Places
-
-***EasyVolcap*** now supports direct import from other locations & codebases.
-After installing, you can not only directly use utility modules and functions from `easyvolcap.utils`, but also import and build upon our core modules and classes.
-
-```python
-# Import the logging and debugging functions
-from easyvolcap.utils.console_utils import * # log, tqdm, @catch_throw
-from easyvolcap.utils.timer_utils import timer  # timer.record
-from easyvolcap.utils.data_utils import export_pts, export_mesh, export_npz
-...
-
-# Import the OpenGL-based viewer and build upon it
-from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
-
-class CustomViewer(VolumetricVideoViewer):
-    ...
-```
-The import will work when actually running the code, but it might fail since some of the autocompletion modules [is not fully compatible with the newest editable install](https://code.visualstudio.com/docs/python/editing#_importresolvefailure).
-
-If you see warnings when importing ***EasyVolcap*** in your editor like VSCode, you might want to add the path of your ***EasyVolcap*** codebase to the `python.autoComplete.extraPaths` and `python.analysis.extraPaths` like this:
-
-```json
-{
-    "python.autoComplete.extraPaths": ["/home/zju3dv/code/easyvolcap"],
-    "python.analysis.extraPaths": ["/home/zju3dv/code/easyvolcap"]
-}
-```
-
-Another solution is to replace the installation command of ***EasyVolcap*** with a compatible one [using compatible editable install](https://microsoft.github.io/pyright/#/import-resolution?id=editable-installs):
-
-```shell
-pip install -e . --no-build-isolation --no-deps --config-settings editable_mode=compat
-```
-
-Note that this is [marked deprecated in the PEP specification](https://setuptools.pypa.io/en/latest/userguide/development_mode.html#legacy-behavior). Thus our recommendation is to change the setting of your editor instead.
-
-### New Project Based on ***EasyVolcap***
-
-If you're interested in developing or researching with ***EasyVolcap***, the recommended way is to fork the repository and modify or append to our source code directly instead of using ***EasyVolcap*** as a module.
-
-After cloning and forking, add [https://github.com/zju3dv/EasyVolcap](https://github.com/zju3dv/EasyVolcap) as an `upstream` if you want to receive updates from our side. Use `git fetch upstream` to pull and merge our updates to ***EasyVolcap*** to your new project if needed. The following code block provides an example of this development process.
-
-Our recent project [4K4D](https://github.com/zju3dv/4K4D) is developed in this fashion.
-
-```shell
-# Prepare the name and GitHub repo of your new project
-project=4K4D
-repo=https://github.com/zju3dv/${project}
-
-# Clone EasyVolcap and add our repo as an upstream
-git clone https://github.com/zju3dv/EasyVolcap ${project}
-
-# Setup the remote of your new project
-git set-url origin ${repo}
-
-# Add EasyVolcap as an upstream
-git remote add upstream https://github.com/zju3dv/EasyVolcap
-
-# If EasyVolcap updates, fetch the updates and maybe merge with it
-git fetch upstream
-git merge upstream/main
-```
-
-Nevertheless, we still encourage you to read on and possibly follow the tutorials in the [Examples](#examples) section and maybe read our design documents in the [Design Docs](#design-docs) section to grasp an understanding of how ***EasyVolcap*** works as a project.
 
 ## Examples
 
@@ -265,38 +68,42 @@ The example dataset for this section can be downloaded from [this Google Drive l
 
 This dataset is a small subset of the [ENeRF-Outdoor](https://github.com/zju3dv/ENeRF/blob/master/docs/enerf_outdoor.md) dataset released by our team. For downloading the full dataset, please follow the guide in the [link]((https://github.com/zju3dv/ENeRF/blob/master/docs/enerf_outdoor.md)). 
 
-### Dataset Structure
-
-```shell
-data/dataset/sequence # data_root & data_root
-├── intri.yml # required: intrinsics
-├── extri.yml # required: extrinsics
-└── images # required: source images
-    ├── 000000 # camera / frame
-    │   ├── 000000.jpg # image
-    │   ├── 000001.jpg # for dynamic dataset, more images can be placed here
-    │   ...
-    │   ├── 000298.jpg # for dynamic dataset, more images can be placed here
-    │   └── 000299.jpg # for dynamic dataset, more images can be placed here
-    ├── 000001
-    ├── 000002
-    ...
-    ├── 000058
-    └── 000059
-```
-
-***EasyVolcap*** is designed to work on the simplest data form: `images` and no more. The key data preprocessing are done in the `dataloader` and `dataset` modules. These steps are done in the dataloader's initialization
-1. We might correct the camera pose with their center of attention and world-up vector (`dataloader_cfg.dataset_cfg.use_aligned_cameras=True`).
-2. We undistort read images from the disk using the intrinsic poses and store them as jpeg bytes in memory.
-
-Before running the model, let's first prepare some shell variables for easy access.
+Before running the models, let's first prepare some shell variables for easy access.
 
 ```shell
 expname=actor1_4_subseq
 data_root=data/enerf_outdoor/actor1_4_subseq
 ```
 
+### Inferencing With ENeRFi
+
+https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/68401485-85fe-477f-9144-976bb2ee8d3c
+
+https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/6d60f2a4-6692-43e8-b682-aa27fcdf9516
+
+The pre-trained model for ENeRFi on the DTU dataset can be downloaded from [this Google Drive link](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing). After downloading, rename the model to `latest.npz` and place it in `data/trained_model/enerfi_dtu`.
+
+```shell
+# Render ENeRFi with pretrained model
+evc -t test -c configs/exps/enerfi/enerfi_${expname}.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml runner_cfg.visualizer_cfg.save_tag=${expname} exp_name=enerfi_dtu
+
+# Render ENeRFi with GUI
+evc -t gui -c configs/exps/enerfi/enerfi_${expname}.yaml exp_name=enerfi_dtu # 2.5 FPS on 3060
+```
+
+If more performance is desired:
+
+```shell
+# Fine quality, faster rendering
+evc -t gui -c configs/exps/enerfi/enerfi_actor1_4_subseq.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 3.6 FPS on 3060
+
+# Worst quality, fastest rendering
+evc -t gui -c configs/exps/enerfi/enerfi_actor1_4_subseq.yaml,configs/specs/fp16.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 5.0 FPS on 3060
+```
+
 ### Running Instant-NGP+T
+
+**Note that this example requires you to have `tiny-cuda-nn` installed. [Guide](docs/design/install.md#cuda-related-compilations).**
 
 We extend Instant-NGP to be time-aware, as a baseline method. With the data preparation completed, we've got an `images` folder and a pair of `intri.yml` and `extri.yml` files, and we can run the l3mhet model.
 Note that this model is not built for dynamic scenes, we train it here mainly for extracting initialization point clouds and computing a tighter bounding box.
@@ -317,6 +124,8 @@ evc -t test -c configs/exps/l3mhet/l3mhet_${expname}.yaml,configs/specs/spiral.y
 
 
 ### Running 3DGS+T
+
+**Note that this example requires you to have `diff_gauss` or `diff_gaussian_rasterization` installed. [Guide](docs/design/install.md#cuda-related-compilations).**
 
 https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/acd83f13-ba34-449c-96ce-e7b7b0781de4
 
@@ -369,31 +178,148 @@ evc -t gui -c configs/exps/gaussiant/gaussiant_${expname}.yaml,configs/specs/sup
 
 The [`superm.yaml`](configs/specs/superm.yaml) skips the loading of input images and other initializations for network-only rendering since all the information we need is contained inside the trained model.
 
-### Inferencing With ENeRFi
 
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/68401485-85fe-477f-9144-976bb2ee8d3c
 
-https://github.com/dendenxu/easyvolcap.github.io.assets/assets/43734697/6d60f2a4-6692-43e8-b682-aa27fcdf9516
+## Usage
 
-The pre-trained model for ENeRFi on the DTU dataset can be downloaded from [this Google Drive link](https://drive.google.com/file/d/1OFBFxes9kje02RARFpYpQ6SkmYlulYca/view?usp=sharing). After downloading, rename the model to `latest.npz` and place it in `data/trained_model/enerfi_dtu`.
+### Customizing ***EasyVolcap***
 
-```shell
-# Render ENeRFi with pretrained model
-evc -t test -c configs/exps/enerfi/enerfi_${expname}.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml runner_cfg.visualizer_cfg.save_tag=${expname} exp_name=enerfi_dtu
+Most of the time when we want to build a new set of algorithms on top of the framework, we only have to worry about the actual network itself.
+Before writing your new volumetric video algorithm, we need a basic understanding of the network's input and output:
 
-# Render ENeRFi with GUI
-evc -t gui -c configs/exps/enerfi/enerfi_${expname}.yaml exp_name=enerfi_dtu # 2.5 FPS on 3060
+**We use Python dictionaries for passing in and out network input and output.**
+
+1. The `batch` variable stores the network input you sampled from the dataset (e.g. camera parameters).
+2. The `output` key of the `batch` variable should contain the network output. For each network module's output definition, please refer to the [design documents](docs/design/main.md) of them (`camera`, `sampler`, `network`, `renderer`) or just see the definitions in [`volumetric_video_model.py`](easyvolcap/models/volumetric_video_model.py) (the `render_rays` function).
+
+<!-- There are generally two ways of developing a new algorithm: -->
+**We support purely customized network construction & usage and also a unified NeRF-like pipeline.**
+
+1. If your new network model's structure is similar to NeRF-based ones (i.e. with the separation of `sampler`, `network` and `renderer`), you can simply swap out parts of the [`volumetric_video_network.py`](easyvolcap/models/networks/volumetric_video_network.py) by writing a new config to swap the `type` parameter of the `***_cfg` dictionaries.
+2. If you'd like to build a completely new network model: to save you some hassle, we grant the `sampler` classes the ability to directly output the core network output (`rgb_map` stored in `batch.output`). Define your rendering function and network structure however you like and reuse other parts of the codebase. An example: [`gaussiant_sampler.py`](easyvolcap/models/samplers/gaussiant_sampler.py).
+
+**A miminal custom moduling using all other ***EasyVolcap*** components should look something like this:**
+
+```python
+from easyvolcap.engine import SAMPLERS
+from easyvolcap.utils.net_utils import VolumetricVideoModule
+from easyvolcap.utils.console_utils import *
+
+@SAMPLERS.register_module() # make the custom module callable by class name
+class CustomVolumetricVideoModule(VolumetricVideoModule):
+    def __init__(self,
+                 network, # ignore noop_network
+                 ... # configurable parameters
+                 ):
+        # Initialize custom network parameters
+        ...
+    
+    def forward(self, batch: dotdict):
+        # Perform network forwarding
+        ...
+
+        # Store output for further processing
+        batch.output.rgb_map = ... # store rendered image for loss (B, N, 3)
 ```
 
-If more performance is desired:
+In the respective config, selecte this module with:
+
+```yaml
+model_cfg:
+    sampler_cfg:
+        type: CustomVolumetricVideoModule
+```
+
+
+### Dataset Structure
 
 ```shell
-# Fine quality, faster rendering
-evc -t gui -c configs/exps/enerfi/enerfi_actor1_4_subseq.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 3.6 FPS on 3060
-
-# Worst quality, fastest rendering
-evc -t gui -c configs/exps/enerfi/enerfi_actor1_4_subseq.yaml,configs/specs/fp16.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 5.0 FPS on 3060
+data/dataset/sequence # data_root & data_root
+├── intri.yml # required: intrinsics
+├── extri.yml # required: extrinsics
+└── images # required: source images
+    ├── 000000 # camera / frame
+    │   ├── 000000.jpg # image
+    │   ├── 000001.jpg # for dynamic dataset, more images can be placed here
+    │   ...
+    │   ├── 000298.jpg # for dynamic dataset, more images can be placed here
+    │   └── 000299.jpg # for dynamic dataset, more images can be placed here
+    ├── 000001
+    ├── 000002
+    ...
+    ├── 000058
+    └── 000059
 ```
+
+***EasyVolcap*** is designed to work on the simplest data form: `images` and no more. The key data preprocessing are done in the `dataloader` and `dataset` modules. These steps are done in the dataloader's initialization
+1. We might correct the camera pose with their center of attention and world-up vector (`dataloader_cfg.dataset_cfg.use_aligned_cameras=True`).
+2. We undistort read images from the disk using the intrinsic poses and store them as jpeg bytes in memory.
+
+### Importing ***EasyVolcap***
+
+***EasyVolcap*** now supports direct import from other locations & codebases.
+After installing, you can not only directly use utility modules and functions from `easyvolcap.utils`, but also import and build upon our core modules and classes.
+
+```python
+# Import the logging and debugging functions
+from easyvolcap.utils.console_utils import * # log, tqdm, @catch_throw
+from easyvolcap.utils.timer_utils import timer  # timer.record
+from easyvolcap.utils.data_utils import export_pts, export_mesh, export_npz
+...
+
+# Import the OpenGL-based viewer and build upon it
+from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
+
+class CustomViewer(VolumetricVideoViewer):
+    ...
+```
+The import will work when actually running the code, but it might fail since some of the autocompletion modules [is not fully compatible with the newest editable install](https://code.visualstudio.com/docs/python/editing#_importresolvefailure).
+
+If you see warnings when importing ***EasyVolcap*** in your editor like VSCode, you might want to add the path of your ***EasyVolcap*** codebase to the `python.autoComplete.extraPaths` and `python.analysis.extraPaths` like this:
+
+```json
+{
+    "python.autoComplete.extraPaths": ["/home/zju3dv/code/easyvolcap"],
+    "python.analysis.extraPaths": ["/home/zju3dv/code/easyvolcap"]
+}
+```
+
+Another solution is to replace the installation command of ***EasyVolcap*** with a compatible one [using compatible editable install](https://microsoft.github.io/pyright/#/import-resolution?id=editable-installs):
+
+```shell
+pip install -e . --no-build-isolation --no-deps --config-settings editable_mode=compat
+```
+
+Note that this is [marked deprecated in the PEP specification](https://setuptools.pypa.io/en/latest/userguide/development_mode.html#legacy-behavior). Thus our recommendation is to change the setting of your editor instead.
+
+### New Projects With ***EasyVolcap***
+
+If you're interested in developing or researching with ***EasyVolcap***, the recommended way is to fork the repository and modify or append to our source code directly instead of using ***EasyVolcap*** as a module.
+
+After cloning and forking, add [https://github.com/zju3dv/EasyVolcap](https://github.com/zju3dv/EasyVolcap) as an `upstream` if you want to receive updates from our side. Use `git fetch upstream` to pull and merge our updates to ***EasyVolcap*** to your new project if needed. The following code block provides an example of this development process.
+
+Our recent project [4K4D](https://github.com/zju3dv/4K4D) is developed in this fashion.
+
+```shell
+# Prepare the name and GitHub repo of your new project
+project=4K4D
+repo=https://github.com/zju3dv/${project}
+
+# Clone EasyVolcap and add our repo as an upstream
+git clone https://github.com/zju3dv/EasyVolcap ${project}
+
+# Setup the remote of your new project
+git set-url origin ${repo}
+
+# Add EasyVolcap as an upstream
+git remote add upstream https://github.com/zju3dv/EasyVolcap
+
+# If EasyVolcap updates, fetch the updates and maybe merge with it
+git fetch upstream
+git merge upstream/main
+```
+
+Nevertheless, we still encourage you to read on and possibly follow the tutorials in the [Examples](#examples) section and maybe read our design documents in the [Design Docs](#design-docs) section to grasp an understanding of how ***EasyVolcap*** works as a project.
 
 
 ## Documentations

@@ -1,5 +1,92 @@
 # Installation Guide
 
+This documents provides more details on the installation process of ***EasyVolcap***.
+
+For basic installation, you should follow the guide in the [main readme](../../readme.md#installation) first since this doc is an extension to that.
+
+## No-Clone Install Using `pip`
+
+Optionally if you only want to use ***EasyVolcap*** in other projects by directly importing its components, you can install it from GitHub with:
+
+```shell
+# Install core dependencies
+pip install "git+https://github.com/zju3dv/EasyVolcap"
+
+# Maybe also install development required dependencies (might require CUDA compilation)
+pip install "git+https://github.com/zju3dv/EasyVolcap#egg=easyvolcap[devel]"
+```
+
+## More Robust Installation
+
+Alternatively, if your `pip install` command fails due to one or two packages, try installing the dependencies one by one in this way:
+
+```shell
+# Install PyTorch
+pip install torch torchvision torchaudio -f https://download.pytorch.org/whl/torch_stable.html
+
+# Install pip dependencies
+cat requirements.txt | sed -e '/^\s*-.*$/d' -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "#"); if (length(a) > 1) print a[1]; else print $0;}' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
+
+# Install development pip dependencies
+cat requirements-devel.txt | sed -e '/^\s*-.*$/d' -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "#"); if (length(a) > 1) print a[1]; else print $0;}' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
+
+# Register EasyVolcp for imports
+pip install -e . --no-build-isolation --no-deps
+```
+
+Note that the `--no-build-isolation` gives faster install by not creating a virtual environment for building dependencies.
+But it does require the latest `setuptools` and `pip` to work correctly.
+So if the result of running the `pip install -e . --no-build-isolation --no-deps` command contains a package name of `UNKNOWN`,
+try updating `setuptools` and `pip` with:
+
+```shell
+python -m pip install -U pip setuptools
+```
+
+## Install Using `conda`
+
+Copy-and-paste version of the installation process listed below. For a more thorough explanation, read on.
+```shell
+# Prepare conda environment
+conda install -n base mamba -y -c conda-forge
+mamba create -n easyvolcap "python>=3.11,<3.12" -y
+conda activate easyvolcap
+
+# Install conda dependencies
+mamba env update
+
+# Install pip dependencies
+cat requirements.txt | sed -e '/^\s*-.*$/d' -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "#"); if (length(a) > 1) print a[1]; else print $0;}' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install
+cat requirements-devel.txt | sed -e '/^\s*-.*$/d' -e '/^\s*#.*$/d' -e '/^\s*$/d' | awk '{split($0, a, "#"); if (length(a) > 1) print a[1]; else print $0;}' | awk '{split($0, a, "@"); if (length(a) > 1) print a[2]; else print $0;}' | xargs -n 1 pip install # use this for full dependencies
+
+# Register EasyVolcp for imports
+pip install -e . --no-build-isolation --no-deps
+```
+
+We opted to use the latest `pyproject.toml` style packing system for exposing command line interfaces.
+It creates a virtual environment for building dependencies by default, which could be quite slow. Disabled with `--no-build-isolation`.
+You should create a `conda` or `mamba` (recommended) environment for development, and install the dependencies manually.
+If the existing environment with `PyTorch` installed can be utilized, you can jump straight to installing the `pip` dependencies.
+More details about installing on *Windows* or compiling *CUDA* modules can be found in [`install.md`](docs/design/install.md).
+
+Note: `pip` dependencies can sometimes fail to install & build. However, not all of them are strictly required for ***EasyVolcap***.
+  - The core ones include `tinycudann` and `pytorch3d`. Make sure those are built correctly and you'll be able to use most of the functionality of ***EasyVolcap***.
+  - It's also OK to install missing packages manually when ***EasyVolcap*** reports that they are missing since we lazy load a lot of them (`tinycudann`, `diff_gauss`, `open3d` etc.). 
+  - Just be sure to check how we listed the missing package in [`requirements.txt`](requirements.txt) before performing `pip install` on them. Some packages require to be installed from GitHub.
+  - If the `mamba env update` step fails due to network issues, it is OK to proceed with pip installs since `PyTorch` will also be installed by pip.
+
+## Missing Imports
+
+If you encounter import errors, they can usually be safely ignored if the code runs since we lazy load a lot of the trikcy-to-install ones, especially when there's CUDA kernel compilation involved.
+
+If the import error gets in the way of the actual code you want to use, you might want to search the reported package name in [`requirements-devel.txt`](requirements-devel.txt) and install them manually.
+
+For example, for the missing `diff_gauss` package, you can find the line `diff_gauss @ git+https://github.com/dendenxu/diff-gaussian-rasterization` there and install it with:
+
+```shell
+pip install git+https://github.com/dendenxu/diff-gaussian-rasterization # will try to compile this package and install it
+```
+
 ## Conda & Pip Dependencies
 
 Here, we provide a more thorough explanation of the installation process listed in the [main readme](../../readme.md#installation).
