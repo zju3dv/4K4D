@@ -34,5 +34,4 @@ def test_illegal_memory_diag():
 
 
 if __name__ == '__main__':
-    setup_deterministic()
     my_tests(globals())
