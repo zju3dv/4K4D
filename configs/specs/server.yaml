@@ -1,0 +1,6 @@
+viewer_cfg:
+    type: WebSocketServer
+
+val_dataloader_cfg:
+    dataset_cfg:
+        type: NoopDataset
