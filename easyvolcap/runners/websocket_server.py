@@ -81,10 +81,10 @@ class WebSocketServer(VolumetricVideoViewer):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
-            log('Preparing websocekt server for sending images & receiving cameras')
-            send_server = websockets.serve(self.send_loop, self.host, self.send_port)
+            log('Preparing websocket server for sending images & receiving cameras')
+            server = websockets.serve(self.send_loop, self.host, self.send_port)
 
-            loop.run_until_complete(send_server)
+            loop.run_until_complete(server)
             loop.run_forever()
 
         self.server_thread = threading.Thread(target=start_server, daemon=True)
@@ -126,7 +126,8 @@ class WebSocketServer(VolumetricVideoViewer):
 
             response = await websocket.recv()
             if len(response):
-                camera = Camera().from_string(zlib.decompress(response).decode('ascii'))
+                camera = Camera()
+                camera.from_string(zlib.decompress(response).decode('ascii'))
                 with self.camera_lock:
                     self.camera = camera
 
