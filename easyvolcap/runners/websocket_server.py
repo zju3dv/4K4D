@@ -31,7 +31,7 @@ from easyvolcap.utils.data_utils import add_iter, add_batch, to_cuda, Visualizat
 
 
 @RUNNERS.register_module()
-class WebSocketServer(VolumetricVideoViewer):
+class WebSocketServer:
     # Viewer should be used in conjuction with another runner, which explicitly handles model loading
     def __init__(self,
                  # Runner related parameter & config
@@ -82,7 +82,7 @@ class WebSocketServer(VolumetricVideoViewer):
             asyncio.set_event_loop(loop)
 
             log('Preparing websocket server for sending images & receiving cameras')
-            server = websockets.serve(self.send_loop, self.host, self.send_port)
+            server = websockets.serve(self.server_loop, self.host, self.send_port)
 
             loop.run_until_complete(server)
             loop.run_forever()
@@ -90,6 +90,12 @@ class WebSocketServer(VolumetricVideoViewer):
         self.server_thread = threading.Thread(target=start_server, daemon=True)
         self.server_thread.start()
         self.render_loop()  # the rendering runs on the main thread
+
+    @property
+    def H(self): return self.camera.H
+
+    @property
+    def W(self): return self.camera.W
 
     def render_loop(self):  # this is the main thread
         frame_cnt = 0
@@ -112,8 +118,10 @@ class WebSocketServer(VolumetricVideoViewer):
                 frame_cnt = 0
                 prev_time = curr_time
                 log(f'Render FPS: {fps}')
+                log(self.camera.H, self.camera.W)
+                log(self.image.sum())
 
-    async def send_loop(self, websocket: websockets.WebSocket, path: str):
+    async def server_loop(self, websocket: websockets.WebSocket, path: str):
         frame_cnt = 0
         prev_time = time.perf_counter()
 
@@ -139,6 +147,9 @@ class WebSocketServer(VolumetricVideoViewer):
                 frame_cnt = 0
                 prev_time = curr_time
                 log(f'Send FPS: {fps}')
+                log(camera.H, camera.W)
+                log(self.camera.H, self.camera.W)
+                log(self.image.sum())
 
     def render(self, batch: dotdict):
         batch = to_cuda(add_iter(add_batch(batch), 0, 1))  # int -> tensor -> add batch -> cuda, smalle operations are much faster on cpu

@@ -52,7 +52,7 @@ class Viewer(VolumetricVideoViewer):
                  show_preloading: bool = True,
 
                  fullscreen: bool = False,
-                 camera_cfg: dotdict = dotdict(type=Camera.__name__),
+                 camera_cfg: dotdict = dotdict(type=Camera.__name__, string='{"H":768,"W":1366,"K":[[1227.75,0.0,946.7529907226562],[0.0,1219.8775634765625,548.2080078125],[0.0,0.0,1.0]],"R":[[0.9900417923927307,-0.14077377319335938,0.0],[-0.02820173278450966,-0.19833874702453613,-0.9797297120094299],[0.13792024552822113,0.9699733257293701,-0.20033371448516846]],"T":[[-0.13352864980697632],[-0.6429579854011536],[5.76825475692749]],"n":1.5,"f":100.0,"t":0.7299925088882446,"v":0.0,"bounds":[[-10.0,-10.0,-3.0],[10.0,10.0,3.0]],"mass":0.10000000149011612,"moment_of_inertia":0.10000000149011612,"movement_force":1.0,"movement_torque":1.0,"movement_speed":1.0,"origin":[0.37696364521980286,-0.06292950361967087,-0.2327267974615097],"world_up":[0.0,0.0,1.0]}'),
 
                  show_metrics_window: bool = False,
                  show_demo_window: bool = False,
@@ -141,12 +141,14 @@ class Viewer(VolumetricVideoViewer):
 
         # Render GS
         if self.render_network:
-            buffer = image
+            with lock:
+                buffer = image
             if buffer is not None:
-                buffer = buffer.permute(1, 2, 0)
-                buffer = torch.cat([buffer, torch.ones_like(buffer[..., :1])], dim=-1)
-                self.quad.copy_to_texture(buffer)
-                self.quad.draw()
+                if buffer.shape[1] == self.H and buffer.shape[2] == self.W:
+                    buffer = buffer.permute(1, 2, 0)
+                    buffer = torch.cat([buffer, torch.ones_like(buffer[..., :1])], dim=-1)
+                    self.quad.copy_to_texture(buffer)
+                    self.quad.draw()
 
         # Render meshes (or point clouds)
         if self.render_meshes:
