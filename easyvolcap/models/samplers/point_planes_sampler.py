@@ -45,8 +45,9 @@ if TYPE_CHECKING:
 
 @SAMPLERS.register_module()
 class PointPlanesSampler(VolumetricVideoModule):
-    n_frames = OptimizableCamera.n_frames
-    frame_sample = OptimizableCamera.frame_sample
+
+    n_frames = OptimizableCamera.n_views if OptimizableCamera.closest_using_t else OptimizableCamera.n_frames
+    frame_sample = OptimizableCamera.view_sample if OptimizableCamera.closest_using_t else OptimizableCamera.frame_sample
 
     def __init__(self,
                  network: VolumetricVideoNetwork,

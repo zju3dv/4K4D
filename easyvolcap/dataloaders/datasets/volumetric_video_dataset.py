@@ -645,7 +645,6 @@ class VolumetricVideoDataset(Dataset):
             log(magenta(f'Accumulated vhull bound of frames: {self.frame_sample}: '),
                 line(torch.stack([self.vhull_bounds.min(dim=0)[0][0],
                                   self.vhull_bounds.max(dim=0)[0][1]])))
-        log(self.vhull_only)
         if self.vhull_only:
             exit(0)
 

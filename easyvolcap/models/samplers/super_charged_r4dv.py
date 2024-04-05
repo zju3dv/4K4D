@@ -2,9 +2,9 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, List, Dict, Tuple
 if TYPE_CHECKING:
+    from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
     from easyvolcap.runners.volumetric_video_runner import VolumetricVideoRunner
     from easyvolcap.dataloaders.datasets.image_based_dataset import ImageBasedDataset
-    from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
 
 import torch
 import torch.nn as nn
@@ -22,16 +22,15 @@ from easyvolcap.utils.parallel_utils import parallel_execution
 from easyvolcap.utils.math_utils import affine_inverse, normalize
 from easyvolcap.utils.chunk_utils import multi_gather, multi_scatter
 from easyvolcap.utils.data_utils import to_cuda, to_tensor, add_batch
-from easyvolcap.utils.enerf_utils import sample_geometry_feature_image
+from easyvolcap.utils.ibr_utils import sample_geometry_feature_image
+from easyvolcap.utils.image_utils import interpolate_image, pad_image
 from easyvolcap.utils.ibr_utils import compute_src_feats, compute_src_inps
 from easyvolcap.utils.cuda_utils import register_memory, unregister_memory
-from easyvolcap.utils.image_utils import interpolate_image, pad_image
 from easyvolcap.utils.net_utils import unfreeze_module, freeze_module, typed, make_params, make_buffer
 
-from easyvolcap.models.networks.embedders.kplanes_embedder import KPlanesEmbedder
-from easyvolcap.models.samplers.point_planes_sampler import PointPlanesSampler
-from easyvolcap.models.networks.embedders.geometry_image_based_embedder import GeometryImageBasedEmbedder
-from easyvolcap.models.networks.regressors.image_based_spherical_harmonics import ImageBasedSphericalHarmonics
+from easyvolcap.models.samplers.gaussiant_sampler import GaussianTSampler
+from easyvolcap.models.samplers.r4dv_sampler import R4DVSampler
+
 
 # This function will cache all point features by directly querying the xyz_embedder
 def load_state_dict_kwargs(device: str = 'cuda'):
@@ -176,18 +175,16 @@ def average_single_frame(i: int,
 
 
 @SAMPLERS.register_module()
-class SuperChargedR4DV(PointPlanesSampler):
+class SuperChargedR4DV(R4DVSampler):
     def __init__(self,
                  dtype: torch.dtype = torch.half,
                  use_cudagl: bool = True,
                  skip_loading_points: bool = True,
 
-                 ibr_embedder_cfg: dotdict = dotdict(type=GeometryImageBasedEmbedder.__name__),  # easily returns nan
-                 ibr_regressor_cfg: dotdict = dotdict(type=ImageBasedSphericalHarmonics.__name__),  # easily returns nan
-
                  # Visualization
                  skip_shs: bool = False,
                  skip_base: bool = False,
+                 #  render_gs: bool = False,
 
                  *args,
                  **kwargs,
@@ -196,23 +193,19 @@ class SuperChargedR4DV(PointPlanesSampler):
         kwargs = dotdict(kwargs)
         self.kwargs = kwargs
         super().__init__(*args, **kwargs, dtype=dtype, use_cudagl=use_cudagl, skip_loading_points=skip_loading_points)
-
-        del self.dir_embedder  # no need for this
-        del self.rgb_regressor
-        self.ibr_embedder: GeometryImageBasedEmbedder = EMBEDDERS.build(ibr_embedder_cfg)  # forwarding the images
-        self.ibr_regressor: ImageBasedSphericalHarmonics = REGRESSORS.build(ibr_regressor_cfg, in_dim=self.xyz_embedder.out_dim + 3, src_dim=self.ibr_embedder.src_dim)
-        self.pre_handle = self._register_load_state_dict_pre_hook(self._load_state_dict_pre_hook)
-
         self.super_charge(**kwargs)
 
         self.skip_shs = skip_shs
         self.skip_base = skip_base
 
     def render_imgui(self, viewer: 'VolumetricVideoViewer', batch: dotdict):
+        super().render_imgui(viewer, batch)
+        from imgui_bundle import imgui
         from imgui_bundle import imgui_toggle
         toggle_ios_style = imgui_toggle.ios_style(size_scale=0.2)
         self.skip_shs = imgui_toggle.toggle('Skip SHs', self.skip_shs, config=toggle_ios_style)[1]
         self.skip_base = imgui_toggle.toggle('Skip base', self.skip_base, config=toggle_ios_style)[1]
+        self.render_gs = imgui_toggle.toggle('Render GS', self.render_gs, config=toggle_ios_style)[1]
 
     def super_charge(self,
                      n_srcs: int = 4,
@@ -237,6 +230,7 @@ class SuperChargedR4DV(PointPlanesSampler):
         self.ibr_sh_dim = self.ibr_regressor.sh_dim
         self.ibr_out_dim = self.ibr_regressor.out_dim
         self.ibr_resd_limit = self.ibr_regressor.resd_limit
+
         if not retain_resd:
             del self.pcd_embedder
             del self.resd_regressor
@@ -298,27 +292,8 @@ class SuperChargedR4DV(PointPlanesSampler):
         return self.cache[i]
 
     def _load_state_dict_pre_hook(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
-
-        super()._load_state_dict_pre_hook(state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
-
-        # Historical reasons
-        keys = list(state_dict.keys())
-        for key in keys:
-            if f'{prefix}ibr_regressor.feat_agg' in key:
-                del state_dict[key]
-
-        keys = list(state_dict.keys())
-        for key in keys:
-            if f'{prefix}ibr_regressor.rgb_mlp.linears' in key:
-                state_dict[key.replace(f'{prefix}ibr_regressor.rgb_mlp.linears', f'{prefix}ibr_regressor.rgb_mlp.mlp.linears')] = state_dict[key]
-                del state_dict[key]
-
-        keys = list(state_dict.keys())
-        for key in keys:
-            if f'{prefix}ibr_regressor.sh_mlp.linears' in key:
-                state_dict[key.replace(f'{prefix}ibr_regressor.sh_mlp.linears', f'{prefix}ibr_regressor.sh_mlp.mlp.linears')] = state_dict[key]
-                del state_dict[key]
-
+        # super()._load_state_dict_pre_hook(state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs) # TODO: This could not be easily inherited
+        R4DVSampler._load_state_dict_pre_hook(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
         keys = list(state_dict.keys())
         for key in keys:
             if key.startswith(f'{prefix}cents.'):  # historical reasons
@@ -428,6 +403,38 @@ class SuperChargedR4DV(PointPlanesSampler):
             self.rads[(b + i * s) // ts - tb] = make_buffer(rad)
             self.occs[(b + i * s) // ts - tb] = make_buffer(occ)
 
+    @torch.no_grad()
+    def construct_from_runner(self, runner: 'VolumetricVideoRunner'):
+        sampler: R4DVSampler = runner.model.sampler
+        b, e, s = sampler.frame_sample
+        n_frames = sampler.n_frames
+
+        self.type(self.compute_dtype)  # change to compute dtype before loading the parameters
+        # Moving data around
+        # self.xyz_embedder: KPlanesEmbedder = EMBEDDERS.build(sampler.kwargs.xyz_embedder_cfg, dtype=self.dtype)
+        self.xyz_embedder.load_state_dict(sampler.xyz_embedder.state_dict())
+        self.geo_regressor.load_state_dict(sampler.geo_regressor.state_dict())
+        self.ibr_embedder.load_state_dict(sampler.ibr_embedder.state_dict())
+        self.ibr_regressor.load_state_dict(sampler.ibr_regressor.state_dict())
+
+        # Load data from dataset and the sampler itself
+        if not self.retain_resd:
+            for i in tqdm(range(n_frames), desc=f'Constructing {magenta(self.__class__.__name__)} from {magenta(sampler.__class__.__name__)}'):
+                pcd: torch.Tensor = sampler.pcds[i][None]  # V, 3
+                t = (i - b) / np.clip(e - 1 - b, 1, None)  # MARK: same as frame_to_t in VolumetricVideoDataset
+                pcd_t = torch.as_tensor(t).to(pcd)[None, None, None].expand(*pcd.shape[:2], 1)  # B, V, 1
+                pcd_feat = sampler.pcd_embedder(pcd, pcd_t)
+                resd = sampler.resd_regressor(pcd_feat)
+                xyz = pcd + resd
+                self.pcds[i].set_(xyz[0])
+        else:
+            self.pcds = sampler.pcds  # just save the original stuff
+            self.pcd_embedder.load_state_dict(sampler.pcd_embedder.state_dict())
+            self.resd_regressor.load_state_dict(sampler.resd_regressor.state_dict())
+        self.type(self.dtype)
+        # self.type_kplanes(torch.float)  # save all features as float 32 for quality
+        # self.pcds = nn.ParameterList([make_params(pcd.type(self.dtype)) for pcd in self.pcds])  # this is the largest part
+
     @staticmethod
     @torch.jit.script
     def get_inds(cent: torch.Tensor, C: torch.Tensor, n_srcs: int = 4):
@@ -477,7 +484,7 @@ class SuperChargedR4DV(PointPlanesSampler):
         inds = inds[..., None, None].expand((-1, -1) + rgbw.shape[-2:])  # B, 4, N, 4
         rgbw = rgbw.gather(-3, inds)  # B, 4, N, 4
         base = (rgbw[..., -1:].softmax(-3) * rgbw[..., :-1]).sum(-3)
-        
+
         # Residual speculars
         rgb = base + eval_sh(sh_deg, sh, dir).tanh() * resd_limit  # NOTE: this is the only thing that need to be run on CUDA (or torch)
         rgb = rgb.clip(0, 1)

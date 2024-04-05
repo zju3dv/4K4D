@@ -26,7 +26,8 @@ class ImgLossType(Enum):
     L1 = auto()
     L2 = auto()
     SSIM = auto()
-
+    MSSSIM = auto()
+    WL1 = auto()
 
 class DptLossType(Enum):
     SMOOTHL1 = auto()
@@ -413,6 +414,10 @@ def l1(x: torch.Tensor, y: torch.Tensor):
     return l1_reg(x - y)
 
 
+def wl1(x: torch.Tensor, y: torch.Tensor, w: torch.Tensor):
+    return l1_reg(w * (x - y))
+
+
 def l2(x: torch.Tensor, y: torch.Tensor):
     return l2_reg(x - y)
 
@@ -636,6 +641,11 @@ def _ssim(img1, img2, window, window_size, channel, size_average=True):
 def compute_ssim(x: torch.Tensor, y: torch.Tensor):
     from pytorch_msssim import ssim
     return ssim(x, y, data_range=1.0, win_size=11, win_sigma=1.5, K=(0.01, 0.03))
+
+
+def compute_msssim(x: torch.Tensor, y: torch.Tensor):
+    from pytorch_msssim import ms_ssim
+    return ms_ssim(x, y, data_range=1.0, win_size=11, win_sigma=1.5, K=(0.01, 0.03))
 
 
 # from MonoSDF

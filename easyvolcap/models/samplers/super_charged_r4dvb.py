@@ -7,6 +7,7 @@ Potentially optimizable up to the rendering speed difference of high-res and low
 from __future__ import annotations
 from typing import TYPE_CHECKING, List, Dict, Tuple
 if TYPE_CHECKING:
+    from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
     from easyvolcap.runners.volumetric_video_runner import VolumetricVideoRunner
     from easyvolcap.dataloaders.datasets.image_based_dataset import ImageBasedDataset
 
@@ -20,6 +21,8 @@ from types import MethodType
 from easyvolcap.engine import cfg
 from easyvolcap.engine import SAMPLERS, EMBEDDERS, REGRESSORS
 from easyvolcap.models.samplers.uniform_sampler import UniformSampler
+from easyvolcap.models.samplers.r4dv_sampler import R4DVSampler
+from easyvolcap.models.samplers.r4dvb_sampler import R4DVBSampler
 from easyvolcap.models.samplers.super_charged_r4dv import SuperChargedR4DV, average_single_frame, load_state_dict_kwargs
 from easyvolcap.models.samplers.point_planes_sampler import PointPlanesSampler
 from easyvolcap.models.networks.noop_network import NoopNetwork
@@ -143,6 +146,42 @@ class SuperChargedR4DVB(VolumetricVideoModule):
         self.fg_sampler.use_pulsar = v  # UNUSED
         self.bg_sampler.use_pulsar = v
 
+    @property
+    def skip_shs(self):
+        return self.bg_sampler.skip_shs
+
+    @skip_shs.setter
+    def skip_shs(self, v: bool):
+        self.fg_sampler.skip_shs = v  # UNUSED
+        self.bg_sampler.skip_shs = v
+
+    @property
+    def skip_base(self):
+        return self.bg_sampler.skip_base
+
+    @skip_base.setter
+    def skip_base(self, v: bool):
+        self.fg_sampler.skip_base = v  # UNUSED
+        self.bg_sampler.skip_base = v
+
+    @property
+    def render_gs(self):
+        return self.bg_sampler.render_gs
+
+    @render_gs.setter
+    def render_gs(self, v: bool):
+        self.fg_sampler.render_gs = v  # UNUSED
+        self.bg_sampler.render_gs = v
+
+    def render_imgui(self, viewer: 'VolumetricVideoViewer', batch: dotdict):
+        PointPlanesSampler.render_imgui(self, viewer, batch)
+
+        from imgui_bundle import imgui_toggle
+        toggle_ios_style = imgui_toggle.ios_style(size_scale=0.2)
+        self.skip_shs = imgui_toggle.toggle('Skip SHs', self.skip_shs, config=toggle_ios_style)[1]
+        self.skip_base = imgui_toggle.toggle('Skip base', self.skip_base, config=toggle_ios_style)[1]
+        self.render_gs = imgui_toggle.toggle('Render GS', self.render_gs, config=toggle_ios_style)[1]
+
     @torch.no_grad()
     def _load_state_dict_post_hook(self: SuperChargedR4DVB, module: SuperChargedR4DV, incompatible_keys):
         # Prepare the dataset to be loaded in post hook
@@ -243,6 +282,24 @@ class SuperChargedR4DVB(VolumetricVideoModule):
         # Give OpenGL some breathing room
         torch.cuda.empty_cache()
         del dataset.vhull_bounds  # no bbox for fullscreen dataset
+
+    @torch.no_grad()
+    def construct_from_runner(self, runner: 'VolumetricVideoRunner'):
+        sampler: R4DVBSampler = runner.model.sampler
+        b, e, s = sampler.fg_sampler.frame_sample
+        n_frames = sampler.fg_sampler.n_frames
+
+        # Construct foreground sampler
+        fg_runner = dotdict()
+        fg_runner.model = dotdict()
+        fg_runner.model.sampler = sampler.fg_sampler
+        self.fg_sampler.construct_from_runner(fg_runner)  # this should be pretty smooth
+
+        # Construct background sampler
+        bg_runner = dotdict()
+        bg_runner.model = dotdict()
+        bg_runner.model.sampler = sampler.bg_sampler
+        self.bg_sampler.construct_from_runner(bg_runner)  # this should be pretty smooth
 
     def forward(self, batch: dotdict):
         _, fg_xyz, fg_rgb, fg_rad, fg_occ = self.fg_sampler.forward(batch=batch, return_frags=True)
