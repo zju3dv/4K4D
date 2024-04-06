@@ -22,6 +22,8 @@ class ImageBasedRegressor(nn.Module):
 
                  chunk_size: int = 1e20,
                  out_actvn: nn.Module = nn.Identity(),
+
+                 **kwargs,
                  ) -> None:
         super().__init__()
         self.in_dim = in_dim

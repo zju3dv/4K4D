@@ -151,7 +151,8 @@ class WebSocketServer:
                 log('Server image sum:', self.image.sum())
 
     def render(self, batch: dotdict):
-        batch = to_cuda(add_iter(add_batch(batch), 0, 1))  # int -> tensor -> add batch -> cuda, smalle operations are much faster on cpu
+        batch = self.dataset.get_viewer_batch(batch)
+        batch = to_cuda(add_batch(add_iter(batch, 0, 1)))
 
         # Forward pass
         self.runner.maybe_jit_model(batch)

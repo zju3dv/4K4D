@@ -110,7 +110,6 @@ class Viewer(VolumetricVideoViewer):
         self.discrete_t = False
         self.use_vsync = False
 
-        self.camera_cfg = camera_cfg
         self.init_camera(camera_cfg)  # prepare for the actual rendering now, needs dataset -> needs runner
         self.init_glfw()  # ?: this will open up the window and let the user wait, should we move this up?
         self.init_imgui()
@@ -143,7 +142,7 @@ class Viewer(VolumetricVideoViewer):
 
     def init_camera(self, camera_cfg: dotdict):
         self.camera = Camera(**camera_cfg)
-        self.camera.front = self.camera.front  # perform alignment correction
+        self.camera.front = self.camera.front
 
     def reset(self):
         self.init_camera(self.camera_cfg)
@@ -173,7 +172,6 @@ class Viewer(VolumetricVideoViewer):
         if imgui.collapsing_header('Rendering'):
             self.visualize_axes = imgui_toggle.toggle('Visualize axes', self.visualize_axes, config=self.static.toggle_ios_style)[1]
             self.visualize_bounds = imgui_toggle.toggle('Visualize bounds', self.visualize_bounds, config=self.static.toggle_ios_style)[1]
-            self.visualize_cameras = imgui_toggle.toggle('Visualize cameras', self.visualize_cameras, config=self.static.toggle_ios_style)[1]
 
     def draw_model_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
         pass

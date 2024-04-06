@@ -85,20 +85,38 @@ The pre-trained model for ENeRFi on the DTU dataset can be downloaded from [this
 
 ```shell
 # Render ENeRFi with pretrained model
-evc -t test -c configs/exps/enerfi/enerfi_${expname}.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml runner_cfg.visualizer_cfg.save_tag=${expname} exp_name=enerfi_dtu
+evc-test -c configs/exps/enerfi/enerfi_${expname}.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml runner_cfg.visualizer_cfg.save_tag=${expname} exp_name=enerfi_dtu
 
 # Render ENeRFi with GUI
-evc -t gui -c configs/exps/enerfi/enerfi_${expname}.yaml exp_name=enerfi_dtu # 2.5 FPS on 3060
+evc-gui -c configs/exps/enerfi/enerfi_${expname}.yaml exp_name=enerfi_dtu # 2.5 FPS on 3060
 ```
 
 If more performance is desired:
 
 ```shell
 # Fine quality, faster rendering
-evc -t gui -c configs/exps/enerfi/enerfi_actor1_4_subseq.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 3.6 FPS on 3060
+evc-gui -c configs/exps/enerfi/enerfi_${expname}.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 3.6 FPS on 3060
 
 # Worst quality, fastest rendering
-evc -t gui -c configs/exps/enerfi/enerfi_actor1_4_subseq.yaml,configs/specs/fp16.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 5.0 FPS on 3060
+evc-gui -c configs/exps/enerfi/enerfi_${expname}.yaml,configs/specs/fp16.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 5.0 FPS on 3060
+```
+
+*Note that ***EasyVolcap*** supports WebSocket based server-side rendering.* [More info](docs/design/websocket.md).
+
+To use the WebSocket based rendering, append the config `server.yaml` to any of the native rendering command beginning with `evc-gui`.
+
+```shell
+# Run the rendering server, append `configs/specs/server.yaml` to the config file list
+evc-gui -c configs/exps/enerfi/enerfi_${expname}.yaml,configs/specs/fp16.yaml,configs/specs/server.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1
+```
+
+And run the viewer in your desired viewing client, tested on Windows, MacOS and Linux.
+
+```shell
+# Separate WebSocket Client parameter and evc parameter with --, for now, the viewer can be configured with evc
+# Replace 10.76.5.252 with your server IP
+# -c configs/datasets/enerf_outdoor/enerf_outdoor.yaml with what ever other config to use
+evc-ws --host 10.76.5.252 --port 1024 -- -c configs/datasets/enerf_outdoor/enerf_outdoor.yaml viewer_cfg.window_size="768,1366" 
 ```
 
 ### Running Instant-NGP+T
@@ -115,10 +133,13 @@ We need to write a config file for this model
 
 ```shell
 # With your config files ready, you can run the following command to train the model
-evc -c configs/exps/l3mhet/l3mhet_${expname}.yaml
+evc-train -c configs/exps/l3mhet/l3mhet_${expname}.yaml
 
 # Now run the following command to render some output
-evc -t test -c configs/exps/l3mhet/l3mhet_${expname}.yaml,configs/specs/spiral.yaml
+evc-test -c configs/exps/l3mhet/l3mhet_${expname}.yaml,configs/specs/spiral.yaml
+
+# And maybe render the model with GUI in lower resolution
+evc-gui -c configs/exps/l3mhet/l3mhet_${expname}.yaml viewer_cfg.render_ratio=0.15
 ```
 [`configs/specs/spiral.yaml`](configs/specs/spiral.yaml): please check this file for more details, it's a collection of configs to tell the dataloader and visualizer to generate a spiral path by interpolating the given cameras
 
@@ -167,13 +188,13 @@ The [`colmap.yaml`](configs/specs/colmap.yaml) provides some heuristics for larg
 
 ```shell
 # Train a 3DGS model on the ${expname} dataset
-evc -c configs/exps/gaussiant/gaussiant_${expname}.yaml # might run out of VRAM, try reducing densify until iter
+evc-train -c configs/exps/gaussiant/gaussiant_${expname}.yaml # might run out of VRAM, try reducing densify until iter
 
 # Perform rendering on the trained ${expname} dataset
-evc -t test -c configs/exps/gaussiant/gaussiant_${expname}.yaml,configs/specs/superm.yaml,configs/specs/spiral.yaml
+evc-test -c configs/exps/gaussiant/gaussiant_${expname}.yaml,configs/specs/superm.yaml,configs/specs/spiral.yaml
 
 # Perform rendering with GUI, do this on a machine with monitor, tested on Windows and Ubuntu
-evc -t gui -c configs/exps/gaussiant/gaussiant_${expname}.yaml,configs/specs/superm.yaml
+evc-gui -c configs/exps/gaussiant/gaussiant_${expname}.yaml
 ```
 
 The [`superm.yaml`](configs/specs/superm.yaml) skips the loading of input images and other initializations for network-only rendering since all the information we need is contained inside the trained model.
