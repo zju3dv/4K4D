@@ -1322,7 +1322,6 @@ class VolumetricVideoViewer:
         ori_W = self.W
         self.H = height
         self.W = width
-
         if ori_W > 0 and ori_H > 0:
             ratio = min(self.W / ori_W, self.H / ori_H)
             self.camera.K[0, 0] *= ratio   # only update one of them

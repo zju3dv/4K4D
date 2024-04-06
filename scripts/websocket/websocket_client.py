@@ -27,7 +27,7 @@ import glfw
 
 class Viewer(VolumetricVideoViewer):
     def __init__(self,
-                 window_size: List[int] = [1080, 1920],  # height, width
+                 window_size: List[int] = [768, 1366],  # height, width
                  window_title: str = f'EasyVolcap WebSocket Client',  # MARK: global config
 
                  font_size: int = 18,
@@ -122,8 +122,12 @@ class Viewer(VolumetricVideoViewer):
         global image
         event.wait()
         event.clear()
-        if image.shape[0] == self.H and image.shape[1] == self.W:
-            self.quad.copy_to_texture(image)
+
+        with lock:
+            buffer = image
+
+        if buffer.shape[0] == self.H and buffer.shape[1] == self.W:
+            self.quad.copy_to_texture(buffer)
             self.quad.draw()
         return None, None
 
@@ -162,22 +166,26 @@ async def websocket_client():
             await websocket.send(camera_data)
             timer.record('send')
 
-            # await websocket.send('')
-            # timer.record('send')
 
             buffer = await websocket.recv()
             timer.record('receive')
+            try:
+                buffer = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')  # 10ms for 1080p...
+            except RuntimeError as e:
+                buffer = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cpu')  # 10ms for 1080p...
+            buffer = buffer.permute(1, 2, 0)
+            buffer = torch.cat([buffer, torch.ones_like(buffer[..., :1])], dim=-1)
 
-            image = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')  # 10ms for 1080p...
-            image = image.permute(1, 2, 0)
-            image = torch.cat([image, torch.ones_like(image[..., :1])], dim=-1)
-            # image = torch.from_numpy(np.frombuffer(buffer, np.uint8)).to('cuda', non_blocking=True)
+            with lock:
+                image = buffer # might be a cuda tensor or cpu tensor
+
             event.set()  # explicit synchronization
             timer.record('decode')
 
 uri = "ws://10.76.5.252:1024"
 image = None
 viewer = Viewer()
+lock = threading.Lock()
 event = threading.Event()
 timer.disabled = False
 
