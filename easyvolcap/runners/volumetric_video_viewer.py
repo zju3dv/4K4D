@@ -1401,7 +1401,6 @@ class VolumetricVideoViewer:
 
     def init_quad(self):
         from easyvolcap.utils.gl_utils import Quad
-        from cuda import cudart
         self.quad = Quad(H=self.H, W=self.W, use_quad_cuda=self.use_quad_cuda, compose=self.compose, compose_power=self.compose_power)  # will blit this texture to screen if rendered
 
     def init_opengl(self):
