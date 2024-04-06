@@ -13,4 +13,4 @@ for module in __all__:
         filename = exception_traceback.tb_frame.f_code.co_filename
         line_number = exception_traceback.tb_lineno
 
-        log(yellow(f'Failed to import {red(filename)}:{line_number}, {red(type(e))}: {red_slim(e)}}'))
+        log(yellow(f'Failed to import {red(filename)}:{line_number}, {red(type(e))}: {red_slim(e)}'))
