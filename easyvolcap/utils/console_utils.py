@@ -102,7 +102,7 @@ yaml.default_flow_style = None
 warnings.filterwarnings("ignore")  # ignore disturbing warnings
 os.environ["PYTHONBREAKPOINT"] = "easyvolcap.utils.console_utils.set_trace"
 
-slim_width = 140
+slim_width = None
 verbose_width = None
 slim_log_time = True
 slim_log_path = True
