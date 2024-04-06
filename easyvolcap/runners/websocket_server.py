@@ -10,7 +10,6 @@ import zlib
 import torch
 import asyncio
 import threading
-import turbojpeg
 import websockets
 import numpy as np
 import torch.nn.functional as F
@@ -59,8 +58,8 @@ class WebSocketServer:
         self.camera = Camera(**camera_cfg)
         self.H, self.W = window_size
         self.image = torch.randint(0, 255, (self.H, self.W, 4), dtype=torch.uint8)
+        self.lock = threading.Lock()
         self.stream = torch.cuda.Stream()
-        self.jpeg = turbojpeg.TurboJPEG()
         self.jpeg_quality = jpeg_quality
 
         # Runner initialization
@@ -109,7 +108,8 @@ class WebSocketServer:
             image = self.render(batch)  # H, W, 4, cuda gpu tensor
             self.stream.wait_stream(torch.cuda.current_stream())  # initiate copy after main stream has finished
             with torch.cuda.stream(self.stream):
-                self.image = image.to('cpu', non_blocking=True)  # initiate async copy
+                with self.lock:
+                    self.image = image.to('cpu', non_blocking=True)  # initiate async copy
 
             curr_time = time.perf_counter()
             pass_time = curr_time - prev_time
@@ -128,17 +128,15 @@ class WebSocketServer:
 
         while True:
             self.stream.synchronize()  # waiting for the copy event to complete
-            image = self.image.numpy()  # copy to new memory space
-            # image = self.jpeg.encode(image, self.jpeg_quality, pixel_format=turbojpeg.TJPF_RGBA)
+            with self.lock:
+                image = self.image.numpy()  # copy to new memory space
             image = encode_jpeg(torch.from_numpy(image)[..., :3].permute(2, 0, 1), quality=self.jpeg_quality).numpy().tobytes()
-            # image = image.tobytes()
             await websocket.send(image)
 
             response = await websocket.recv()
             if len(response):
                 camera = Camera()
                 camera.from_string(zlib.decompress(response).decode('ascii'))
-                # camera.from_string(response)
                 self.camera = camera
 
             curr_time = time.perf_counter()

@@ -48,7 +48,7 @@ class Viewer(VolumetricVideoViewer):
                  render_meshes: bool = True,
                  render_network: bool = True,
 
-                 camera_cfg: dotdict = dotdict(type=Camera.__name__, string='{"H":768,"W":1366,"K":[[1227.75,0.0,946.7529907226562],[0.0,1219.8775634765625,548.2080078125],[0.0,0.0,1.0]],"R":[[0.9900417923927307,-0.14077377319335938,0.0],[-0.02820173278450966,-0.19833874702453613,-0.9797297120094299],[0.13792024552822113,0.9699733257293701,-0.20033371448516846]],"T":[[-0.13352864980697632],[-0.6429579854011536],[5.76825475692749]],"n":1.5,"f":100.0,"t":0.7299925088882446,"v":0.0,"bounds":[[-10.0,-10.0,-3.0],[10.0,10.0,3.0]],"mass":0.10000000149011612,"moment_of_inertia":0.10000000149011612,"movement_force":1.0,"movement_torque":1.0,"movement_speed":1.0,"origin":[0.37696364521980286,-0.06292950361967087,-0.2327267974615097],"world_up":[0.0,0.0,1.0]}'),
+                 camera_cfg: dotdict = dotdict(type=Camera.__name__, string='{"H":768,"W":1366,"K":[[736.5288696289062,0.0,682.7473754882812],[0.0,736.4380493164062,511.99737548828125],[0.0,0.0,1.0]],"R":[[0.9938720464706421,0.0,-0.11053764075040817],[-0.0008741595083847642,0.9999688267707825,-0.007859790697693825],[0.1105341762304306,0.007908252067863941,0.9938408732414246]],"T":[[-0.2975313067436218],[-1.2581647634506226],[0.2818146347999573]],"n":4.0,"f":2000.0,"t":0.0,"v":0.0,"bounds":[[-20.0,-15.0,4.0],[20.0,15.0,25.0]],"mass":0.10000000149011612,"moment_of_inertia":0.10000000149011612,"movement_force":10.0,"movement_torque":1.0,"movement_speed":10.0,"origin":[0.0,0.0,0.0],"world_up":[0.0,-1.0,0.0]}'),
 
                  ):
         # Camera related configurations
@@ -160,9 +160,8 @@ async def websocket_client():
         while True:
             timer.record('other', log_interval=2.0)
 
-            # camera_data = viewer.camera.to_string()
             camera_data = zlib.compress(viewer.camera.to_string().encode('ascii'))
-            timer.record('compress', log_interval=2.0)
+            timer.record('stringify', log_interval=2.0)
 
             await websocket.send(camera_data)
             timer.record('send', log_interval=2.0)
