@@ -158,17 +158,18 @@ async def websocket_client():
     async with websockets.connect(uri) as websocket:
 
         while True:
-            timer.record('other')
+            timer.record('other', log_interval=2.0)
 
+            # camera_data = viewer.camera.to_string()
             camera_data = zlib.compress(viewer.camera.to_string().encode('ascii'))
-            timer.record('compress')
+            timer.record('compress', log_interval=2.0)
 
             await websocket.send(camera_data)
-            timer.record('send')
-
+            timer.record('send', log_interval=2.0)
 
             buffer = await websocket.recv()
-            timer.record('receive')
+            timer.record('receive', log_interval=2.0)
+
             try:
                 buffer = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')  # 10ms for 1080p...
             except RuntimeError as e:
@@ -177,10 +178,10 @@ async def websocket_client():
             buffer = torch.cat([buffer, torch.ones_like(buffer[..., :1])], dim=-1)
 
             with lock:
-                image = buffer # might be a cuda tensor or cpu tensor
+                image = buffer  # might be a cuda tensor or cpu tensor
 
             event.set()  # explicit synchronization
-            timer.record('decode')
+            timer.record('decode', log_interval=2.0)
 
 uri = "ws://10.76.5.252:1024"
 image = None

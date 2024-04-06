@@ -630,6 +630,10 @@ class Timer:
         if self.record_to_file:
             self.timing_record = dotdict()
 
+        self.event_acc = dotdict()
+        self.event_last = dotdict()
+        self.event_denom = dotdict()
+
     def __enter__(self):
         self.start()
 
@@ -656,10 +660,25 @@ class Timer:
         if print: log(f"{(end - start) * 1000:8.3f} ms", self.name, back=back)  # 3 decimals, 3 digits
         return end - start  # return the difference
 
-    def record(self, event: str = ''):
+    def record(self, event: str = '', log_interval: float = -1):
         if self.disabled: return 0
         self.name = event
-        diff = self.stop(print=bool(event), back=3)
+
+        diff = self.stop(print=bool(event) and log_interval <= 0, back=3)
+        curr = time.perf_counter()
+        acc = self.event_acc.get(event, 0)
+        last = self.event_last.get(event, 0)
+        denom = self.event_denom.get(event, 0)
+
+        if (curr - last) > log_interval:  # if this is true, will never have printed
+            log(f"{(acc + diff) / (denom + 1) * 1000:8.3f} ms", event, back=2)
+            self.event_acc[event] = 0
+            self.event_denom[event] = 0
+            self.event_last[event] = curr
+        else:
+            self.event_acc[event] = acc + diff
+            self.event_denom[event] = denom + 1
+
         if self.record_to_file and event:
             if event not in self.timing_record:
                 self.timing_record[event] = []
@@ -667,6 +686,7 @@ class Timer:
 
             with open(join(self.record_dir, f'{self.exp_name}.json'), 'w') as f:
                 json.dump(self.timing_record, f, indent=4)
+
         self.start()
         return diff
 

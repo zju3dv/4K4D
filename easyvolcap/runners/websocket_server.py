@@ -45,7 +45,7 @@ class WebSocketServer:
                  # Camera related config
                  camera_cfg: dotdict = dotdict(),
                  jpeg_quality: int = 75,
-                 window_size: List[int] = [1080, 1920],
+                 window_size: List[int] = [768, 1366],
 
                  **kwargs,
                  ):
@@ -138,6 +138,7 @@ class WebSocketServer:
             if len(response):
                 camera = Camera()
                 camera.from_string(zlib.decompress(response).decode('ascii'))
+                # camera.from_string(response)
                 self.camera = camera
 
             curr_time = time.perf_counter()
