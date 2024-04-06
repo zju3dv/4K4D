@@ -63,3 +63,9 @@ def gui_entrypoint():
         sys.argv.insert(1, '-c')
         sys.argv.insert(2, 'configs/specs/gui.yaml')
     configurable_entrypoint(EASYVOLCAP=EASYVOLCAP + ' ' + '-t gui')
+
+
+def ws_entrypoint():
+    args = sys.argv
+    args = ['python -q -X faulthandler easyvolcap/scripts/client.py'] + args[1:]
+    subprocess.call(' '.join(args), shell=True)

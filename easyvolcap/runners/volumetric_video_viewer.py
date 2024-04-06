@@ -1240,10 +1240,14 @@ class VolumetricVideoViewer:
         first_run = 'last_memory_update' not in self.static
         curr_time = time.perf_counter()
         if first_run or curr_time - self.static.last_memory_update > self.update_mem_time:
-            self.static.name = torch.cuda.get_device_name()
-            # self.static.device = next(self.model.parameters()).device
-            self.static.device = torch.cuda.current_device()
-            self.static.memory = torch.cuda.max_memory_allocated()
+            try:
+                self.static.name = torch.cuda.get_device_name()
+                self.static.device = torch.cuda.current_device()
+                self.static.memory = torch.cuda.max_memory_allocated()
+            except:
+                self.static.name = 'Unsupported'
+                self.static.device = 'Unsupported'
+                self.static.memory = -1
             self.static.last_memory_update = curr_time
         return self.static.name, self.static.device, self.static.memory
 
@@ -1318,7 +1322,6 @@ class VolumetricVideoViewer:
         ori_W = self.W
         self.H = height
         self.W = width
-
         if ori_W > 0 and ori_H > 0:
             ratio = min(self.W / ori_W, self.H / ori_H)
             self.camera.K[0, 0] *= ratio   # only update one of them
@@ -1401,7 +1404,6 @@ class VolumetricVideoViewer:
 
     def init_quad(self):
         from easyvolcap.utils.gl_utils import Quad
-        from cuda import cudart
         self.quad = Quad(H=self.H, W=self.W, use_quad_cuda=self.use_quad_cuda, compose=self.compose, compose_power=self.compose_power)  # will blit this texture to screen if rendered
 
     def init_opengl(self):
@@ -1462,15 +1464,30 @@ class VolumetricVideoViewer:
 
         # Decide GL+GLSL versions
         # GL 3.3 + GLSL 330
-        self.glsl_version = '#version 330'
-        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
-        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
-        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_COMPAT_PROFILE)  # // 3.2+ only
-        glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, 1)  # 1 is gl.GL_TRUE
+        # self.glsl_version = '#version 330'
+        # glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
+        # glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
+        # glfw.window_hint(glfw.OPENGL_PROFILE, glfw.GLFW_OPENGL_CORE_PROFILE)  # // 3.2+ only
+        # glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, 1)  # 1 is gl.GL_TRUE
+
+        if platform.system() == "Darwin":
+            self.glsl_version = "#version 150"
+            glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
+            glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 2)
+            glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)  # // 3.2+ only
+            glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, 1)
+            glfw.window_hint(glfw.COCOA_RETINA_FRAMEBUFFER, 0)  # disable osx scaling
+        else:
+            # GL 3.0 + GLSL 130
+            self.glsl_version = "#version 130"
+            glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
+            glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 0)
+            # glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE) # // 3.2+ only
+            # glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, GL_TRUE)
 
         # Create a windowed mode window and its OpenGL context
         window = glfw.create_window(self.W, self.H, self.window_title, None, None)
-        if window is None:
+        if not window:
             glfw.terminate()
             log(red('Could not initialize window'))
             raise RuntimeError('Failed to initialize window in glfw')

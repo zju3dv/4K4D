@@ -10,7 +10,6 @@ import zlib
 import torch
 import asyncio
 import threading
-import turbojpeg
 import websockets
 import numpy as np
 import torch.nn.functional as F
@@ -45,7 +44,7 @@ class WebSocketServer:
                  # Camera related config
                  camera_cfg: dotdict = dotdict(),
                  jpeg_quality: int = 75,
-                 window_size: List[int] = [1080, 1920],
+                 window_size: List[int] = [768, 1366],
 
                  **kwargs,
                  ):
@@ -59,8 +58,8 @@ class WebSocketServer:
         self.camera = Camera(**camera_cfg)
         self.H, self.W = window_size
         self.image = torch.randint(0, 255, (self.H, self.W, 4), dtype=torch.uint8)
+        self.lock = threading.Lock()
         self.stream = torch.cuda.Stream()
-        self.jpeg = turbojpeg.TurboJPEG()
         self.jpeg_quality = jpeg_quality
 
         # Runner initialization
@@ -109,7 +108,8 @@ class WebSocketServer:
             image = self.render(batch)  # H, W, 4, cuda gpu tensor
             self.stream.wait_stream(torch.cuda.current_stream())  # initiate copy after main stream has finished
             with torch.cuda.stream(self.stream):
-                self.image = image.to('cpu', non_blocking=True)  # initiate async copy
+                with self.lock:
+                    self.image = image.to('cpu', non_blocking=True)  # initiate async copy
 
             curr_time = time.perf_counter()
             pass_time = curr_time - prev_time
@@ -118,9 +118,9 @@ class WebSocketServer:
                 fps = frame_cnt / pass_time
                 frame_cnt = 0
                 prev_time = curr_time
-                log(f'Render FPS: {fps}')
-                log(self.camera.H, self.camera.W)
-                log(self.image.sum())
+                log('Renderer FPS:', fps)
+                log('Renderer camera shape:', self.camera.H, self.camera.W)
+                log('Renderer image sum:', self.image.sum())
 
     async def server_loop(self, websocket: websockets.WebSocket, path: str):
         frame_cnt = 0
@@ -128,10 +128,9 @@ class WebSocketServer:
 
         while True:
             self.stream.synchronize()  # waiting for the copy event to complete
-            image = self.image.numpy()  # copy to new memory space
-            # image = self.jpeg.encode(image, self.jpeg_quality, pixel_format=turbojpeg.TJPF_RGBA)
+            with self.lock:
+                image = self.image.numpy()  # copy to new memory space
             image = encode_jpeg(torch.from_numpy(image)[..., :3].permute(2, 0, 1), quality=self.jpeg_quality).numpy().tobytes()
-            # image = image.tobytes()
             await websocket.send(image)
 
             response = await websocket.recv()
@@ -147,9 +146,9 @@ class WebSocketServer:
                 fps = frame_cnt / pass_time
                 frame_cnt = 0
                 prev_time = curr_time
-                log(f'Send FPS: {fps}')
-                log(self.camera.H, self.camera.W)
-                log(self.image.sum())
+                log('Server FPS:', fps)
+                log('Server camera shape:', self.camera.H, self.camera.W)
+                log('Server image sum:', self.image.sum())
 
     def render(self, batch: dotdict):
         batch = to_cuda(add_iter(add_batch(batch), 0, 1))  # int -> tensor -> add batch -> cuda, smalle operations are much faster on cpu
