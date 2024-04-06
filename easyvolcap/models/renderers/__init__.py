@@ -10,7 +10,7 @@ for module in __all__:
         import sys
         from easyvolcap.utils.console_utils import *
 
-        exception_type, exception_object, exception_traceback = sys.exc_info(-1)
+        exception_type, exception_object, exception_traceback = sys.exc_info()
         filename = exception_traceback.tb_frame.f_code.co_filename
         line_number = exception_traceback.tb_lineno
 
