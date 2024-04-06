@@ -15,5 +15,5 @@ for module in __all__:
         filename = tb.tb_frame.f_code.co_filename
         line_number = tb.tb_lineno
 
-        log(yellow(f'Failed to import {red(basename(filename))}:{red(line_number)}, {red(type(e).__name__)}: {e}'))
+        log(yellow_slim(f'Failed to import {blue(basename(filename))}:{blue_slim(line_number)}, {red(type(e).__name__)}: {red_slim(e)}'))
 
