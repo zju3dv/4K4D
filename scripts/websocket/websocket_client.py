@@ -1,3 +1,4 @@
+import cv2
 import zlib
 import torch
 import asyncio
@@ -13,12 +14,12 @@ from imgui_bundle import portable_file_dialogs as pfd
 from imgui_bundle import imgui, imguizmo, imgui_toggle, immvision, implot, ImVec2, ImVec4, imgui_md, immapp, hello_imgui
 
 from easyvolcap.utils.console_utils import *
+from easyvolcap.utils.timer_utils import timer
 from easyvolcap.utils.viewer_utils import Camera, CameraPath
 from easyvolcap.utils.data_utils import add_iter, add_batch, to_cuda, Visualization
 
-from easyvolcap.engine import cfg, args
-
 # fmt: off
+from easyvolcap.engine import cfg, args
 from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
 import glfw
 # fmt: on
@@ -88,6 +89,7 @@ class Viewer(VolumetricVideoViewer):
         self.init_glfw()  # ?: this will open up the window and let the user wait, should we move this up?
         self.init_imgui()
 
+        args.type = 'gui'
         self.init_opengl()
         self.init_quad()
         self.bind_callbacks()
@@ -100,7 +102,7 @@ class Viewer(VolumetricVideoViewer):
         self.visualize_bounds = True
         self.epoch = 0
         self.runner = dotdict(ep_iter=0, collect_timing=False, timer_record_to_file=False, timer_sync_cuda=True)
-        self.dataset = dotdict()
+        self.dataset = dotdict(frame_range=50)
         self.visualization_type = Visualization.RENDER
 
         # Initialize other parameters
@@ -117,16 +119,19 @@ class Viewer(VolumetricVideoViewer):
         self.camera.front = self.camera.front  # perform alignment correction
 
     def render(self):
+        global image
         event.wait()
         event.clear()
-        buffer = image
-        if buffer is not None:
-            if buffer.shape[1] == self.H and buffer.shape[2] == self.W:
-                buffer = buffer.permute(1, 2, 0)
-                buffer = torch.cat([buffer, torch.ones_like(buffer[..., :1])], dim=-1)
-                self.quad.copy_to_texture(buffer)
-                self.quad.draw()
+        if image.shape[0] == self.H and image.shape[1] == self.W:
+            self.quad.copy_to_texture(image)
+            self.quad.draw()
         return None, None
+
+    def draw_banner_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
+        imgui.push_font(self.bold_font)
+        imgui.text(f'EasyVolcap WebSocket Viewer')
+        imgui.text(f'Running on remote: {uri}')
+        imgui.pop_font()
 
     def draw_rendering_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
 
@@ -139,6 +144,9 @@ class Viewer(VolumetricVideoViewer):
     def draw_model_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
         pass
 
+    def draw_model_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
+        pass
+
 
 async def websocket_client():
     global image
@@ -146,19 +154,32 @@ async def websocket_client():
     async with websockets.connect(uri) as websocket:
 
         while True:
-            buffer = await websocket.recv()
-            buffer = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')
-            image = buffer
-            event.set()
+            timer.record('other')
 
-            camera = deepcopy(viewer.camera)
-            camera_data = zlib.compress(camera.to_string().encode('ascii'))
+            camera_data = zlib.compress(viewer.camera.to_string().encode('ascii'))
+            timer.record('compress')
+
             await websocket.send(camera_data)
+            timer.record('send')
+
+            # await websocket.send('')
+            # timer.record('send')
+
+            buffer = await websocket.recv()
+            timer.record('receive')
+
+            image = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')  # 10ms for 1080p...
+            image = image.permute(1, 2, 0)
+            image = torch.cat([image, torch.ones_like(image[..., :1])], dim=-1)
+            # image = torch.from_numpy(np.frombuffer(buffer, np.uint8)).to('cuda', non_blocking=True)
+            event.set()  # explicit synchronization
+            timer.record('decode')
 
 uri = "ws://10.76.5.252:1024"
 image = None
 viewer = Viewer()
 event = threading.Event()
+timer.disabled = False
 
 
 def start_client():

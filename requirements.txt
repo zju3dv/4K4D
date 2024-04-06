@@ -1,12 +1,14 @@
 torch>=2.1.0 # if you've used environment.yml, this will be a no-op
+av
 tqdm
 pdbr
-yapf
 h5py
+yapf
 ujson
 regex; sys_platform=='win32'
 PyGLM
 scipy
+numpy
 addict
 PyYaml
 ipython
@@ -17,11 +19,12 @@ pypiwin32; sys_platform=='win32'
 pyperclip
 pyntcloud
 torchaudio
+websockets
 torchvision
 PyTurboJPEG
 tensorboard
 ruamel.yaml
-cuda-python
+cuda-python; sys_platform!='darwin'
 scikit-image
 imgui-bundle
 opencv-python
