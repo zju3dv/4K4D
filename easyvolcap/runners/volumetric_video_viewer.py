@@ -1462,11 +1462,25 @@ class VolumetricVideoViewer:
 
         # Decide GL+GLSL versions
         # GL 3.3 + GLSL 330
-        self.glsl_version = '#version 330'
+        # self.glsl_version = '#version 330'
         # glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
         # glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
-        # glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_COMPAT_PROFILE)  # // 3.2+ only
+        # glfw.window_hint(glfw.OPENGL_PROFILE, glfw.GLFW_OPENGL_CORE_PROFILE)  # // 3.2+ only
         # glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, 1)  # 1 is gl.GL_TRUE
+
+        if platform.system() == "Darwin":
+            self.glsl_version = "#version 150"
+            glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
+            glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 2)
+            glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)  # // 3.2+ only
+            glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, 1)
+        else:
+            # GL 3.0 + GLSL 130
+            self.glsl_version = "#version 130"
+            glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
+            glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 0)
+            # glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE) # // 3.2+ only
+            # glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, GL_TRUE)
 
         # Create a windowed mode window and its OpenGL context
         window = glfw.create_window(self.W, self.H, self.window_title, None, None)
