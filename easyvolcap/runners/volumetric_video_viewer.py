@@ -1240,10 +1240,14 @@ class VolumetricVideoViewer:
         first_run = 'last_memory_update' not in self.static
         curr_time = time.perf_counter()
         if first_run or curr_time - self.static.last_memory_update > self.update_mem_time:
-            self.static.name = torch.cuda.get_device_name()
-            # self.static.device = next(self.model.parameters()).device
-            self.static.device = torch.cuda.current_device()
-            self.static.memory = torch.cuda.max_memory_allocated()
+            try:
+                self.static.name = torch.cuda.get_device_name()
+                self.static.device = torch.cuda.current_device()
+                self.static.memory = torch.cuda.max_memory_allocated()
+            except:
+                self.static.name = 'Unsupported'
+                self.static.device = 'Unsupported'
+                self.static.memory = 'Unsupported'
             self.static.last_memory_update = curr_time
         return self.static.name, self.static.device, self.static.memory
 
