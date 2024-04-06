@@ -85,6 +85,7 @@ class Viewer(VolumetricVideoViewer):
         self.discrete_t = False
         self.use_vsync = False
 
+        self.camera_cfg = camera_cfg
         self.init_camera(camera_cfg)  # prepare for the actual rendering now, needs dataset -> needs runner
         self.init_glfw()  # ?: this will open up the window and let the user wait, should we move this up?
         self.init_imgui()
@@ -117,6 +118,9 @@ class Viewer(VolumetricVideoViewer):
     def init_camera(self, camera_cfg: dotdict):
         self.camera = Camera(**camera_cfg)
         self.camera.front = self.camera.front  # perform alignment correction
+
+    def reset(self):
+        self.init_camera(self.camera_cfg)
 
     def render(self):
         global image

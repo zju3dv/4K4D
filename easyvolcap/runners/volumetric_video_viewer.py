@@ -1476,6 +1476,7 @@ class VolumetricVideoViewer:
             glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 2)
             glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)  # // 3.2+ only
             glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, 1)
+            glfw.window_hint(glfw.COCOA_RETINA_FRAMEBUFFER, 0)  # disable osx scaling
         else:
             # GL 3.0 + GLSL 130
             self.glsl_version = "#version 130"
