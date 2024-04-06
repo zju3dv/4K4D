@@ -19,6 +19,7 @@ pypiwin32; sys_platform=='win32'
 pyperclip
 pyntcloud
 torchaudio
+websockets
 torchvision
 PyTurboJPEG
 tensorboard
