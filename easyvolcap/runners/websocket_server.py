@@ -18,6 +18,7 @@ import torch.nn.functional as F
 from copy import deepcopy
 from typing import List, Union, Dict
 from glm import vec3, vec4, mat3, mat4, mat4x3
+from torchvision.io import encode_jpeg, decode_jpeg
 
 from easyvolcap.engine import cfg  # need this for initialization?
 from easyvolcap.engine import RUNNERS  # controls the optimization loop of a particular epoch
@@ -44,6 +45,7 @@ class WebSocketServer:
                  # Camera related config
                  camera_cfg: dotdict = dotdict(),
                  jpeg_quality: int = 75,
+                 window_size: List[int] = [1080, 1920],
 
                  **kwargs,
                  ):
@@ -55,6 +57,7 @@ class WebSocketServer:
         # Initialize server-side camera in case there's lag
         self.camera_cfg = camera_cfg
         self.camera = Camera(**camera_cfg)
+        self.H, self.W = window_size
         self.image = torch.randint(0, 255, (self.H, self.W, 4), dtype=torch.uint8)
         self.stream = torch.cuda.Stream()
         self.jpeg = turbojpeg.TurboJPEG()
@@ -91,6 +94,12 @@ class WebSocketServer:
     @property
     def W(self): return self.camera.W
 
+    @H.setter
+    def H(self, value): self.camera.H = value
+
+    @W.setter
+    def W(self, value): self.camera.W = value
+
     def render_loop(self):  # this is the main thread
         frame_cnt = 0
         prev_time = time.perf_counter()
@@ -120,7 +129,8 @@ class WebSocketServer:
         while True:
             self.stream.synchronize()  # waiting for the copy event to complete
             image = self.image.numpy()  # copy to new memory space
-            image = self.jpeg.encode(image, self.jpeg_quality, pixel_format=turbojpeg.TJPF_RGBA)
+            # image = self.jpeg.encode(image, self.jpeg_quality, pixel_format=turbojpeg.TJPF_RGBA)
+            image = encode_jpeg(torch.from_numpy(image)[..., :3].permute(2, 0, 1), quality=self.jpeg_quality).numpy().tobytes()
             await websocket.send(image)
 
             response = await websocket.recv()
@@ -137,7 +147,6 @@ class WebSocketServer:
                 frame_cnt = 0
                 prev_time = curr_time
                 log(f'Send FPS: {fps}')
-                log(camera.H, camera.W)
                 log(self.camera.H, self.camera.W)
                 log(self.image.sum())
 

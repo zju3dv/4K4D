@@ -1103,6 +1103,9 @@ class VolumetricVideoViewer:
             if SHIFT: self.camera_path.playing = not self.camera_path.playing
             else: self.playing = not self.playing  # play automatically
 
+        elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_T:
+            self.discrete_t = not self.discrete_t
+
         elif (action == glfw.PRESS or action == glfw.REPEAT) and key == glfw.KEY_N:
             self.render_network = not self.render_network
 

@@ -122,10 +122,8 @@ class Viewer(VolumetricVideoViewer):
         global image
         event.wait()
         event.clear()
-        if image.shape[1] == self.H and image.shape[2] == self.W:
-            buffer = image.permute(1, 2, 0)
-            buffer = torch.cat([buffer, torch.ones_like(buffer[..., :1])], dim=-1)
-            self.quad.copy_to_texture(buffer)
+        if image.shape[0] == self.H and image.shape[1] == self.W:
+            self.quad.copy_to_texture(image)
             self.quad.draw()
         return None, None
 
@@ -164,14 +162,19 @@ async def websocket_client():
             await websocket.send(camera_data)
             timer.record('send')
 
+            # await websocket.send('')
+            # timer.record('send')
+
             buffer = await websocket.recv()
             timer.record('receive')
 
             image = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')  # 10ms for 1080p...
-            event.set()
+            image = image.permute(1, 2, 0)
+            image = torch.cat([image, torch.ones_like(image[..., :1])], dim=-1)
+            event.set()  # explicit synchronization
             timer.record('decode')
 
-uri = "ws://10.76.5.252:1024"
+uri = "ws://localhost:1024"
 image = None
 viewer = Viewer()
 event = threading.Event()

@@ -1,7 +1,7 @@
 torch>=2.1.0 # if you've used environment.yml, this will be a no-op
 tqdm
 pdbr
-yapf
+PyAV
 h5py
 ujson
 regex; sys_platform=='win32'
