@@ -1,3 +1,9 @@
+"""
+WebSocket Client for EasyVolcap
+Requires a server running on remote with server.yaml appended at the end
+The server controls exactly what to rendered and opens up a port for the client to connect to
+"""
+
 import cv2
 import zlib
 import torch
@@ -19,7 +25,25 @@ from easyvolcap.utils.viewer_utils import Camera, CameraPath
 from easyvolcap.utils.data_utils import add_iter, add_batch, to_cuda, Visualization
 
 # fmt: off
-from easyvolcap.engine import cfg, args
+import sys
+
+try:
+    sep_ind = sys.argv.index('--')
+    our_args = sys.argv[1:sep_ind]
+    evv_args = sys.argv[sep_ind + 1:]
+    sys.argv = [sys.argv[0]] + evv_args
+except ValueError as e:
+    # pass # skip if no -- is present
+    our_args = sys.argv
+
+args = dotdict(
+    host='10.76.5.252',
+    port=1024,
+)
+args = dotdict(vars(build_parser(args, description=__doc__).parse_args(our_args)))
+
+from easyvolcap.engine import cfg
+from easyvolcap.engine.registry import call_from_cfg
 from easyvolcap.runners.volumetric_video_viewer import VolumetricVideoViewer
 import glfw
 # fmt: on
@@ -50,6 +74,7 @@ class Viewer(VolumetricVideoViewer):
 
                  camera_cfg: dotdict = dotdict(type=Camera.__name__, string='{"H":768,"W":1366,"K":[[736.5288696289062,0.0,682.7473754882812],[0.0,736.4380493164062,511.99737548828125],[0.0,0.0,1.0]],"R":[[0.9938720464706421,0.0,-0.11053764075040817],[-0.0008741595083847642,0.9999688267707825,-0.007859790697693825],[0.1105341762304306,0.007908252067863941,0.9938408732414246]],"T":[[-0.2975313067436218],[-1.2581647634506226],[0.2818146347999573]],"n":4.0,"f":2000.0,"t":0.0,"v":0.0,"bounds":[[-20.0,-15.0,4.0],[20.0,15.0,25.0]],"mass":0.10000000149011612,"moment_of_inertia":0.10000000149011612,"movement_force":10.0,"movement_torque":1.0,"movement_speed":10.0,"origin":[0.0,0.0,0.0],"world_up":[0.0,-1.0,0.0]}'),
 
+                 **kwargs,
                  ):
         # Camera related configurations
         self.camera_cfg = camera_cfg
@@ -90,6 +115,7 @@ class Viewer(VolumetricVideoViewer):
         self.init_glfw()  # ?: this will open up the window and let the user wait, should we move this up?
         self.init_imgui()
 
+        from easyvolcap.engine import cfg, args
         args.type = 'gui'
         self.init_opengl()
         self.init_quad()
@@ -186,13 +212,6 @@ async def websocket_client():
             event.set()  # explicit synchronization
             timer.record('decode', log_interval=2.0)
 
-uri = "ws://10.76.5.252:1024"
-image = None
-viewer = Viewer()
-lock = threading.Lock()
-event = threading.Event()
-timer.disabled = False
-
 
 def start_client():
     loop = asyncio.new_event_loop()
@@ -202,6 +221,14 @@ def start_client():
     loop.run_forever()
 
 
-client_thread = threading.Thread(target=start_client, daemon=True)
-client_thread.start()
-catch_throw(viewer.run)()
+if __name__ == '__main__':
+    image = None
+    viewer = call_from_cfg(Viewer, cfg.viewer_cfg)
+    lock = threading.Lock()
+    event = threading.Event()
+    timer.disabled = False
+    uri = f"ws://{args.host}:{args.port}"
+
+    client_thread = threading.Thread(target=start_client, daemon=True)
+    client_thread.start()
+    catch_throw(viewer.run)()

@@ -762,7 +762,7 @@ def build_parser(d: dict, parser: argparse.ArgumentParser = None, **kwargs):
         kwargs['description'] = markup_to_ansi(green(kwargs['description']))
 
     if parser is None:
-        parser = argparse.ArgumentParser(formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=slim_width), **kwargs)
+        parser = argparse.ArgumentParser(formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=140), **kwargs)
 
     help_pattern = f'default = {blue("{}")}'
 
