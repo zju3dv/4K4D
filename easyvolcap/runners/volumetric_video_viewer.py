@@ -1247,7 +1247,7 @@ class VolumetricVideoViewer:
             except:
                 self.static.name = 'Unsupported'
                 self.static.device = 'Unsupported'
-                self.static.memory = 'Unsupported'
+                self.static.memory = -1
             self.static.last_memory_update = curr_time
         return self.static.name, self.static.device, self.static.memory
 
