@@ -26,7 +26,7 @@ Install only the core dependencies for running the viewer locally:
 
 ```shell
 # Editable install, with dependencies from requirements.txt
-pip install -e . 
+pip install -v -e . 
 ```
 
 On Windows, you might end up with a CPU-only PyTorch installation by only running the above command since only the CPU version for Windows is available on PyPI ([more info](https://github.com/pmeier/light-the-torch?tab=readme-ov-file#why-do-i-need-it)).
@@ -34,7 +34,7 @@ On Windows, you might end up with a CPU-only PyTorch installation by only runnin
 To install a cuda-enabled PyTorch, append the above command with an extra search link:
 
 ```shell
-pip install -e . -f https://download.pytorch.org/whl/torch_stable.html
+pip install -v -e . -f https://download.pytorch.org/whl/torch_stable.html
 ```
 
 ### Development Install Using `pip`
@@ -45,8 +45,8 @@ Note that you can just run these two in tandem for to take care of `PyTorch` and
 
 ```shell
 # Editable install, with dependencies from requirements-devel.txt
-pip install -e . # will install from requirements.txt
-pip install -r requirements-devel.txt
+pip install -v -e . # will install from requirements.txt
+pip install -v -r requirements-devel.txt
 ```
 
 ### Updating ***EasyVolcap***

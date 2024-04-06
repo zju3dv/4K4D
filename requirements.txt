@@ -1,12 +1,14 @@
 torch>=2.1.0 # if you've used environment.yml, this will be a no-op
+av
 tqdm
 pdbr
-PyAV
 h5py
+yapf
 ujson
 regex; sys_platform=='win32'
 PyGLM
 scipy
+numpy
 addict
 PyYaml
 ipython

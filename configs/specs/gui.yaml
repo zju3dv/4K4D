@@ -22,4 +22,5 @@ runner_cfg:
 model_cfg:
     type: NoopModel
 
+base_device: cpu
 exp_name: gui # simple gui

@@ -10,10 +10,10 @@ Optionally if you only want to use ***EasyVolcap*** in other projects by directl
 
 ```shell
 # Install core dependencies
-pip install "git+https://github.com/zju3dv/EasyVolcap"
+pip install -v "git+https://github.com/zju3dv/EasyVolcap"
 
 # Maybe also install development required dependencies (might require CUDA compilation)
-pip install "git+https://github.com/zju3dv/EasyVolcap#egg=easyvolcap[devel]"
+pip install -v "git+https://github.com/zju3dv/EasyVolcap#egg=easyvolcap[devel]"
 ```
 
 ## More Robust Installation
