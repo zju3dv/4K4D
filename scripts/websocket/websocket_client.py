@@ -171,10 +171,11 @@ async def websocket_client():
             image = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')  # 10ms for 1080p...
             image = image.permute(1, 2, 0)
             image = torch.cat([image, torch.ones_like(image[..., :1])], dim=-1)
+            # image = torch.from_numpy(np.frombuffer(buffer, np.uint8)).to('cuda', non_blocking=True)
             event.set()  # explicit synchronization
             timer.record('decode')
 
-uri = "ws://localhost:1024"
+uri = "ws://10.76.5.252:1024"
 image = None
 viewer = Viewer()
 event = threading.Event()

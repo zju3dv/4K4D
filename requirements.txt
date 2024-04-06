@@ -21,7 +21,7 @@ torchvision
 PyTurboJPEG
 tensorboard
 ruamel.yaml
-cuda-python
+cuda-python; sys_platform!='darwin'
 scikit-image
 imgui-bundle
 opencv-python

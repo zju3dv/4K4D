@@ -131,6 +131,7 @@ class WebSocketServer:
             image = self.image.numpy()  # copy to new memory space
             # image = self.jpeg.encode(image, self.jpeg_quality, pixel_format=turbojpeg.TJPF_RGBA)
             image = encode_jpeg(torch.from_numpy(image)[..., :3].permute(2, 0, 1), quality=self.jpeg_quality).numpy().tobytes()
+            # image = image.tobytes()
             await websocket.send(image)
 
             response = await websocket.recv()
