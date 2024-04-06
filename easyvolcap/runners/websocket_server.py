@@ -118,9 +118,9 @@ class WebSocketServer:
                 fps = frame_cnt / pass_time
                 frame_cnt = 0
                 prev_time = curr_time
-                log(f'Render FPS: {fps}')
-                log(self.camera.H, self.camera.W)
-                log(self.image.sum())
+                log('Renderer FPS:', fps)
+                log('Renderer camera shape:', self.camera.H, self.camera.W)
+                log('Renderer image sum:', self.image.sum())
 
     async def server_loop(self, websocket: websockets.WebSocket, path: str):
         frame_cnt = 0
@@ -147,9 +147,9 @@ class WebSocketServer:
                 fps = frame_cnt / pass_time
                 frame_cnt = 0
                 prev_time = curr_time
-                log(f'Send FPS: {fps}')
-                log(self.camera.H, self.camera.W)
-                log(self.image.sum())
+                log('Server FPS:', fps)
+                log('Server camera shape:', self.camera.H, self.camera.W)
+                log('Server image sum:', self.image.sum())
 
     def render(self, batch: dotdict):
         batch = to_cuda(add_iter(add_batch(batch), 0, 1))  # int -> tensor -> add batch -> cuda, smalle operations are much faster on cpu

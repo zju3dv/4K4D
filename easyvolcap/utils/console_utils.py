@@ -104,8 +104,8 @@ os.environ["PYTHONBREAKPOINT"] = "easyvolcap.utils.console_utils.set_trace"
 
 slim_width = 140
 verbose_width = None
-slim_log_time = False
-slim_log_path = False
+slim_log_time = True
+slim_log_path = True
 slim_time_format = '%H:%M:%S'
 # slim_time_format = ''
 verbose_time_format = '%Y-%m-%d %H:%M:%S.%f'
@@ -143,7 +143,7 @@ def stop_live():
 
 def start_live():
     global live
-    if live is not None: 
+    if live is not None:
         live.start()
         return
     live = Live(console=console, refresh_per_second=1)
@@ -206,7 +206,7 @@ def enable_progress():
     progress_disabled = False
 
 
-verbose_log = True
+verbose_log = False
 
 
 def disable_verbose_log():
@@ -227,7 +227,7 @@ def enable_verbose_log():
     console._log_render.time_format = verbose_time_format
 
 
-enable_verbose_log()
+disable_verbose_log()
 
 
 def set_trace(*args, **kwargs):
