@@ -575,7 +575,7 @@ class Quad(Mesh):
                 else:
                     flags = cudart.cudaGraphicsRegisterFlags.cudaGraphicsRegisterFlagsWriteDiscard
                 self.cu_tex = CHECK_CUDART_ERROR(cudart.cudaGraphicsGLRegisterImage(self.tex, gl.GL_TEXTURE_2D, flags))
-            except RuntimeError as e:
+            except (RuntimeError, ModuleNotFoundError) as e:
                 log(red('Failed to initialize Quad with CUDA-GL interop, will use slow upload: '), e)
                 self.use_quad_cuda = False
 
