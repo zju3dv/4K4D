@@ -66,6 +66,11 @@ def gui_entrypoint():
 
 
 def ws_entrypoint():
+    # Directly run GUI without external requirements
+    if '-c' not in sys.argv:
+        sys.argv.insert(1, '-c')
+        sys.argv.insert(2, 'configs/base.yaml')
+
     args = sys.argv
     args = ['python -q -X faulthandler easyvolcap/scripts/client.py'] + args[1:]
     subprocess.call(' '.join(args), shell=True)

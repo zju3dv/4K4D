@@ -40,7 +40,7 @@ args = dotdict(
     host='10.76.5.252',
     port=1024,
 )
-args = dotdict(vars(build_parser(args, description=__doc__).parse_args(our_args)))
+args = dotdict(vars(build_parser(args, description=__doc__).parse_known_args(our_args)[0]))
 
 from easyvolcap.engine import cfg
 from easyvolcap.engine.registry import call_from_cfg
