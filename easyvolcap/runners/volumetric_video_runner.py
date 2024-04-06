@@ -144,7 +144,10 @@ class VolumetricVideoRunner:  # a plain and simple object controlling the traini
         self.test_using_inference_mode = test_using_inference_mode
 
         # Setting VRAM limit on Windows might make the framerate more stable
-        torch.cuda.set_per_process_memory_fraction(torch_vram_frac_limit)  # set vram usage limit to current device
+        try:
+            torch.cuda.set_per_process_memory_fraction(torch_vram_frac_limit)  # set vram usage limit to current device
+        except:
+            pass
 
         # HACK: GLOBAL VARIABLE, when dumping config, should ignore this one
         cfg.runner = self
