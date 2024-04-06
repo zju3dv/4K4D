@@ -51,7 +51,6 @@ class WebSocketServer:
         # Socket related initialization
         self.host = host
         self.port = port
-        self.recv_port = recv_port
 
         # Initialize server-side camera in case there's lag
         self.camera_cfg = camera_cfg

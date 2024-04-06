@@ -1,3 +1,4 @@
+import cv2
 import zlib
 import torch
 import asyncio
@@ -121,10 +122,11 @@ class Viewer(VolumetricVideoViewer):
         global image
         event.wait()
         event.clear()
-        image = image.permute(1, 2, 0)
-        image = torch.cat([image, torch.ones_like(image[..., :1])], dim=-1)
-        self.quad.copy_to_texture(image)
-        self.quad.draw()
+        if image.shape[1] == self.H and image.shape[2] == self.W:
+            buffer = image.permute(1, 2, 0)
+            buffer = torch.cat([buffer, torch.ones_like(buffer[..., :1])], dim=-1)
+            self.quad.copy_to_texture(buffer)
+            self.quad.draw()
         return None, None
 
     def draw_banner_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
