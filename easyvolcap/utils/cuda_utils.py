@@ -1,7 +1,5 @@
 import torch
 
-cudart = torch.cuda.cudart()
-
 
 def register_memory(x: torch.Tensor):
     """
