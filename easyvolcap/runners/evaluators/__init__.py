@@ -6,6 +6,7 @@ for module in __all__:
         # from . import *  # the actual imports
         exec(f'from . import {module}')
     except Exception as e:
+        import os
         import sys
         from easyvolcap.utils.console_utils import *
 
@@ -13,4 +14,4 @@ for module in __all__:
         filename = exception_traceback.tb_frame.f_code.co_filename
         line_number = exception_traceback.tb_lineno
 
-        log(yellow(f'Failed to import {red(filename)}:{line_number}, {red(type(e))}: {red_slim(e)}'))
+        log(yellow(f'Failed to import {red(basename(filename))}:{red(line_number)}, {red(type(e).__name__)}: {e}'))
