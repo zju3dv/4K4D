@@ -1470,6 +1470,12 @@ class VolumetricVideoViewer:
 
         # Create a windowed mode window and its OpenGL context
         window = glfw.create_window(self.W, self.H, self.window_title, None, None)
+        if window is None:
+            glfw.terminate()
+            log(red('Could not initialize window'))
+            raise RuntimeError('Failed to initialize window in glfw')
+
+        # Setting up the window
         glfw.make_context_current(window)
         glfw.swap_interval(self.use_vsync)  # disable vsync
 
@@ -1477,11 +1483,6 @@ class VolumetricVideoViewer:
         pixels = (icon * 255).astype(np.uint8)
         height, width = icon.shape[:2]
         glfw.set_window_icon(window, 1, [width, height, pixels])  # set icon for the window
-
-        if not window:
-            glfw.terminate()
-            log(red('Could not initialize window'))
-            raise RuntimeError('Failed to initialize window in glfw')
 
         self.window = window
         cfg.window = window  # MARK: GLOBAL VARIABLE

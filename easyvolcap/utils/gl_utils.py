@@ -581,7 +581,7 @@ class Quad(Mesh):
 
     def copy_to_texture(self, image: torch.Tensor, x: int = 0, y: int = 0, w: int = 0, h: int = 0):
         if not self.use_quad_cuda:
-            self.upload_to_texture(image)
+            self.upload_to_texture(image, x, y, w, h)
             return
 
         if not hasattr(self, 'cu_tex'):
@@ -647,7 +647,7 @@ class Quad(Mesh):
             ptr = ptr.detach().cpu().numpy()  # slow sync and copy operation # MARK: SYNC
 
         gl.glBindTexture(gl.GL_TEXTURE_2D, self.tex)
-        gl.glTexSubImage2D(gl.GL_TEXTURE_2D, 0, x, y, w, h, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, ptr[y:h, x:w])  # to gpu, might slow down?
+        gl.glTexSubImage2D(gl.GL_TEXTURE_2D, 0, x, y, w, h, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, ptr)  # to gpu, might slow down?
 
     @property
     def verts_data(self):  # a heavy copy operation
@@ -1319,9 +1319,10 @@ class HardwareRendering(Splat):
         try:
             self.cu_vbo = CHECK_CUDART_ERROR(cudart.cudaGraphicsGLRegisterBuffer(self.vbo, flags))
         except RuntimeError as e:
-            log(red(f'Your system does not support CUDA-GL interop, please use pytorch3d\'s implementation instead'))
+            log(red(f'Your system does not support CUDA-GL interop, will use pytorch3d\'s implementation instead'))
             log(red(f'This can be done by specifying {blue("model_cfg.sampler_cfg.use_cudagl=False model_cfg.sampler_cfg.use_diffgl=False")} at the end of your command'))
             log(red(f'Note that this implementation is extremely slow, we recommend running on a native system that support the interop'))
+            log(red(f'An alternative is to install diff_point_rasterization and use the approximated tile-based rasterization, enabled by the `render_gs` switch'))
             # raise RuntimeError(str(e) + ": This unrecoverable, please read the error message above")
             raise e
 
