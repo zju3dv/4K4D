@@ -62,9 +62,9 @@ def gui_entrypoint():
     if '-c' not in sys.argv:
         sys.argv.insert(1, '-c')
         sys.argv.insert(2, 'configs/specs/gui.yaml')
-    else:
-        cfg_idx = sys.argv.index('-c') + 1
-        sys.argv[cfg_idx] = 'configs/base.yaml,' + sys.argv[cfg_idx]
+    # else:
+    #     cfg_idx = sys.argv.index('-c') + 1
+    #     sys.argv[cfg_idx] = 'configs/base.yaml,' + sys.argv[cfg_idx]
 
     configurable_entrypoint(EASYVOLCAP=EASYVOLCAP + ' ' + '-t gui')
 
@@ -74,9 +74,9 @@ def ws_entrypoint():
     if '-c' not in sys.argv:
         sys.argv.insert(1, '-c')
         sys.argv.insert(2, 'configs/base.yaml')
-    else:
-        cfg_idx = sys.argv.index('-c') + 1
-        sys.argv[cfg_idx] = 'configs/base.yaml,' + sys.argv[cfg_idx]
+    # else:
+    #     cfg_idx = sys.argv.index('-c') + 1
+    #     sys.argv[cfg_idx] = 'configs/base.yaml,' + sys.argv[cfg_idx]
 
     args = sys.argv
     args = ['python -q -X faulthandler easyvolcap/scripts/client.py'] + args[1:]

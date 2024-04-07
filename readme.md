@@ -88,17 +88,24 @@ The pre-trained model for ENeRFi on the DTU dataset can be downloaded from [this
 evc-test -c configs/exps/enerfi/enerfi_${expname}.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml runner_cfg.visualizer_cfg.save_tag=${expname} exp_name=enerfi_dtu
 
 # Render ENeRFi with GUI
-evc-gui -c configs/exps/enerfi/enerfi_${expname}.yaml exp_name=enerfi_dtu # 2.5 FPS on 3060
+evc-gui -c configs/exps/enerfi/enerfi_${expname}.yaml exp_name=enerfi_dtu val_dataloader_cfg.dataset_cfg.ratio=0.5 # 2.5 FPS on 3060
 ```
 
 If more performance is desired:
 
 ```shell
-# Fine quality, faster rendering
-evc-gui -c configs/exps/enerfi/enerfi_${expname}.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 3.6 FPS on 3060
+# Slightly worst quality, faster rendering
+evc-gui -c configs/exps/enerfi/enerfi_${expname}.yaml exp_name=enerfi_dtu val_dataloader_cfg.dataset_cfg.ratio=0.5 model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 3.6 FPS on 3060
+```
 
+```shell
+# Fine quality, faster rendering
+evc-gui -c configs/exps/enerfi/enerfi_${expname}.yaml,configs/specs/fp16.yaml exp_name=enerfi_dtu val_dataloader_cfg.dataset_cfg.ratio=0.5 # 3.6 FPS on 3060
+```
+
+```shell
 # Worst quality, fastest rendering
-evc-gui -c configs/exps/enerfi/enerfi_${expname}.yaml,configs/specs/fp16.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 5.0 FPS on 3060
+evc-gui -c configs/exps/enerfi/enerfi_${expname}.yaml,configs/specs/fp16.yaml exp_name=enerfi_dtu val_dataloader_cfg.dataset_cfg.ratio=0.5 model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1 # 5.0 FPS on 3060
 ```
 
 *Note that ***EasyVolcap*** supports WebSocket based server-side rendering.* [More info](docs/design/websocket.md).
@@ -107,7 +114,7 @@ To use the WebSocket based rendering, append the config `server.yaml` to any of 
 
 ```shell
 # Run the rendering server, append `configs/specs/server.yaml` to the config file list
-evc-gui -c configs/exps/enerfi/enerfi_${expname}.yaml,configs/specs/fp16.yaml,configs/specs/server.yaml exp_name=enerfi_dtu model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1
+evc-gui -c configs/exps/enerfi/enerfi_${expname}.yaml,configs/specs/server.yaml exp_name=enerfi_dtu val_dataloader_cfg.dataset_cfg.ratio=0.5 model_cfg.sampler_cfg.n_planes=32,8 model_cfg.sampler_cfg.n_samples=4,1
 ```
 
 And run the viewer in your desired viewing client, tested on Windows, MacOS and Linux.

@@ -161,6 +161,6 @@ class WebSocketServer:
             output = self.model(batch)
 
         image = self.runner.visualizer.generate_type(output, batch, self.visualization_type)[0][0]  # RGBA (should we use alpha?)
-        image = image[..., :3] * image[..., 3:]
+        image = image[..., :3]
         image = (image.clip(0, 1) * 255).type(torch.uint8).flip(0)  # transform
         return image  # H, W, 3

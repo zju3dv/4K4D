@@ -10,6 +10,7 @@ from math import exp
 from torch.autograd import Variable
 
 from easyvolcap.utils.prop_utils import searchsorted, matchup_channels
+from easyvolcap.utils.console_utils import *
 
 from enum import Enum, auto
 
@@ -28,6 +29,7 @@ class ImgLossType(Enum):
     SSIM = auto()
     MSSSIM = auto()
     WL1 = auto()
+
 
 class DptLossType(Enum):
     SMOOTHL1 = auto()
@@ -255,114 +257,15 @@ def reg_raw_crit(x: torch.Tensor, iter_step: int, max_weight: float = 1e-4, ann_
     return loss, weight
 
 
-class LossNetwork(torch.nn.Module):
-    """Reference:
-        https://discuss.pytorch.org/t/how-to-extract-features-of-an-image-from-a-trained-model/119/3
-    """
+def lpips(x: torch.Tensor, y: torch.Tensor):
+    # B, 3, H, W
+    # B, 3, H, W
+    if not hasattr(lpips, 'compute_lpips'):
+        import lpips as lpips_module
+        log('Initializing LPIPS network')
+        lpips.compute_lpips = lpips_module.LPIPS(net='vgg', verbose=False).cuda()
 
-    def __init__(self):
-        super(LossNetwork, self).__init__()
-        try:
-            from torchvision.models import VGG19_Weights
-            self.vgg_layers = vgg.vgg19(weights=VGG19_Weights.DEFAULT).features
-        except ImportError:
-            self.vgg_layers = vgg.vgg19(pretrained=True).features
-
-        for param in self.vgg_layers.parameters():
-            param.requires_grad = False
-        '''
-        self.layer_name_mapping = {
-            '3': "relu1",
-            '8': "relu2",
-            '17': "relu3",
-            '26': "relu4",
-            '35': "relu5",
-        }
-        '''
-
-        self.layer_name_mapping = {'3': "relu1", '8': "relu2"}
-
-    def forward(self, x):
-        output = {}
-        for name, module in self.vgg_layers._modules.items():
-            x = module(x)
-            if name in self.layer_name_mapping:
-                output[self.layer_name_mapping[name]] = x
-            if name == '8':
-                break
-        LossOutput = namedtuple("LossOutput", ["relu1", "relu2"])
-        return LossOutput(**output)
-
-
-class PerceptualLoss(torch.nn.Module):
-    def __init__(self):
-        super(PerceptualLoss, self).__init__()
-
-        self.model = LossNetwork()
-        self.model.cuda()
-        self.model.eval()
-        self.mse_loss = torch.nn.MSELoss(reduction='mean')
-        self.l1_loss = torch.nn.L1Loss(reduction='mean')
-
-    def forward(self, x, target):
-        x_feature = self.model(x[:, 0:3, :, :])
-        target_feature = self.model(target[:, 0:3, :, :])
-
-        feature_loss = (
-            self.l1_loss(x_feature.relu1, target_feature.relu1) +
-            self.l1_loss(x_feature.relu2, target_feature.relu2)) / 2.0
-
-        l1_loss = self.l1_loss(x, target)
-        l2_loss = self.mse_loss(x, target)
-
-        loss = feature_loss + l1_loss + l2_loss
-
-        return loss
-
-
-class VGGPerceptualLoss(torch.nn.Module):
-    def __init__(self, resize=False):
-        super(VGGPerceptualLoss, self).__init__()
-        blocks = []
-        import torchvision
-        vgg16 = torchvision.models.vgg16(pretrained=True)
-        blocks.append(vgg16.features[:4].eval())
-        blocks.append(vgg16.features[4:9].eval())
-        blocks.append(vgg16.features[9:16].eval())
-        blocks.append(vgg16.features[16:23].eval())
-        for bl in blocks:
-            for p in bl.parameters():
-                p.requires_grad = False
-        self.blocks = nn.ModuleList(blocks)
-        self.transform = F.interpolate
-        self.resize = resize
-        self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
-        self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
-
-    def forward(self, input, target, feature_layers=[0, 1, 2, 3], style_layers=[]):
-        if input.shape[1] != 3:
-            input = input.repeat(1, 3, 1, 1)
-            target = target.repeat(1, 3, 1, 1)
-        input = (input - self.mean) / self.std
-        target = (target - self.mean) / self.std
-        if self.resize:
-            input = self.transform(input, mode='bilinear', size=(224, 224), align_corners=False)
-            target = self.transform(target, mode='bilinear', size=(224, 224), align_corners=False)
-        loss = 0.0
-        x = input
-        y = target
-        for i, block in enumerate(self.blocks):
-            x = block(x)
-            y = block(y)
-            if i in feature_layers:
-                loss += F.l1_loss(x, y)
-            if i in style_layers:
-                act_x = x.reshape(x.shape[0], x.shape[1], -1)
-                act_y = y.reshape(y.shape[0], y.shape[1], -1)
-                gram_x = act_x @ act_x.permute(0, 2, 1)
-                gram_y = act_y @ act_y.permute(0, 2, 1)
-                loss += F.l1_loss(gram_x, gram_y)
-        return loss
+    return lpips.compute_lpips(x.cuda() * 2 - 1, y.cuda() * 2 - 1).mean()
 
 
 def eikonal(x: torch.Tensor, th=1.0) -> torch.Tensor:
@@ -604,7 +507,7 @@ def create_window(window_size, channel):
     return window
 
 
-def ssim(img1, img2, window_size=11, size_average=True):
+def gsssim(img1, img2, window_size=11, size_average=True):
     channel = img1.size(-3)
     window = create_window(window_size, channel)
 
@@ -638,14 +541,14 @@ def _ssim(img1, img2, window, window_size, channel, size_average=True):
         return ssim_map.mean(1).mean(1).mean(1)
 
 
-def compute_ssim(x: torch.Tensor, y: torch.Tensor):
-    from pytorch_msssim import ssim
-    return ssim(x, y, data_range=1.0, win_size=11, win_sigma=1.5, K=(0.01, 0.03))
+def ssim(x: torch.Tensor, y: torch.Tensor):
+    from pytorch_msssim import ssim as compute_ssim
+    return compute_ssim(x, y, data_range=1.0, win_size=11, win_sigma=1.5, K=(0.01, 0.03))
 
 
-def compute_msssim(x: torch.Tensor, y: torch.Tensor):
-    from pytorch_msssim import ms_ssim
-    return ms_ssim(x, y, data_range=1.0, win_size=11, win_sigma=1.5, K=(0.01, 0.03))
+def msssim(x: torch.Tensor, y: torch.Tensor):
+    from pytorch_msssim import ms_ssim as compute_msssim
+    return compute_msssim(x, y, data_range=1.0, win_size=11, win_sigma=1.5, K=(0.01, 0.03))
 
 
 # from MonoSDF

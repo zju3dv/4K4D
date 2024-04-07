@@ -185,8 +185,8 @@ class Viewer(VolumetricVideoViewer):
 async def websocket_client():
     global image
     global viewer
+    log(f'Connecting to remote server: {path(uri)}')
     async with websockets.connect(uri) as websocket:
-
         while True:
             timer.record('other', log_interval=2.0)
 
@@ -223,7 +223,9 @@ def start_client():
 
 if __name__ == '__main__':
     image = None
+    log('Initializing websocket client viewer')
     viewer = call_from_cfg(Viewer, cfg.viewer_cfg)
+
     lock = threading.Lock()
     event = threading.Event()
     timer.disabled = False
