@@ -178,19 +178,19 @@ On the local machines, you can freely manipulate the camera and view the results
 On the remote server, simply append `configs/specs/server.yaml` to your normal local rendering command like this:
 
 ```shell
-# Taking enerf_outdoor actor1_4 as an example
-evc-gui -c configs/projects/realtime4dv/rendering/4k4d_actor1_4.yaml,configs/specs/vf0.yaml,configs/specs/server.yaml
+# Taking NHR sport2 with minimal dataset as an example
+evc-gui -c configs/projects/realtime4dv/rendering/4k4d_sport2.yaml,configs/specs/video.yaml,configs/specs/vf0.yaml,configs/specs/server.yaml
 ```
 
 On the local client machine, invoke the WebSocket client with `evc-ws`:
 
 ```shell
-# The config file enerf_outdoor.yaml provides a initial viewer camera parameter for this dataset
-evc-ws -c configs/datasets/enerf_outdoor/enerf_outdoor.yaml
+# The config file NHR.yaml provides a initial viewer camera parameter for this dataset
+evc-ws -c configs/datasets/NHR/NHR.yaml
 
 # Note that you might need to replace the server ip by passing --host to the command
 # Use -- to separate evc parameters with the client ones
-evc-ws --host 10.76.5.252 --port 1024 -- -c configs/datasets/enerf_outdoor/enerf_outdoor.yaml viewer_cfg.window_size="768,1366" 
+evc-ws --host 10.76.5.252 --port 1024 -- -c configs/datasets/NHR/NHR.yaml viewer_cfg.window_size="768,1366" 
 ```
 
 ### Using CUDA-Backend for Rendering
@@ -208,7 +208,7 @@ Note that you might need to first [set up a CUDA compilation environment](docs/d
 After that, simply append `model_cfg.sampler_cfg.render_gs=True` to your rendering command to enable it.
 
 ```shell
-evc-gui -c configs/projects/realtime4dv/rendering/4k4d_actor1_4.yaml,configs/specs/vf0.yaml model_cfg.sampler_cfg.render_gs=True
+evc-gui -c configs/projects/realtime4dv/rendering/4k4d_sport2.yaml,configs/specs/vf0.yaml model_cfg.sampler_cfg.render_gs=True
 ```
 
 Or you can simply turn it on and off in the viewer under the `Rendering` tab.
