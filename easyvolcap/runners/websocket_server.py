@@ -65,7 +65,7 @@ class WebSocketServer:
         # Runner initialization
         self.runner = runner
         self.runner.visualizer.store_alpha_channel = True  # disable alpha channel for rendering on viewer
-        self.runner.visualizer.uncrop_output_images = False  # manual uncropping
+        self.runner.visualizer.uncrop_output_images = True  # pass the whole image to viewer, TODO: make this more robust, let server pass info to viewer
         self.visualization_type = Visualization.RENDER
         self.epoch = self.runner.load_network()  # load weights only (without optimizer states)
         self.iter = self.epoch * self.runner.ep_iter  # loaded iter

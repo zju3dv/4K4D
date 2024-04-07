@@ -396,16 +396,16 @@ def lookat_bounds(bounds: List[List[float]], world_up: List[float], camera_cente
 class Camera:
     # Helper class to manage camera parameters
     def __init__(self,
-                 H: int = 512,
-                 W: int = 512,
-                 K: torch.Tensor = torch.tensor([[512.0, 0.0, 256], [0.0, 512.0, 256.0], [0.0, 0.0, 1.0]]),  # intrinsics
+                 H: int = 768,
+                 W: int = 1366,
+                 K: torch.Tensor = torch.tensor([[1366.0, 0.0, 683], [0.0, 1366.0, 384.0], [0.0, 0.0, 1.0]]),  # intrinsics
                  R: torch.Tensor = torch.tensor([[-0.9977766275405884, 0.06664637476205826, 0.0], [0.004728599451482296, 0.07079283893108368, -0.9974799156188965], [-0.0664784237742424, -0.9952622056007385, -0.07095059007406235]]),  # extrinsics
                  T: torch.Tensor = torch.tensor([[-2.059340476989746e-5], [2.5779008865356445e-6], [-3.000047445297241]]),  # extrinsics
                  n: float = 0.002,  # bounds limit
-                 f: float = 100,  # bounds limit
+                 f: float = 1000,  # bounds limit
                  t: float = 0.0,  # temporal dimension (implemented as a float instead of int)
                  v: float = 0.0,  # view dimension (implemented as a float instead of int)
-                 bounds: torch.Tensor = torch.tensor([[-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]]),  # bounding box
+                 bounds: torch.Tensor = torch.tensor([[-100.0, -100.0, -100.0], [100.0, 100.0, 100.0]]),  # bounding box
 
                  # camera update hyperparameters
                  origin: torch.Tensor = torch.tensor([0.0, 0.0, 0.0]),
