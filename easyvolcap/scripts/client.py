@@ -141,6 +141,8 @@ class Viewer(VolumetricVideoViewer):
         self.dynamic = dotdict()
 
     def init_camera(self, camera_cfg: dotdict):
+        camera_cfg.H = camera_cfg.pop('H', self.H)
+        camera_cfg.W = camera_cfg.pop('W', self.W)
         self.camera = Camera(**camera_cfg)
         self.camera.front = self.camera.front
 
