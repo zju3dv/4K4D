@@ -122,7 +122,8 @@ And run the viewer in your desired viewing client, tested on Windows, MacOS and 
 ```shell
 # Separate WebSocket Client parameter and evc parameter with --, for now, the viewer can be configured with evc
 # Replace 10.76.5.252 with your server IP
-# -c configs/datasets/enerf_outdoor/enerf_outdoor.yaml with what ever other config to use
+# Replace -c configs/datasets/enerf_outdoor/enerf_outdoor.yaml with what ever other config to use
+# The enerf_outdoor.yaml here provides a basic camera setup for the viewer
 evc-ws --host 10.76.5.252 --port 1024 -- -c configs/datasets/enerf_outdoor/enerf_outdoor.yaml viewer_cfg.window_size="768,1366" 
 ```
 
