@@ -7,7 +7,7 @@ from typing import Union
 from easyvolcap.engine import SUPERVISORS
 from easyvolcap.utils.console_utils import *
 from easyvolcap.utils.net_utils import VolumetricVideoModule
-from easyvolcap.utils.loss_utils import l1, wl1, huber, compute_ssim, compute_msssim, VGGPerceptualLoss, ImgLossType
+from easyvolcap.utils.loss_utils import l1, wl1, huber, ssim, msssim, lpips, ImgLossType
 
 
 @SUPERVISORS.register_module()
@@ -34,14 +34,10 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
         self.ssim_loss_weight = ssim_loss_weight
         self.msssim_loss_weight = msssim_loss_weight
 
-    @property
-    def perc_loss(self):
-        return self.perc_loss_reference[0]
-
     def compute_image_loss(self, rgb_map: torch.Tensor, rgb_gt: torch.Tensor,
                            bg_color: torch.Tensor, msk_gt: torch.Tensor,
                            H: int, W: int,
-                           type=ImgLossType.HUBER, 
+                           type=ImgLossType.HUBER,
                            **kwargs,):
         rgb_gt = rgb_gt + bg_color * (1 - msk_gt)  # MARK: modifying gt for supervision
         rgb_gt, rgb_map = rgb_gt[:, :H * W], rgb_map[:, :H * W]
@@ -52,13 +48,9 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
         psnr = (1 / mse.clip(1e-10)).log() * 10 / np.log(10)
 
         if type == ImgLossType.PERC:
-            if not hasattr(self, 'perc_loss_reference'):
-                # For computing perceptual loss & img_loss # HACK: Nobody is referencing this as a pytorch module
-                log('Initializing VGGPerceptualLoss')
-                self.perc_loss_reference = [VGGPerceptualLoss().cuda().to(self.dtype)]  # move to specific location
             rgb_gt = rgb_gt.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
             rgb_map = rgb_map.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
-            img_loss = self.perc_loss(rgb_map, rgb_gt)
+            img_loss = lpips(rgb_map, rgb_gt)
         elif type == ImgLossType.CHARB: img_loss = (resd_sq + 0.001 ** 2).sqrt().mean()
         elif type == ImgLossType.HUBER: img_loss = huber(rgb_map, rgb_gt)
         elif type == ImgLossType.L2: img_loss = mse
@@ -66,11 +58,11 @@ class VolumetricVideoSupervisor(VolumetricVideoModule):
         elif type == ImgLossType.SSIM:
             rgb_gt = rgb_gt.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
             rgb_map = rgb_map.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
-            img_loss = 1. - compute_ssim(rgb_map, rgb_gt)
+            img_loss = 1. - ssim(rgb_map, rgb_gt)
         elif type == ImgLossType.MSSSIM:
             rgb_gt = rgb_gt.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
             rgb_map = rgb_map.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
-            img_loss = 1. - compute_msssim(rgb_map, rgb_gt)
+            img_loss = 1. - msssim(rgb_map, rgb_gt)
         elif type == ImgLossType.WL1:
             rgb_gt = rgb_gt.view(-1, H, W, 3).permute(0, 3, 1, 2)  # B, C, H, W
             img_loss_wet = kwargs['img_loss_wet'].view(-1, H, W, 1).permute(0, 3, 1, 2)

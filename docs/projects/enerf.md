@@ -90,16 +90,16 @@ For example, to render the *my_313* sequence of the *ZJU-Mocap* dataset, you can
 
 ```shell
 # GUI Rendering
-evc -t gui -c configs/exps/enerf/enerf_my_313_static.yaml exp_name=enerf_dtu # Render the first frame of the sequence
-evc -t gui -c configs/exps/enerf/enerf_my_313.yaml exp_name=enerf_dtu # Render the whole sequence
+evc-gui -c configs/exps/enerf/enerf_my_313_static.yaml exp_name=enerf_dtu # Render the first frame of the sequence
+evc-gui -c configs/exps/enerf/enerf_my_313.yaml exp_name=enerf_dtu # Render the whole sequence
 
 # Testing with input views
-evc -t test -c configs/exps/enerf/enerf_my_313_static.yaml,configs/specs/eval.yaml exp_name=enerf_dtu runner_cfg.visualizer_cfg.save_tag=enerf_my_313_static # Only render some of the view of the first frame
-evc -t test -c configs/exps/enerf/enerf_my_313.yaml,configs/specs/eval.yaml exp_name=enerf_dtu runner_cfg.visualizer_cfg.save_tag=enerf_my_313 # Render some selected testing views and frames
+evc-test -c configs/exps/enerf/enerf_my_313_static.yaml,configs/specs/eval.yaml exp_name=enerf_dtu runner_cfg.visualizer_cfg.save_tag=enerf_my_313_static # Only render some of the view of the first frame
+evc-test -c configs/exps/enerf/enerf_my_313.yaml,configs/specs/eval.yaml exp_name=enerf_dtu runner_cfg.visualizer_cfg.save_tag=enerf_my_313 # Render some selected testing views and frames
 
 # Rendering rotating novel views
-evc -t test -c configs/exps/enerf/enerf_my_313_static.yaml,configs/specs/eval.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml exp_name=enerf_dtu runner_cfg.visualizer_cfg.save_tag=enerf_my_313_static # Render a static rotating novel view
-evc -t test -c configs/exps/enerf/enerf_my_313.yaml,configs/specs/eval.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml val_dataloader_cfg.dataset_cfg.frame_sample=0,200,1 exp_name=enerf_dtu runner_cfg.visualizer_cfg.save_tag=enerf_my_313 # Render a dynamic rotating novel view of 200 frames sequence
+evc-test -c configs/exps/enerf/enerf_my_313_static.yaml,configs/specs/eval.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml exp_name=enerf_dtu runner_cfg.visualizer_cfg.save_tag=enerf_my_313_static # Render a static rotating novel view
+evc-test -c configs/exps/enerf/enerf_my_313.yaml,configs/specs/eval.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml val_dataloader_cfg.dataset_cfg.frame_sample=0,200,1 exp_name=enerf_dtu runner_cfg.visualizer_cfg.save_tag=enerf_my_313 # Render a dynamic rotating novel view of 200 frames sequence
 ```
 
 #### Useful CLI Configurable Arguments
@@ -108,19 +108,19 @@ There are many CLI arguments you can use to customize the rendering process (bot
 
 ```shell
 # Render ENeRF with GUI on 1/4 resolution of dna-rendering dataset using only 1/2 of the views and 3 source views for each target view, choice 1
-evc -t gui -c configs/exps/enerf/enerf_0013_01.yaml exp_name=enerf_dtu val_dataloader_cfg.dataset_cfg.cache_raw=False val_dataloader_cfg.dataset_cfg.ratio=0.25 val_dataloader_cfg.dataset_cfg.src_view_sample=0,None,2 val_dataloader_cfg.dataset_cfg.n_srcs_list=3, val_dataloader_cfg.dataset_cfg.use_vhulls=True model_cfg.sampler_cfg.cache_size=10 # only cache ten images
+evc-gui -c configs/exps/enerf/enerf_0013_01.yaml exp_name=enerf_dtu val_dataloader_cfg.dataset_cfg.cache_raw=False val_dataloader_cfg.dataset_cfg.ratio=0.25 val_dataloader_cfg.dataset_cfg.src_view_sample=0,None,2 val_dataloader_cfg.dataset_cfg.n_srcs_list=3, val_dataloader_cfg.dataset_cfg.use_vhulls=True model_cfg.sampler_cfg.cache_size=10 # only cache ten images
 
 # Render ENeRF with GUI on 1/4 resolution of dna-rendering dataset using only 1/2 of the views and 3 source views for each target view, choice 2
-evc -t gui -c configs/exps/enerf/enerf_0013_01.yaml exp_name=enerf_dtu val_dataloader_cfg.dataset_cfg.cache_raw=False val_dataloader_cfg.dataset_cfg.ratio=0.25 val_dataloader_cfg.dataset_cfg.view_sample=0,None,2 val_dataloader_cfg.dataset_cfg.force_sparse_view=True val_dataloader_cfg.dataset_cfg.n_srcs_list=3, val_dataloader_cfg.dataset_cfg.use_vhulls=True model_cfg.sampler_cfg.cache_size=10 # only cache ten images
+evc-gui -c configs/exps/enerf/enerf_0013_01.yaml exp_name=enerf_dtu val_dataloader_cfg.dataset_cfg.cache_raw=False val_dataloader_cfg.dataset_cfg.ratio=0.25 val_dataloader_cfg.dataset_cfg.view_sample=0,None,2 val_dataloader_cfg.dataset_cfg.force_sparse_view=True val_dataloader_cfg.dataset_cfg.n_srcs_list=3, val_dataloader_cfg.dataset_cfg.use_vhulls=True model_cfg.sampler_cfg.cache_size=10 # only cache ten images
 
 # Render ENeRF with GUI on full resolution of dna-rendering dataset using only all views as source views and 3 source views for each target view, using fp16, higher performance, worse results on some views
-evc -t gui -c configs/exps/enerf/enerf_0013_01.yaml,configs/specs/fp16.yaml exp_name=enerf_dtu val_dataloader_cfg.dataset_cfg.cache_raw=False val_dataloader_cfg.dataset_cfg.ratio=1.0 val_dataloader_cfg.dataset_cfg.n_srcs_list=3, val_dataloader_cfg.dataset_cfg.use_vhulls=True model_cfg.sampler_cfg.cache_size=10 # only cache ten images
+evc-gui -c configs/exps/enerf/enerf_0013_01.yaml,configs/specs/fp16.yaml exp_name=enerf_dtu val_dataloader_cfg.dataset_cfg.cache_raw=False val_dataloader_cfg.dataset_cfg.ratio=1.0 val_dataloader_cfg.dataset_cfg.n_srcs_list=3, val_dataloader_cfg.dataset_cfg.use_vhulls=True model_cfg.sampler_cfg.cache_size=10 # only cache ten images
 
 # Render ENeRF on resolution 768,1336 of dna-rendering dataset with rotating paths
-evc -t test -c configs/exps/enerf/enerf_0013_01.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml exp_name=enerf_dtu val_dataloader_cfg.dataset_cfg.cache_raw=False val_dataloader_cfg.dataset_cfg.ratio=1.0 val_dataloader_cfg.dataset_cfg.n_srcs_list=3, val_dataloader_cfg.dataset_cfg.use_vhulls=True model_cfg.sampler_cfg.cache_size=10 val_dataloader_cfg.dataset_cfg.render_size=768,1366 val_dataloader_cfg.dataset_cfg.frame_sample=0,150,1 val_dataloader_cfg.dataset_cfg.n_render_views=150 runner_cfg.visualizer_cfg.save_tag=spiral
+evc-test -c configs/exps/enerf/enerf_0013_01.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml exp_name=enerf_dtu val_dataloader_cfg.dataset_cfg.cache_raw=False val_dataloader_cfg.dataset_cfg.ratio=1.0 val_dataloader_cfg.dataset_cfg.n_srcs_list=3, val_dataloader_cfg.dataset_cfg.use_vhulls=True model_cfg.sampler_cfg.cache_size=10 val_dataloader_cfg.dataset_cfg.render_size=768,1366 val_dataloader_cfg.dataset_cfg.frame_sample=0,150,1 val_dataloader_cfg.dataset_cfg.n_render_views=150 runner_cfg.visualizer_cfg.save_tag=spiral
 
 # Render ENeRF on dna-rendering dataset with a pre-generated path (stored in data/paths/0013_01/*.yml)
-evc -t test -c configs/exps/enerf/enerf_0013_01.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml exp_name=enerf_dtu val_dataloader_cfg.dataset_cfg.render_size=-1,-1 val_dataloader_cfg.dataset_cfg.save_interp_path=False val_dataloader_cfg.dataset_cfg.camera_path_intri=data/paths/0013_01/intri.yml val_dataloader_cfg.dataset_cfg.camera_path_extri=data/paths/0013_01/extri.yml val_dataloader_cfg.dataset_cfg.frame_sample=0,16,1 val_dataloader_cfg.dataset_cfg.n_render_views=16 val_dataloader_cfg.dataset_cfg.interp_type=NONE val_dataloader_cfg.dataset_cfg.interp_cfg.smoothing_term=-1.0 val_dataloader_cfg.dataset_cfg.use_vhulls=True model_cfg.sampler_cfg.cache_size=10 runner_cfg.visualizer_cfg.save_tag=path
+evc-test -c configs/exps/enerf/enerf_0013_01.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml exp_name=enerf_dtu val_dataloader_cfg.dataset_cfg.render_size=-1,-1 val_dataloader_cfg.dataset_cfg.save_interp_path=False val_dataloader_cfg.dataset_cfg.camera_path_intri=data/paths/0013_01/intri.yml val_dataloader_cfg.dataset_cfg.camera_path_extri=data/paths/0013_01/extri.yml val_dataloader_cfg.dataset_cfg.frame_sample=0,16,1 val_dataloader_cfg.dataset_cfg.n_render_views=16 val_dataloader_cfg.dataset_cfg.interp_type=NONE val_dataloader_cfg.dataset_cfg.interp_cfg.smoothing_term=-1.0 val_dataloader_cfg.dataset_cfg.use_vhulls=True model_cfg.sampler_cfg.cache_size=10 runner_cfg.visualizer_cfg.save_tag=path
 ```
 
 - `val_dataloader_cfg.dataset_cfg.cache_raw`: whether to cache the raw images in memory as bytes object or just as `UnstructuredTensors`, you can change it to `True` to cache the raw images in memory as bytes object if you have enough memory;
@@ -152,17 +152,17 @@ The difference between the commands listed in the [Rendering of DTU Pretrained M
 For example, to render the *actor1* sequence of the *ENeRF-Outdoor* dataset, you can run:
 ```shell
 # GUI Rendering
-evc -t gui -c configs/exps/enerf/enerf_actor1.yaml,configs/specs/static.yaml # Render the first frame of the sequence
-evc -t gui -c configs/exps/enerf/enerf_actor1.yaml # Render the whole sequence
+evc-gui -c configs/exps/enerf/enerf_actor1.yaml,configs/specs/static.yaml # Render the first frame of the sequence
+evc-gui -c configs/exps/enerf/enerf_actor1.yaml # Render the whole sequence
 
 # Testing with input views
-evc -t test -c configs/exps/enerf/enerf_actor1.yaml,configs/specs/static.yaml,configs/specs/eval.yaml # Only render some of the view of the first frame
-evc -t test -c configs/exps/enerf/enerf_actor1.yaml,configs/specs/eval.yaml # Render some selected testing views and frames
+evc-test -c configs/exps/enerf/enerf_actor1.yaml,configs/specs/static.yaml,configs/specs/eval.yaml # Only render some of the view of the first frame
+evc-test -c configs/exps/enerf/enerf_actor1.yaml,configs/specs/eval.yaml # Render some selected testing views and frames
 
 # Rendering rotating novel views
-evc -t test -c configs/exps/enerf/enerf_actor1.yaml,configs/specs/eval.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml # Render a dynamic rotating novel view
+evc-test -c configs/exps/enerf/enerf_actor1.yaml,configs/specs/eval.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml # Render a dynamic rotating novel view
 # Rendering cubic interpolating novel views
-evc -t test -c configs/exps/enerf/enerf_actor1.yaml,configs/specs/eval.yaml,configs/specs/cubic.yaml,configs/specs/ibr.yaml # Render a dynamic cubic interpolating novel view
+evc-test -c configs/exps/enerf/enerf_actor1.yaml,configs/specs/eval.yaml,configs/specs/cubic.yaml,configs/specs/ibr.yaml # Render a dynamic cubic interpolating novel view
 ```
 
 
@@ -177,7 +177,7 @@ You can use this script to test the installation and training process of *ENeRF*
 However, the same as [training guide of *4K4D*](./realtime4dv.md#training-on-dna-rendering-zju-mocap-and-nhr), it's recommended to spend like 5 minutes to train a single-frame version of *ENeRF* to identify potential issues before running on the full sequence (24 hours).
 
 ```shell
-evc -c configs/exps/enerf/enerf_actor1.yaml,configs/specs/static.yaml exp_name=check
+evc-train -c configs/exps/enerf/enerf_actor1.yaml,configs/specs/static.yaml exp_name=check
 ```
 
 During the first 100-200 iterations, you should see that the training PSNR increase to 23-24 dB. Otherwise there might be bugs during your dataset preparation or installation process.
@@ -185,7 +185,7 @@ During the first 100-200 iterations, you should see that the training PSNR incre
 The actual training of the full model is more straight forward:
 
 ```shell
-evc -c configs/exps/enerf/enerf_actor1.yaml
+evc-train -c configs/exps/enerf/enerf_actor1.yaml
 ```
 
 For training on other sequences or dataset, change this line `configs/exps/enerf/enerf_actor1.yaml` to something else like `configs/exps/enerf/enerf_my_394.yaml` and save the modified config file separatedly under the `configs/exps/enerf` directory.
@@ -199,7 +199,7 @@ To train *ENeRF* from a pretrained model, eg. our provided [DTU pretrained model
 For example, if you want to train *ENeRF* on *actor1* of *ENeRF-Outdoor* dataset from the provided DTU pretrained model, you should download the model and place it in `data/trained_model/enerf_dtu_actor1` (here we set `$exp_name=enerf_dtu_actor1`), then, you can run the following command to train *ENeRF* from the pretrained model:
 
 ```shell
-evc -c configs/exps/enerf/enerf_actor1.yaml exp_name=enerf_dtu_actor1 runner_cfg.resume=True runner_cfg.epochs=2000 # 2000 = 1600(pretrained epochs) + 400(finetuned epochs)
+evc-train -c configs/exps/enerf/enerf_actor1.yaml exp_name=enerf_dtu_actor1 runner_cfg.resume=True runner_cfg.epochs=2000 # 2000 = 1600(pretrained epochs) + 400(finetuned epochs)
 ```
 
 The finetuned model will be saved in `data/trained_model/enerf_dtu_actor1/latest.pt` after training, and you can follow the [Rendering](#rendering-of-pretrained-model) section to render the finetuned model, remember to change the `exp_name` to `enerf_dtu_actor1`.
@@ -216,7 +216,7 @@ You can follow the instructions we provide in the [4K4D Custom Datasets](./realt
 python scripts/tools/visualize_cameras.py --data_root ${data_root}
 
 # Composable experiments
-evc -t gui -c configs/base.yaml,configs/models/enerfi.yaml,configs/datasets/volcano/skateboard.yaml,configs/specs/mask.yaml exp_name=enerfi_dtu val_dataloader_cfg.dataset_cfg.frame_sample=0,1,1
+evc-gui -c configs/base.yaml,configs/models/enerfi.yaml,configs/datasets/volcano/skateboard.yaml,configs/specs/mask.yaml exp_name=enerfi_dtu val_dataloader_cfg.dataset_cfg.frame_sample=0,1,1
 ```
 
 

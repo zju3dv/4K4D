@@ -68,6 +68,7 @@ class WebSocketServer:
         self.runner.visualizer.uncrop_output_images = False  # manual uncropping
         self.visualization_type = Visualization.RENDER
         self.epoch = self.runner.load_network()  # load weights only (without optimizer states)
+        self.iter = self.epoch * self.runner.ep_iter  # loaded iter
         self.dataset = self.runner.val_dataloader.dataset
         self.model = self.runner.model
         self.model.eval()
@@ -130,7 +131,7 @@ class WebSocketServer:
             self.stream.synchronize()  # waiting for the copy event to complete
             with self.lock:
                 image = self.image.numpy()  # copy to new memory space
-            image = encode_jpeg(torch.from_numpy(image)[..., :3].permute(2, 0, 1), quality=self.jpeg_quality).numpy().tobytes()
+            image = encode_jpeg(torch.from_numpy(image).permute(2, 0, 1), quality=self.jpeg_quality).numpy().tobytes()
             await websocket.send(image)
 
             response = await websocket.recv()
@@ -151,7 +152,8 @@ class WebSocketServer:
                 log('Server image sum:', self.image.sum())
 
     def render(self, batch: dotdict):
-        batch = to_cuda(add_iter(add_batch(batch), 0, 1))  # int -> tensor -> add batch -> cuda, smalle operations are much faster on cpu
+        batch = self.dataset.get_viewer_batch(batch)
+        batch = to_cuda(add_batch(add_iter(batch, self.iter, self.runner.total_iter)))
 
         # Forward pass
         self.runner.maybe_jit_model(batch)
@@ -159,6 +161,6 @@ class WebSocketServer:
             output = self.model(batch)
 
         image = self.runner.visualizer.generate_type(output, batch, self.visualization_type)[0][0]  # RGBA (should we use alpha?)
+        image = image[..., :3]
         image = (image.clip(0, 1) * 255).type(torch.uint8).flip(0)  # transform
-
-        return image  # H, W, 4
+        return image  # H, W, 3

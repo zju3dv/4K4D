@@ -1397,6 +1397,8 @@ class VolumetricVideoViewer:
         f = camera_cfg.pop('f', dataset.far)
         t = camera_cfg.pop('t', 0)
         v = camera_cfg.pop('v', 0)
+        camera_cfg.pop('H', 0)
+        camera_cfg.pop('W', 0)
         bounds = camera_cfg.pop('bounds', dataset.bounds.clone())   # avoids modification
         self.camera = Camera(H, W, K, R, T, n, f, t, v, bounds, **camera_cfg)
         self.camera.front = self.camera.front  # perform alignment correction

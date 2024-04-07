@@ -91,26 +91,28 @@ def parse_cfg(args):
         else: args.opts['configs'] = [args.opts['configs']] + configs
     else: args.opts['configs'] = configs
 
+    cfg = Config(
+        dotdict(
+            exp_name='base',
+            dataloader_cfg=dotdict(dataset_cfg=dotdict()),
+            runner_cfg=dotdict(ep_iter=500, epochs=400, visualizer_cfg=dotdict(save_tag='', result_dir='')),
+            viewer_cfg=dotdict(type='VolumetricVideoViewer'),
+            fix_random=False,
+            allow_tf32=True,
+            deterministic=False,
+            benchmark=False,
+            mocking=True,
+        )
+    )  # empty base config for evil global config imports
+
     if exists(args.config):
-        cfg = Config.fromfile(args.config)  # load external configuration file (with hierarchy)
+        cfg.merge_from_dict(Config.fromfile(args.config))  # load external configuration file (with hierarchy)
         cfg.merge_from_dict(args.opts)  # load commandline arguments
         cfg = update_cfg(cfg)
         return cfg
     elif not args.config:  # ''
         # Default config object
-        return Config(
-            dotdict(
-                exp_name='base',
-                dataloader_cfg=dotdict(dataset_cfg=dotdict()),
-                runner_cfg=dotdict(ep_iter=500, epochs=400, visualizer_cfg=dotdict(save_tag='', result_dir='')),
-                viewer_cfg=dotdict(type='VolumetricVideoViewer'),
-                fix_random=False,
-                allow_tf32=True,
-                deterministic=False,
-                benchmark=False,
-                mocking=True,
-            )
-        )  # empty config
+        return
     else:
         raise FileNotFoundError(f"Config file {args.config} not found")
         # raise FileNotFoundError(f"Config file {markup_to_ansi(blue(args.config))} not found")

@@ -165,7 +165,7 @@ Run the ***L3MHET*** model with camera parameter optimization:
 
 ```shell
 # Train l3mhet on static frame
-evc -c configs/exps/l3mhet/l3mhet_${expname}_static.yaml
+evc-train -c configs/exps/l3mhet/l3mhet_${expname}_static.yaml
 
 # Extract camera parameters
 python scripts/tools/extract_optimized_cameras.py -- -c configs/exps/l3mhet/l3mhet_${expname}_static.yaml
@@ -260,16 +260,16 @@ Space carving scripts:
 rm -r ${data_root}/vhulls
 
 # Extract visual hulls
-evc -t test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/vhulls.yaml val_dataloader_cfg.dataset_cfg.ratio=0.5
+evc-test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/vhulls.yaml val_dataloader_cfg.dataset_cfg.ratio=0.5
 
 # Preprocess visual hulls
-evc -t test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/surfs.yaml
+evc-test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/surfs.yaml
 
 # Extract on optimized cameras
 
 # Extract visual hulls
-evc -t test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/optimized.yaml,configs/specs/vhulls.yaml val_dataloader_cfg.dataset_cfg.ratio=0.5
+evc-test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/optimized.yaml,configs/specs/vhulls.yaml val_dataloader_cfg.dataset_cfg.ratio=0.5
 
 # Preprocess visual hulls
-evc -t test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/optimized.yaml,configs/specs/surfs.yaml
+evc-test -c configs/base.yaml,configs/models/point_planes.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/optimized.yaml,configs/specs/surfs.yaml
 ```

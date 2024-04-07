@@ -40,7 +40,7 @@ args = dotdict(
     host='10.76.5.252',
     port=1024,
 )
-args = dotdict(vars(build_parser(args, description=__doc__).parse_args(our_args)))
+args = dotdict(vars(build_parser(args, description=__doc__).parse_known_args(our_args)[0]))
 
 from easyvolcap.engine import cfg
 from easyvolcap.engine.registry import call_from_cfg
@@ -110,7 +110,6 @@ class Viewer(VolumetricVideoViewer):
         self.discrete_t = False
         self.use_vsync = False
 
-        self.camera_cfg = camera_cfg
         self.init_camera(camera_cfg)  # prepare for the actual rendering now, needs dataset -> needs runner
         self.init_glfw()  # ?: this will open up the window and let the user wait, should we move this up?
         self.init_imgui()
@@ -142,8 +141,10 @@ class Viewer(VolumetricVideoViewer):
         self.dynamic = dotdict()
 
     def init_camera(self, camera_cfg: dotdict):
+        camera_cfg.H = camera_cfg.pop('H', self.H)
+        camera_cfg.W = camera_cfg.pop('W', self.W)
         self.camera = Camera(**camera_cfg)
-        self.camera.front = self.camera.front  # perform alignment correction
+        self.camera.front = self.camera.front
 
     def reset(self):
         self.init_camera(self.camera_cfg)
@@ -173,7 +174,6 @@ class Viewer(VolumetricVideoViewer):
         if imgui.collapsing_header('Rendering'):
             self.visualize_axes = imgui_toggle.toggle('Visualize axes', self.visualize_axes, config=self.static.toggle_ios_style)[1]
             self.visualize_bounds = imgui_toggle.toggle('Visualize bounds', self.visualize_bounds, config=self.static.toggle_ios_style)[1]
-            self.visualize_cameras = imgui_toggle.toggle('Visualize cameras', self.visualize_cameras, config=self.static.toggle_ios_style)[1]
 
     def draw_model_gui(self, batch: dotdict = dotdict(), output: dotdict = dotdict()):
         pass
@@ -185,8 +185,8 @@ class Viewer(VolumetricVideoViewer):
 async def websocket_client():
     global image
     global viewer
+    log(f'Connecting to remote server: {path(uri)}')
     async with websockets.connect(uri) as websocket:
-
         while True:
             timer.record('other', log_interval=2.0)
 
@@ -223,7 +223,9 @@ def start_client():
 
 if __name__ == '__main__':
     image = None
+    log('Initializing websocket client viewer')
     viewer = call_from_cfg(Viewer, cfg.viewer_cfg)
+
     lock = threading.Lock()
     event = threading.Event()
     timer.disabled = False
