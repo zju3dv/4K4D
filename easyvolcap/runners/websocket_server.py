@@ -153,7 +153,7 @@ class WebSocketServer:
 
     def render(self, batch: dotdict):
         batch = self.dataset.get_viewer_batch(batch)
-        batch = to_cuda(add_batch(add_iter(batch,self.iter, self.runner.total_iter)))
+        batch = to_cuda(add_batch(add_iter(batch, self.iter, self.runner.total_iter)))
 
         # Forward pass
         self.runner.maybe_jit_model(batch)
