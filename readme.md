@@ -10,6 +10,8 @@ Repository for our paper *4K4D: Real-Time 4D View Synthesis at 4K Resolution*.
 
 ***News***:
 
+- 24.04.07: We implemented a new [tile-based CUDA renderer](https://github.com/dendenxu/diff-point-rasterization) for *4K4D* following [3DGS](https://github.com/graphdeco-inria/diff-gaussian-rasterization).
+- 24.04.07: We implemented a [WebSocket-based viewer](#rendering-with-websocket-server--client) for [***EasyVolcap***](https://github.com/zju3dv/EasyVolcap) along side the native renderer.
 - 24.03.27: The [training code](easyvolcap/models/samplers/r4dv_sampler.py) for *4K4D* has been open-sourced along with [documentations](readme.md#Training).
 - 24.02.27: *4K4D* has been accepted to CVPR 2024.
 - 23.12.18: The backbone of *4K4D*, our volumetric video framework [***EasyVolcap***](https://github.com/zju3dv/EasyVolcap) has been open-sourced!
@@ -106,27 +108,25 @@ Here we provide their naming convensions which corresponds to their respective c
 2. `4k4d_0013_01_r4` (with the `_r4` postfix) is the full pretrained model used during training, corresponding to `configs/projects/realtime4dv/training/4k4d_0013_01_r4.yaml`. This model can only be used for training. `r4` is short for *realtime4dv*.
 3. `4k4d_0013_01_mb` (with the `_mb` postfix) is [an extension to 4K4D](https://github.com/dendenxu/Web4K4D) (Note: to be open-sourced) where we distill the IBR + SH appearance model into a set of low-degree SH parameters. This model can only be used for rendering and do not require pre-computation. `mb` is short for *mobile*.
 
-### Rendering of Trained Model
-
 After placing the models and datasets in their respective places, you can run ***EasyVolcap*** with configs located in [configs/projects/realtime4dv/rendering](configs/projects/realtime4dv/rendering) to perform rendering operations with *4K4D*.
 
 For example, to render the *0013_01* sequence of the *DNA-Rendering* dataset, you can run:
 
 ```shell
 # GUI Rendering
-evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/vf0.yaml # Only load, precompute and render the first frame
-evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml # Precompute and render all 150 frames, this could take a minute or two
+evc-gui -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/vf0.yaml # Only load, precompute and render the first frame
+evc-gui -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml # Precompute and render all 150 frames, this could take a minute or two
 
 # Testing with input views
-evc -t test -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/eval.yaml,configs/specs/vf0.yaml # Only render some of the view of the first frame
-evc -t test -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/eval.yaml # Only rendering some selected testing views and frames
+evc-test -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/eval.yaml,configs/specs/vf0.yaml # Only render some of the view of the first frame
+evc-test -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/eval.yaml # Only rendering some selected testing views and frames
 
 # Rendering rotating novel views
-evc -t test -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/eval.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/vf0.yaml # Render a static rotating novel view
-evc -t test -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/eval.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml # Render a dynamic rotating novel view
+evc-test -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/eval.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/vf0.yaml # Render a static rotating novel view
+evc-test -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/eval.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml # Render a dynamic rotating novel view
 ```
 
-### Rendering With Minimal Dataset (Only Encoded Videos)
+### Rendering on Minimal Dataset
 
 We provide a minimal dataset for 4K4D to render with its full pipeline by encoding the input images and masks into videos **(typically less than 100MiB each)**.
 
@@ -149,12 +149,12 @@ Here we provide instructions on setting up the minimal dataset and rendering wit
 
 ```shell
 # For foreground datasets with masks and masked images (DNA-Rendering, NHR, ZJU-Mocap)
-python scripts/realtime4dv/extract_images.py --data_root data/renbody/0013_01 --vcodec none --hwaccel none
-python scripts/realtime4dv/extract_masks.py --data_root data/renbody/0013_01 --vcodec none --hwaccel none
+python scripts/realtime4dv/extract_images.py --data_root data/renbody/0013_01
+python scripts/realtime4dv/extract_masks.py --data_root data/renbody/0013_01
 
 # For datasets with masks and full images (ENeRF-Outdoor and dance3 of MobileStage)
-python scripts/realtime4dv/extract_images.py --data_root data/mobile_stage/dance3 --vcodec none --hwaccel none
-python scripts/realtime4dv/extract_images.py --data_root data/mobile_stage/dance3 --vcodec none --hwaccel none --videos_dir videos_masks_libx265 --images_dir masks_libx265 --single_channel
+python scripts/realtime4dv/extract_images.py --data_root data/mobile_stage/dance3
+python scripts/realtime4dv/extract_images.py --data_root data/mobile_stage/dance3 --videos_dir videos_masks_libx265 --images_dir masks_libx265 --single_channel
 ```
 
 4. Now, the minimal dataset has been prepared and you can render a model with it. The only change is to append a new config onto the command: `configs/specs/video.yaml`.
@@ -162,12 +162,56 @@ python scripts/realtime4dv/extract_images.py --data_root data/mobile_stage/dance
 
 ```shell
 # See configs/projects/realtime4dv/rendering for more
-evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/video.yaml
-evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_sport1.yaml,configs/specs/video.yaml
-evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_my_313.yaml,configs/specs/video.yaml
-evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_dance3.yaml,configs/specs/video.yaml
-evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_actor1_4.yaml,configs/specs/video.yaml
+evc-gui -c configs/projects/realtime4dv/rendering/4k4d_0013_01.yaml,configs/specs/video.yaml # append: ,configs/specs/vf0.yaml to only render the first frame
+evc-gui -c configs/projects/realtime4dv/rendering/4k4d_sport2.yaml,configs/specs/video.yaml # append: ,configs/specs/vf0.yaml to only render the first frame
+evc-gui -c configs/projects/realtime4dv/rendering/4k4d_my_313.yaml,configs/specs/video.yaml # append: ,configs/specs/vf0.yaml to only render the first frame
+evc-gui -c configs/projects/realtime4dv/rendering/4k4d_dance3.yaml,configs/specs/video.yaml # append: ,configs/specs/vf0.yaml to only render the first frame
+evc-gui -c configs/projects/realtime4dv/rendering/4k4d_actor1_4.yaml,configs/specs/video.yaml # append: ,configs/specs/vf0.yaml to only render the first frame
 ```
+
+### Rendering With WebSocket Server & Client
+
+***EasyVolcap*** offers [server-side rendering capability with WebSocket](docs/design/websocket.md). 
+This allows you to render on a remote server and view the results on a local machine.
+On the local machines, you can freely manipulate the camera and view the results in real-time as if rendering locally.
+
+On the remote server, simply append `configs/specs/server.yaml` to your normal local rendering command like this:
+
+```shell
+# Taking enerf_outdoor actor1_4 as an example
+evc-gui -c configs/projects/realtime4dv/rendering/4k4d_actor1_4.yaml,configs/specs/vf0.yaml,configs/specs/server.yaml
+```
+
+On the local client machine, invoke the WebSocket client with `evc-ws`:
+
+```shell
+# The config file enerf_outdoor.yaml provides a initial viewer camera parameter for this dataset
+evc-ws -c configs/datasets/enerf_outdoor/enerf_outdoor.yaml
+
+# Note that you might need to replace the server ip by passing --host to the command
+# Use -- to separate evc parameters with the client ones
+evc-ws --host 10.76.5.252 --port 1024 -- -c configs/datasets/enerf_outdoor/enerf_outdoor.yaml viewer_cfg.window_size="768,1366" 
+```
+
+### Using CUDA-Backend for Rendering
+
+We've implemented a CUDA-based tile rasterizer for the point-based representation use in *4K4D*.
+
+Install it using:
+
+```shell
+pip install git+https://github.com/dendenxu/diff-point-rasterization
+```
+
+Note that you might need to first [set up a CUDA compilation environment](docs/design/install.md#cuda-related-compilations).
+
+After that, simply append `model_cfg.sampler_cfg.render_gs=True` to your rendering command to enable it.
+
+```shell
+evc-gui -c configs/projects/realtime4dv/rendering/4k4d_actor1_4.yaml,configs/specs/vf0.yaml model_cfg.sampler_cfg.render_gs=True
+```
+
+Or you can simply turn it on and off in the viewer under the `Rendering` tab.
 
 ### Rendering Without Dataset (Mobile 4K4D)
 
@@ -176,11 +220,9 @@ evc -t gui -c configs/projects/realtime4dv/rendering/4k4d_actor1_4.yaml,configs/
 
 ## Training
 
-- [ ] TODO: Finish up the training doc for 4k4d.
-
 ### Pretrained Models for Training
 
-- [ ] TODO: Finish up the training doc for 4k4d.
+- [ ] TODO: Upload pretrained models for continuing training.
 
 ### Training on DNA-Rendering (ZJU-MoCap and NHR)
 
@@ -194,7 +236,7 @@ You can use this script to test the installation and training process of *4K4D*.
 This script trains a single-frame version of *4K4D* on the first frame of the *0013_01* sequence of the *DNA-Rendering* dataset.
 
 ```shell
-evc -c configs/exps/4k4d/4k4d_0013_01_r4.yaml,configs/specs/static.yaml,configs/specs/tiny.yaml exp_name=4k4d_0013_01_r4_static
+evc-train -c configs/exps/4k4d/4k4d_0013_01_r4.yaml,configs/specs/static.yaml,configs/specs/tiny.yaml exp_name=4k4d_0013_01_r4_static
 ```
 
 During the first 100-200 iterations, you should see that the training PSNR increase to 24-25 dB. Otherwise there might be bugs during your dataset preparation or installation process.
@@ -202,7 +244,7 @@ During the first 100-200 iterations, you should see that the training PSNR incre
 The actual training of the full model is more straight forward:
 
 ```shell
-evc -c configs/exps/4k4d/4k4d_0013_01_r4.yaml
+evc-train -c configs/exps/4k4d/4k4d_0013_01_r4.yaml
 ```
 
 For training on other sequences or dataset, change this line:
@@ -226,8 +268,6 @@ For (a) visual hull initialization and (b) converting the trained models for rea
 
 ### Training on ENeRF-Outdoor
 
-- [ ] TODO: Finish up the training doc for 4k4d.
-
 Training *4K4D* on a background dataset (*dance3* or *ENeRF-Outdoor*) is a little bit more involved than the foreground-only ones.
 For the foreground-only ones, you only need to train one model and maybe later convert them for realtime rendering.
 For the background-enabled ones, you'll need to train a separated model for the background and foreground and then jointly optimize them.
@@ -235,8 +275,6 @@ Note that if you've requested the processed data, I should have already placed t
 If they're not present, please check the [Initialization section of the Custom Dataset section](#initialization-space-carving--visual-hull) for instructions.
 
 ## Custom Datasets
-
-- [ ] TODO: Finish up the training doc for 4k4d.
 
 ### Dataset Preparation
 
@@ -345,10 +383,10 @@ The next step for *4K4D* is initialization. With the correct dataset placement a
 
 ```shell
 # Extract visual hulls
-evc -t test -c configs/base.yaml,configs/models/r4dv.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/optimized.yaml,configs/specs/vhulls.yaml
+evc-test -c configs/base.yaml,configs/models/r4dv.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/optimized.yaml,configs/specs/vhulls.yaml
 
 # Preprocess visual hulls
-evc -t test -c configs/base.yaml,configs/models/r4dv.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/optimized.yaml,configs/specs/surfs.yaml
+evc-test -c configs/base.yaml,configs/models/r4dv.yaml,configs/datasets/renbody/0013_01.yaml,configs/specs/optimized.yaml,configs/specs/surfs.yaml
 ```
 
 This won't take long. Typically a few minutes should suffices. After which you'll notice a folder `vhulls` created in your dataset folder (`data/renbody/renbody` in this example). Note that we also support directly running the training script and let ***EasyVolcap*** lazily take care of this initialization process, but since *4K4D* could benefit from a tighter bounding box when defininig its 4D feature volumes (two modified [K-Planes](https://github.com/sarafridov/K-Planes)), I figure one extra hoop should be worth it.
@@ -377,7 +415,7 @@ And modify your [`configs/exps/4k4d/4k4d_0013_01_r4.yaml`](../../configs/exps/4k
 Next, we're ready to perform the actual training:
 
 ```shell
-evc -c configs/exps/4k4d/4k4d_0013_01_r4.yaml
+evc-train -c configs/exps/4k4d/4k4d_0013_01_r4.yaml
 ```
 
 This will take a day two depending on your machine. Please pay attention to the console logs and keep and eye out for the loss and metrics. All records and training time evalution will be saved to `data/record` and `data/result` respectively. So launch your tensorboard or other viewing tools for training inspection.
@@ -394,13 +432,13 @@ python scripts/realtime4dv/charger.py --sampler SuperChargedR4DV --exp_name 4k4d
 Now you can render the converted model in the interactive ***EasyVolcap*** viewer with:
 
 ```shell
-evc -t gui -c configs/exps/4k4d/4k4d_0013_01_r4.yaml,configs/specs/superf.yaml exp_name=4k4d_0013_01
+evc-gui -c configs/exps/4k4d/4k4d_0013_01_r4.yaml,configs/specs/superf.yaml exp_name=4k4d_0013_01
 ```
 
 The preloading of all frames is quite heavy on system memory and also time intensive. So we advise controlling the number of frames to load via:
 
 ```shell
-evc -t gui -c configs/exps/4k4d/4k4d_0013_01_r4.yaml,configs/specs/superf.yaml,configs/specs/vf0.yaml exp_name=4k4d_0013_01
+evc-gui -c configs/exps/4k4d/4k4d_0013_01_r4.yaml,configs/specs/superf.yaml,configs/specs/vf0.yaml exp_name=4k4d_0013_01
 ```
 
 `0` is the starting frame, `1` is the ending frame id and `1` indicates how many frames to jump. For example, `0,30,5` will load 6 frames (`0,5,10,15,20,25`). You can also use `None` to indicate the default value for the total. For example, `val_dataloader_cfg.dataset_cfg.frame_sample=0,None,1` will load all frames.
@@ -420,7 +458,7 @@ For now, let's assume you've got a `l3mhet_0013_01_static.yaml` file setup and r
 After training the single frame camera optimization model using this script:
 
 ```shell
-evc -c configs/specs/exps/l3mhet/l3mhet_0013_01_static.yaml
+evc-train -c configs/specs/exps/l3mhet/l3mhet_0013_01_static.yaml
 ```
 
 You're expected to finded a model `data/trained_model/l3mhet_0013_01_static.yaml`
@@ -446,7 +484,7 @@ data_root=data/enerf_outdoor/actor1_4
 python scripts/segmentation/link_backgrounds.py --data_root ${data_root}
 
 # Train background NGP
-evc -c configs/exps/l3mhet/l3mhet_${expname}_bkgd.yaml
+evc-train -c configs/exps/l3mhet/l3mhet_${expname}_bkgd.yaml
 
 # Extract point clouds from trained background NGP
 python scripts/fusion/volume_fusion.py --skip_depth_consistency -- -c configs/exps/l3mhet/l3mhet_${expname}_bkgd.yaml val_dataloader_cfg.dataset_cfg.ratio=0.15 val_dataloader_cfg.dataset_cfg.view_sample=0,None,3 # 50W should be ok
@@ -466,7 +504,7 @@ Optionally, create static version of the `fg` model to validate the implementati
 
 ```shell
 # Train static foreground model
-evc -c configs/exps/4k4d/4k4d_${expname}_r4_fg_static.yaml
+evc-train -c configs/exps/4k4d/4k4d_${expname}_r4_fg_static.yaml
 ```
 
 And optionally, validate the rendering of the static frame:
@@ -476,20 +514,20 @@ And optionally, validate the rendering of the static frame:
 python scripts/realtime4dv/charger.py --exp_name 4k4d_${expname}_fg_static --sampler SuperChargedR4DV -- -c configs/exps/4k4d/4k4d_${expname}_r4_fg_static.yaml,configs/specs/super.yaml
 
 # Real-time rendering in GUI
-evc -t gui -c configs/exps/4k4d/4k4d_${expname}_r4_fg_static.yaml,configs/specs/superf.yaml exp_name=4k4d_${expname}_fg_static
+evc-gui -c configs/exps/4k4d/4k4d_${expname}_r4_fg_static.yaml,configs/specs/superf.yaml exp_name=4k4d_${expname}_fg_static
 ```
 
 Train the `bg` and `fg` model seperatedly:
 
 ```shell
 # Train background model
-evc -c configs/exps/4k4d/4k4d_${expname}_r4_bg.yaml
+evc-train -c configs/exps/4k4d/4k4d_${expname}_r4_bg.yaml
 
 # Train foreground model, this could take a long time
-evc -c configs/exps/4k4d/4k4d_${expname}_r4_fg.yaml
+evc-train -c configs/exps/4k4d/4k4d_${expname}_r4_fg.yaml
 
 # Joint training
-evc -c configs/exps/4k4d/4k4d_${expname}_r4.yaml
+evc-train -c configs/exps/4k4d/4k4d_${expname}_r4.yaml
 ```
 
 Real-time rendering of backgrounds:
@@ -499,13 +537,13 @@ Real-time rendering of backgrounds:
 python scripts/realtime4dv/charger.py --exp_name 4k4d_${expname}_bg --sampler SuperChargedR4DV -- -c configs/exps/4k4d/4k4d_${expname}_r4_bg.yaml,configs/specs/super.yaml
 
 # Non-real-time rendering
-evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4_bg.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
+evc-test -c configs/exps/4k4d/4k4d_${expname}_r4_bg.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
 
 # Real-time rendering of spiral path
-evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4_bg.yaml,configs/specs/superf.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/eval.yaml exp_name=4k4d_${expname}_bg val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
+evc-test -c configs/exps/4k4d/4k4d_${expname}_r4_bg.yaml,configs/specs/superf.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/eval.yaml exp_name=4k4d_${expname}_bg val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
 
 # Real-time rendering in GUI
-evc -t gui -c configs/exps/4k4d/4k4d_${expname}_r4_bg.yaml,configs/specs/superf.yaml exp_name=4k4d_${expname}_bg
+evc-gui -c configs/exps/4k4d/4k4d_${expname}_r4_bg.yaml,configs/specs/superf.yaml exp_name=4k4d_${expname}_bg
 ```
 
 Real-time rendering of foregrounds:
@@ -515,13 +553,13 @@ Real-time rendering of foregrounds:
 python scripts/realtime4dv/charger.py --exp_name 4k4d_${expname}_fg --sampler SuperChargedR4DV -- -c configs/exps/4k4d/4k4d_${expname}_r4_fg.yaml,configs/specs/super.yaml
 
 # Non-real-time rendering
-evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4_fg.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
+evc-test -c configs/exps/4k4d/4k4d_${expname}_r4_fg.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
 
 # Real-time rendering of spiral path
-evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4_fg.yaml,configs/specs/superf.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/eval.yaml exp_name=4k4d_${expname}_fg val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
+evc-test -c configs/exps/4k4d/4k4d_${expname}_r4_fg.yaml,configs/specs/superf.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/eval.yaml exp_name=4k4d_${expname}_fg val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
 
 # Real-time rendering in GUI
-evc -t gui -c configs/exps/4k4d/4k4d_${expname}_r4_fg.yaml,configs/specs/superf.yaml exp_name=4k4d_${expname}_fg
+evc-gui -c configs/exps/4k4d/4k4d_${expname}_r4_fg.yaml,configs/specs/superf.yaml exp_name=4k4d_${expname}_fg
 ```
 
 Real-time rendering of joint results:
@@ -531,32 +569,32 @@ Real-time rendering of joint results:
 python scripts/realtime4dv/charger.py --exp_name 4k4d_${expname} --sampler SuperChargedR4DV -- -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/super.yaml
 
 # Non-real-time rendering
-evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
+evc-test -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
 
 # Real-time rendering of spiral path
-evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/superf.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/eval.yaml exp_name=4k4d_${expname} val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
+evc-test -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/superf.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/eval.yaml exp_name=4k4d_${expname} val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
 
 # Real-time rendering in GUI
-evc -t gui -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/superf.yaml exp_name=4k4d_${expname}
+evc-gui -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/superf.yaml exp_name=4k4d_${expname}
 ```
 
 Using static scene to check implementation and avoid OOM errors:
 
 ```shell
 # Run training on first frame
-evc -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml
+evc-train -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml
 
 # Run rendering on first frame of non-real-time model
-evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml
+evc-test -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml
 
 # Convert to real-time model
 python scripts/realtime4dv/charger.py --exp_name 4k4d_${expname}_static --sampler SuperChargedR4DVB -- -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml,configs/specs/super.yaml
 
 # Run rendering with real-time model
-evc -t test -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/superb.yaml,configs/specs/eval.yaml exp_name=4k4d_${expname}_static
+evc-test -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/superb.yaml,configs/specs/eval.yaml exp_name=4k4d_${expname}_static
 
 # Run GUI rendering with real-time model
-evc -t gui -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml,configs/specs/superb.yaml exp_name=4k4d_${expname}_static
+evc-gui -c configs/exps/4k4d/4k4d_${expname}_r4_static.yaml,configs/specs/superb.yaml exp_name=4k4d_${expname}_static
 ```
 
 ## Acknowledgements
