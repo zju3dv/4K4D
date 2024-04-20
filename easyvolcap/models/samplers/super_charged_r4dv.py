@@ -116,7 +116,7 @@ def average_single_frame(i: int,
 
     # Prepare optimized source camera parameters
     meta = dotdict(src_inds=kwargs.src_inds[None], t_inds=torch.as_tensor(i)[None])
-    batch = dotdict(src_exts=src_exts, meta=meta)
+    batch = dotdict(src_ixts=src_ixts, src_exts=src_exts, meta=meta)
     batch.update(meta)
     batch = to_cuda(batch)
     batch = runner.model.camera.forward_srcs(batch)
