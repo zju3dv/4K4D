@@ -566,7 +566,7 @@ Real-time rendering of joint results:
 
 ```shell
 # Convert to real-time format
-python scripts/realtime4dv/charger.py --exp_name 4k4d_${expname} --sampler SuperChargedR4DV -- -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/super.yaml
+python scripts/realtime4dv/charger.py --exp_name 4k4d_${expname} --sampler SuperChargedR4DVB -- -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/super.yaml
 
 # Non-real-time rendering
 evc-test -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
@@ -575,7 +575,7 @@ evc-test -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/spiral.yaml,
 evc-test -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/superf.yaml,configs/specs/spiral.yaml,configs/specs/ibr.yaml,configs/specs/eval.yaml exp_name=4k4d_${expname} val_dataloader_cfg.dataset_cfg.focal_ratio=0.65 val_dataloader_cfg.dataset_cfg.n_render_views=600
 
 # Real-time rendering in GUI
-evc-gui -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/superf.yaml exp_name=4k4d_${expname}
+evc-gui -c configs/exps/4k4d/4k4d_${expname}_r4.yaml,configs/specs/superb.yaml exp_name=4k4d_${expname}
 ```
 
 Using static scene to check implementation and avoid OOM errors:
